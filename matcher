@@ -1,0 +1,1491 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>患者-薬品-病名 マッチングツール</title>
+    <style>
+        /* ===== Reset & Base ===== */
+        *,
+        *::before,
+        *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        :root {
+            --bg-primary: #0f1117;
+            --bg-secondary: #1a1d28;
+            --bg-card: #22263380;
+            --bg-glass: rgba(34, 38, 51, 0.65);
+            --border: rgba(255, 255, 255, 0.08);
+            --border-active: rgba(99, 132, 255, 0.5);
+            --text-primary: #e8eaed;
+            --text-secondary: #9aa0b0;
+            --text-muted: #5f6578;
+            --accent: #6384ff;
+            --accent2: #a78bfa;
+            --green: #34d399;
+            --yellow: #fbbf24;
+            --orange: #f97316;
+            --red: #f87171;
+            --radius: 12px;
+            --radius-sm: 8px;
+            --shadow: 0 4px 24px rgba(0, 0, 0, 0.3);
+            --transition: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        body {
+            font-family: 'Segoe UI', 'Yu Gothic UI', 'Meiryo', sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            line-height: 1.6;
+        }
+
+        /* ===== Background Decoration ===== */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background:
+                radial-gradient(ellipse 600px 400px at 10% 20%, rgba(99, 132, 255, 0.08), transparent),
+                radial-gradient(ellipse 500px 300px at 80% 70%, rgba(167, 139, 250, 0.06), transparent);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .app-container {
+            position: relative;
+            z-index: 1;
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 24px;
+        }
+
+        /* ===== Header ===== */
+        .app-header {
+            text-align: center;
+            padding: 32px 0 16px;
+        }
+
+        .app-header h1 {
+            font-size: 1.8rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--accent), var(--accent2));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .app-header p {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            margin-top: 4px;
+        }
+
+        /* ===== Settings Panel ===== */
+        .settings-bar {
+            display: flex;
+            gap: 24px;
+            align-items: center;
+            justify-content: center;
+            flex-wrap: wrap;
+            background: var(--bg-glass);
+            backdrop-filter: blur(16px);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 14px 28px;
+            margin-bottom: 20px;
+        }
+
+        .setting-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .setting-group label {
+            font-size: 0.82rem;
+            color: var(--text-secondary);
+            white-space: nowrap;
+        }
+
+        .setting-group input[type="number"] {
+            width: 60px;
+            padding: 5px 8px;
+            border-radius: var(--radius-sm);
+            border: 1px solid var(--border);
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            font-size: 0.85rem;
+            text-align: center;
+        }
+
+        .setting-group input:focus {
+            outline: none;
+            border-color: var(--accent);
+        }
+
+        /* ===== File Upload Section ===== */
+        .upload-section {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 16px;
+            margin-bottom: 20px;
+        }
+
+        .upload-card {
+            background: var(--bg-glass);
+            backdrop-filter: blur(16px);
+            border: 2px dashed var(--border);
+            border-radius: var(--radius);
+            padding: 24px;
+            text-align: center;
+            transition: var(--transition);
+            cursor: pointer;
+            position: relative;
+        }
+
+        .upload-card:hover,
+        .upload-card.dragover {
+            border-color: var(--accent);
+            background: rgba(99, 132, 255, 0.05);
+        }
+
+        .upload-card.loaded {
+            border-color: var(--green);
+            border-style: solid;
+        }
+
+        .upload-card .icon {
+            font-size: 2rem;
+            margin-bottom: 8px;
+        }
+
+        .upload-card h3 {
+            font-size: 0.95rem;
+            margin-bottom: 4px;
+        }
+
+        .upload-card p {
+            font-size: 0.78rem;
+            color: var(--text-muted);
+        }
+
+        .upload-card .file-info {
+            font-size: 0.8rem;
+            color: var(--green);
+            margin-top: 8px;
+            font-weight: 600;
+        }
+
+        .upload-card input[type="file"] {
+            position: absolute;
+            inset: 0;
+            opacity: 0;
+            cursor: pointer;
+        }
+
+        /* ===== Action Bar ===== */
+        .action-bar {
+            text-align: center;
+            margin-bottom: 24px;
+        }
+
+        .btn-primary {
+            padding: 12px 40px;
+            border: none;
+            border-radius: var(--radius);
+            background: linear-gradient(135deg, var(--accent), var(--accent2));
+            color: #fff;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: var(--transition);
+            box-shadow: 0 4px 16px rgba(99, 132, 255, 0.3);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 24px rgba(99, 132, 255, 0.4);
+        }
+
+        .btn-primary:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-secondary {
+            padding: 8px 20px;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .btn-secondary:hover {
+            border-color: var(--accent);
+        }
+
+        /* ===== Summary Panel ===== */
+        .summary-panel {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .summary-card {
+            background: var(--bg-glass);
+            backdrop-filter: blur(16px);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 16px;
+            text-align: center;
+        }
+
+        .summary-card .num {
+            font-size: 1.8rem;
+            font-weight: 700;
+        }
+
+        .summary-card .num.accent {
+            color: var(--accent);
+        }
+
+        .summary-card .num.green {
+            color: var(--green);
+        }
+
+        .summary-card .num.yellow {
+            color: var(--yellow);
+        }
+
+        .summary-card .num.orange {
+            color: var(--orange);
+        }
+
+        .summary-card .lbl {
+            font-size: 0.78rem;
+            color: var(--text-secondary);
+            margin-top: 2px;
+        }
+
+        /* ===== Filter Bar ===== */
+        .filter-bar {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            flex-wrap: wrap;
+            margin-bottom: 16px;
+        }
+
+        .filter-bar input,
+        .filter-bar select {
+            padding: 7px 14px;
+            border-radius: var(--radius-sm);
+            border: 1px solid var(--border);
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            font-size: 0.85rem;
+        }
+
+        .filter-bar input {
+            flex: 1;
+            min-width: 200px;
+        }
+
+        .filter-bar input:focus,
+        .filter-bar select:focus {
+            outline: none;
+            border-color: var(--accent);
+        }
+
+        .filter-bar select {
+            min-width: 140px;
+        }
+
+        .match-filters {
+            display: flex;
+            gap: 6px;
+        }
+
+        .match-chip {
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 0.78rem;
+            border: 1px solid var(--border);
+            background: var(--bg-secondary);
+            cursor: pointer;
+            transition: var(--transition);
+            user-select: none;
+        }
+
+        .match-chip.active {
+            border-color: var(--accent);
+            background: rgba(99, 132, 255, 0.15);
+            color: var(--accent);
+        }
+
+        /* ===== Results Table ===== */
+        .results-section {
+            animation: fadeIn 0.5s ease;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(12px);
+            }
+
+            to {
+                opacity: 1;
+                transform: none;
+            }
+        }
+
+        .table-wrapper {
+            background: var(--bg-glass);
+            backdrop-filter: blur(16px);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            overflow: hidden;
+        }
+
+        .results-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.85rem;
+        }
+
+        .results-table thead th {
+            position: sticky;
+            top: 0;
+            z-index: 2;
+            background: var(--bg-secondary);
+            padding: 12px 10px;
+            text-align: left;
+            font-weight: 600;
+            color: var(--text-secondary);
+            font-size: 0.8rem;
+            border-bottom: 1px solid var(--border);
+            cursor: pointer;
+            user-select: none;
+            white-space: nowrap;
+            transition: var(--transition);
+        }
+
+        .results-table thead th:hover {
+            color: var(--accent);
+        }
+
+        .results-table thead th .sort-icon {
+            margin-left: 4px;
+            font-size: 0.7rem;
+            opacity: 0.5;
+        }
+
+        .results-table thead th.sorted .sort-icon {
+            opacity: 1;
+            color: var(--accent);
+        }
+
+        .results-table tbody tr {
+            border-bottom: 1px solid var(--border);
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .results-table tbody tr:hover {
+            background: rgba(99, 132, 255, 0.05);
+        }
+
+        .results-table tbody tr.expanded {
+            background: rgba(99, 132, 255, 0.08);
+        }
+
+        .results-table td {
+            padding: 10px;
+            vertical-align: top;
+        }
+
+        .cell-drugs,
+        .cell-diseases {
+            max-width: 260px;
+            font-size: 0.8rem;
+            line-height: 1.5;
+        }
+
+        .drug-tag,
+        .disease-tag {
+            display: inline-block;
+            padding: 2px 8px;
+            margin: 1px 2px;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            white-space: nowrap;
+        }
+
+        .drug-tag {
+            background: rgba(99, 132, 255, 0.12);
+            color: #93a8ff;
+        }
+
+        .inject-tag {
+            background: rgba(167, 139, 250, 0.12);
+            color: #c4b0ff;
+        }
+
+        .disease-tag {
+            background: rgba(52, 211, 153, 0.12);
+            color: #6ee7b7;
+        }
+
+        .match-badge {
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+
+        .match-full {
+            background: rgba(52, 211, 153, 0.15);
+            color: var(--green);
+        }
+
+        .match-partial {
+            background: rgba(251, 191, 36, 0.15);
+            color: var(--yellow);
+        }
+
+        .match-near {
+            background: rgba(249, 115, 22, 0.15);
+            color: var(--orange);
+        }
+
+        .match-none {
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--text-muted);
+        }
+
+        /* ===== Detail Panel ===== */
+        .detail-row td {
+            padding: 0 !important;
+        }
+
+        .detail-panel {
+            background: var(--bg-secondary);
+            border-top: 1px solid var(--border);
+            padding: 20px 24px;
+            animation: slideDown 0.3s ease;
+        }
+
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                max-height: 0;
+            }
+
+            to {
+                opacity: 1;
+                max-height: 2000px;
+            }
+        }
+
+        .detail-columns {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 16px;
+        }
+
+        .detail-col h4 {
+            font-size: 0.85rem;
+            font-weight: 600;
+            margin-bottom: 10px;
+            padding-bottom: 6px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .detail-col h4.rx-title {
+            color: var(--accent);
+        }
+
+        .detail-col h4.inj-title {
+            color: var(--accent2);
+        }
+
+        .detail-col h4.dx-title {
+            color: var(--green);
+        }
+
+        .detail-item {
+            padding: 8px 10px;
+            margin-bottom: 6px;
+            border-radius: var(--radius-sm);
+            border-left: 3px solid transparent;
+            font-size: 0.82rem;
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        .detail-item .item-name {
+            font-weight: 600;
+        }
+
+        .detail-item .item-meta {
+            color: var(--text-secondary);
+            font-size: 0.78rem;
+            margin-top: 2px;
+        }
+
+        .detail-item.matched-full {
+            border-left-color: var(--green);
+            background: rgba(52, 211, 153, 0.05);
+        }
+
+        .detail-item.matched-partial {
+            border-left-color: var(--yellow);
+            background: rgba(251, 191, 36, 0.05);
+        }
+
+        .detail-item.matched-near {
+            border-left-color: var(--orange);
+            background: rgba(249, 115, 22, 0.05);
+        }
+
+        /* ===== Scroll ===== */
+        .table-scroll {
+            max-height: 70vh;
+            overflow-y: auto;
+        }
+
+        .table-scroll::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .table-scroll::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .table-scroll::-webkit-scrollbar-thumb {
+            background: var(--text-muted);
+            border-radius: 3px;
+        }
+
+        /* ===== Export button ===== */
+        .export-bar {
+            display: flex;
+            justify-content: flex-end;
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+
+        /* ===== Loading ===== */
+        .loading-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 100;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(15, 17, 23, 0.85);
+            backdrop-filter: blur(8px);
+        }
+
+        .spinner {
+            width: 48px;
+            height: 48px;
+            border: 3px solid var(--border);
+            border-top-color: var(--accent);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        /* ===== Responsive ===== */
+        @media (max-width: 900px) {
+            .detail-columns {
+                grid-template-columns: 1fr;
+            }
+
+            .upload-section {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="app-container">
+        <!-- Header -->
+        <header class="app-header">
+            <h1>患者-薬品-病名 マッチングツール</h1>
+            <p>処方・注射統計データと診断病名データから同一患者を抽出し、投与期間と病名の関連を分析します</p>
+        </header>
+
+        <!-- Settings -->
+        <div class="settings-bar">
+            <div class="setting-group">
+                <label>近接日数 (±日)</label>
+                <input type="number" id="proximityDays" value="14" min="0" max="90">
+            </div>
+            <div class="setting-group">
+                <label>連続処方閾値 (日)</label>
+                <input type="number" id="continuousThreshold" value="3" min="0" max="30">
+            </div>
+        </div>
+
+        <!-- File Upload -->
+        <div class="upload-section">
+            <div class="upload-card" id="card-rx">
+                <div class="icon">💊</div>
+                <h3>処方薬品統計</h3>
+                <p>CSVファイルをドラッグ＆ドロップ、またはクリック</p>
+                <div class="file-info hidden" id="info-rx"></div>
+                <input type="file" accept=".csv" id="file-rx">
+            </div>
+            <div class="upload-card" id="card-inj">
+                <div class="icon">💉</div>
+                <h3>注射薬品統計</h3>
+                <p>CSVファイルをドラッグ＆ドロップ、またはクリック</p>
+                <div class="file-info hidden" id="info-inj"></div>
+                <input type="file" accept=".csv" id="file-inj">
+            </div>
+            <div class="upload-card" id="card-dx">
+                <div class="icon">🏥</div>
+                <h3>診断病名検索</h3>
+                <p>CSVファイルをドラッグ＆ドロップ、またはクリック</p>
+                <div class="file-info hidden" id="info-dx"></div>
+                <input type="file" accept=".csv" id="file-dx">
+            </div>
+        </div>
+
+        <!-- Action -->
+        <div class="action-bar">
+            <button class="btn-primary" id="btn-analyze" disabled>分析開始</button>
+        </div>
+
+        <!-- Results (hidden until analyzed) -->
+        <div id="results-area" class="hidden">
+            <!-- Summary -->
+            <div class="summary-panel" id="summary-panel"></div>
+
+            <!-- Export -->
+            <div class="export-bar">
+                <button class="btn-secondary" id="btn-export-csv">📥 CSV出力</button>
+            </div>
+
+            <!-- Filter -->
+            <div class="filter-bar">
+                <input type="text" id="search-input" placeholder="患者ID・氏名・薬品名・病名で検索...">
+                <select id="filter-dept">
+                    <option value="">全診療科</option>
+                </select>
+                <div class="match-filters">
+                    <span class="match-chip active" data-match="all">すべて</span>
+                    <span class="match-chip" data-match="full">🟢 完全一致</span>
+                    <span class="match-chip" data-match="partial">🟡 部分一致</span>
+                    <span class="match-chip" data-match="near">🟠 近接一致</span>
+                    <span class="match-chip" data-match="none">⚪ 不一致</span>
+                </div>
+            </div>
+
+            <!-- Table -->
+            <div class="table-wrapper">
+                <div class="table-scroll">
+                    <table class="results-table">
+                        <thead>
+                            <tr>
+                                <th data-col="id">患者ID <span class="sort-icon">▲▼</span></th>
+                                <th data-col="name">氏名 <span class="sort-icon">▲▼</span></th>
+                                <th data-col="age">年齢 <span class="sort-icon">▲▼</span></th>
+                                <th data-col="dept">診療科 <span class="sort-icon">▲▼</span></th>
+                                <th data-col="rxDrugs">処方薬品</th>
+                                <th data-col="injDrugs">注射薬品</th>
+                                <th data-col="diseases">病名</th>
+                                <th data-col="match">マッチ <span class="sort-icon">▲▼</span></th>
+                            </tr>
+                        </thead>
+                        <tbody id="results-body"></tbody>
+                    </table>
+                </div>
+            </div>
+            <div style="text-align:center;padding:12px;color:var(--text-muted);font-size:0.8rem;" id="result-count">
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div class="loading-overlay hidden" id="loading">
+        <div class="spinner"></div>
+    </div>
+
+    <script>
+        // ===== Global State =====
+        var rawData = { rx: null, inj: null, dx: null };
+        var analysisResult = [];
+        var filteredResult = [];
+        var sortState = { col: 'id', asc: true };
+        var activeMatchFilter = 'all';
+        var expandedPatientId = null;
+
+        // ===== CSV Parsing =====
+        function detectEncoding(buffer) {
+            var bytes = new Uint8Array(buffer);
+            // Check for UTF-8 BOM
+            if (bytes.length >= 3 && bytes[0] === 0xEF && bytes[1] === 0xBB && bytes[2] === 0xBF) return 'utf-8';
+            // Heuristic: check for Shift-JIS patterns
+            var sjisScore = 0, utf8Score = 0;
+            for (var i = 0; i < Math.min(bytes.length, 1000); i++) {
+                if (bytes[i] >= 0x80) {
+                    if (bytes[i] >= 0x81 && bytes[i] <= 0x9F || bytes[i] >= 0xE0 && bytes[i] <= 0xFC) sjisScore++;
+                    if (bytes[i] >= 0xC0 && bytes[i] <= 0xFD) utf8Score++;
+                }
+            }
+            return sjisScore > utf8Score ? 'shift-jis' : 'utf-8';
+        }
+
+        function readFileAsText(file, callback) {
+            var reader = new FileReader();
+            reader.onload = function (e) {
+                var encoding = detectEncoding(e.target.result);
+                var reader2 = new FileReader();
+                reader2.onload = function (e2) { callback(e2.target.result); };
+                reader2.readAsText(file, encoding === 'shift-jis' ? 'Shift_JIS' : 'UTF-8');
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        function parseCSV(text) {
+            var lines = [];
+            var current = '';
+            var inQuote = false;
+            for (var i = 0; i < text.length; i++) {
+                var ch = text[i];
+                if (inQuote) {
+                    if (ch === '"') {
+                        if (i + 1 < text.length && text[i + 1] === '"') { current += '"'; i++; }
+                        else { inQuote = false; }
+                    } else { current += ch; }
+                } else {
+                    if (ch === '"') { inQuote = true; }
+                    else if (ch === ',') { lines.push(current); current = ''; }
+                    else if (ch === '\n' || ch === '\r') {
+                        if (ch === '\r' && i + 1 < text.length && text[i + 1] === '\n') i++;
+                        lines.push(current); current = '';
+                        // End of row marker
+                        lines.push(null);
+                    } else { current += ch; }
+                }
+            }
+            if (current) { lines.push(current); lines.push(null); }
+
+            // Reconstruct rows
+            var rows = [];
+            var row = [];
+            for (var j = 0; j < lines.length; j++) {
+                if (lines[j] === null) {
+                    if (row.length > 0) rows.push(row);
+                    row = [];
+                } else { row.push(lines[j].trim()); }
+            }
+            if (row.length > 0) rows.push(row);
+            return rows;
+        }
+
+        function normalizeColName(name) {
+            // Normalize full-width/half-width
+            return name.replace(/\uff29\uff24/g, 'ID').replace(/\uff24/g, 'D').replace(/\uff29/g, 'I')
+                .replace(/[\uff01-\uff5e]/g, function (ch) { return String.fromCharCode(ch.charCodeAt(0) - 0xFEE0); })
+                .replace(/\u3000/g, ' ').trim();
+        }
+
+        function csvToObjects(rows) {
+            if (rows.length < 2) return [];
+            var headers = rows[0].map(normalizeColName);
+            var result = [];
+            for (var i = 1; i < rows.length; i++) {
+                var obj = {};
+                for (var j = 0; j < headers.length; j++) {
+                    obj[headers[j]] = (rows[i][j] || '').trim();
+                }
+                result.push(obj);
+            }
+            return result;
+        }
+
+        // ===== Column Name Resolution =====
+        function findCol(obj, candidates) {
+            for (var i = 0; i < candidates.length; i++) {
+                if (obj.hasOwnProperty(candidates[i])) return obj[candidates[i]];
+            }
+            return '';
+        }
+
+        function getPatientId(obj) { return findCol(obj, ['患者ID', '患者ＩＤ', '患者id']); }
+        function getPatientName(obj) { return findCol(obj, ['患者氏名', '患者名']); }
+        function getDrugName(obj) { return findCol(obj, ['薬品', '薬品名']); }
+        function getIssueDate(obj) { return findCol(obj, ['発行日']); }
+        function getDays(obj) { return findCol(obj, ['日数・回数', '日数', '回数']); }
+        function getDayUnit(obj) { return findCol(obj, ['日回単位']); }
+        function getDept(obj) { return findCol(obj, ['診療科']); }
+        function getDoctor(obj) { return findCol(obj, ['担当医師']); }
+        function getWard(obj) { return findCol(obj, ['病棟']); }
+        function getSlipType(obj) { return findCol(obj, ['伝票区分']); }
+        function getInjDose(obj) { return findCol(obj, ['用量']); }
+        function getInjUnit(obj) { return findCol(obj, ['単位']); }
+        function getDxName(obj) { return findCol(obj, ['診断病名']); }
+        function getDxStart(obj) { return findCol(obj, ['病名開始日']); }
+        function getDxEnd(obj) { return findCol(obj, ['病名終了日']); }
+        function getDxOutcome(obj) { return findCol(obj, ['病名転帰']); }
+        function getDxOutcomeCode(obj) { return findCol(obj, ['病名転帰コード']); }
+        function getAge(obj) { return findCol(obj, ['年齢']); }
+        function getGender(obj) { return findCol(obj, ['性別']); }
+
+        // ===== Date Utilities =====
+        function parseDate(str) {
+            if (!str) return null;
+            str = str.replace(/\s/g, '');
+            var parts = str.split('/');
+            if (parts.length === 3) {
+                var y = parseInt(parts[0], 10);
+                var m = parseInt(parts[1], 10);
+                var d = parseInt(parts[2], 10);
+                if (y < 100 || isNaN(y) || isNaN(m) || isNaN(d)) return null;
+                if (y === 1 && m === 1 && d === 1) return null; // 0001/01/01 = 未設定
+                return new Date(y, m - 1, d);
+            }
+            return null;
+        }
+
+        function formatDate(date) {
+            if (!date) return '-';
+            var y = date.getFullYear();
+            var m = date.getMonth() + 1;
+            var d = date.getDate();
+            return y + '/' + m + '/' + d;
+        }
+
+        function daysBetween(d1, d2) {
+            return Math.round((d2 - d1) / (1000 * 60 * 60 * 24));
+        }
+
+        function addDays(date, n) {
+            var r = new Date(date);
+            r.setDate(r.getDate() + n);
+            return r;
+        }
+
+        var TODAY = new Date();
+        TODAY.setHours(0, 0, 0, 0);
+
+        // ===== Analysis Logic =====
+        function buildMedicationPeriods(rxRecords, continuousThreshold) {
+            // Group by patient + drug
+            var groups = {};
+            rxRecords.forEach(function (r) {
+                var pid = getPatientId(r);
+                var drug = getDrugName(r);
+                var key = pid + '|||' + drug;
+                if (!groups[key]) groups[key] = [];
+                groups[key].push(r);
+            });
+
+            var periods = []; // { patientId, drug, startDate, endDate, records }
+            Object.keys(groups).forEach(function (key) {
+                var recs = groups[key];
+                // Parse and sort by issue date
+                var parsed = [];
+                recs.forEach(function (r) {
+                    var issueDate = parseDate(getIssueDate(r));
+                    if (!issueDate) return;
+                    var days = parseInt(getDays(r), 10) || 1;
+                    var unit = getDayUnit(r);
+                    var endDate;
+                    if (unit && unit.indexOf('日') >= 0) {
+                        endDate = addDays(issueDate, days - 1);
+                    } else {
+                        // 回分 (as needed) - treat as single day
+                        endDate = new Date(issueDate);
+                    }
+                    parsed.push({ issueDate: issueDate, endDate: endDate, record: r });
+                });
+                parsed.sort(function (a, b) { return a.issueDate - b.issueDate; });
+
+                // Merge continuous prescriptions
+                var parts = key.split('|||');
+                var currentStart = null, currentEnd = null, currentRecs = [];
+                parsed.forEach(function (p) {
+                    if (!currentStart) {
+                        currentStart = p.issueDate; currentEnd = p.endDate; currentRecs = [p.record];
+                    } else {
+                        var gap = daysBetween(currentEnd, p.issueDate);
+                        if (gap <= continuousThreshold) {
+                            // Continuous
+                            if (p.endDate > currentEnd) currentEnd = p.endDate;
+                            currentRecs.push(p.record);
+                        } else {
+                            // New period
+                            periods.push({ patientId: parts[0], drug: parts[1], startDate: currentStart, endDate: currentEnd, records: currentRecs, type: 'rx' });
+                            currentStart = p.issueDate; currentEnd = p.endDate; currentRecs = [p.record];
+                        }
+                    }
+                });
+                if (currentStart) {
+                    periods.push({ patientId: parts[0], drug: parts[1], startDate: currentStart, endDate: currentEnd, records: currentRecs, type: 'rx' });
+                }
+            });
+            return periods;
+        }
+
+        function buildInjectionPeriods(injRecords, continuousThreshold) {
+            var groups = {};
+            injRecords.forEach(function (r) {
+                var pid = getPatientId(r);
+                var drug = getDrugName(r);
+                var key = pid + '|||' + drug;
+                if (!groups[key]) groups[key] = [];
+                groups[key].push(r);
+            });
+
+            var periods = [];
+            Object.keys(groups).forEach(function (key) {
+                var recs = groups[key];
+                var parsed = [];
+                recs.forEach(function (r) {
+                    var d = parseDate(getIssueDate(r));
+                    if (d) parsed.push({ date: d, record: r });
+                });
+                parsed.sort(function (a, b) { return a.date - b.date; });
+
+                var parts = key.split('|||');
+                var currentStart = null, currentEnd = null, currentRecs = [];
+                parsed.forEach(function (p) {
+                    if (!currentStart) {
+                        currentStart = p.date; currentEnd = p.date; currentRecs = [p.record];
+                    } else {
+                        var gap = daysBetween(currentEnd, p.date);
+                        if (gap <= continuousThreshold) {
+                            currentEnd = p.date; currentRecs.push(p.record);
+                        } else {
+                            periods.push({ patientId: parts[0], drug: parts[1], startDate: currentStart, endDate: currentEnd, records: currentRecs, type: 'inj' });
+                            currentStart = p.date; currentEnd = p.date; currentRecs = [p.record];
+                        }
+                    }
+                });
+                if (currentStart) {
+                    periods.push({ patientId: parts[0], drug: parts[1], startDate: currentStart, endDate: currentEnd, records: currentRecs, type: 'inj' });
+                }
+            });
+            return periods;
+        }
+
+        function matchPeriodWithDisease(period, disease, proximityDays) {
+            var pStart = period.startDate;
+            var pEnd = period.endDate;
+            var dStart = disease.startDate;
+            var dEnd = disease.endDate || TODAY;
+
+            // Check overlap
+            var overlapStart = pStart > dStart ? pStart : dStart;
+            var overlapEnd = pEnd < dEnd ? pEnd : dEnd;
+
+            if (overlapStart <= overlapEnd) {
+                // There is overlap
+                if (dStart <= pStart && pEnd <= dEnd) {
+                    return 'full'; // 完全一致: 投与期間が病名期間内
+                }
+                return 'partial'; // 部分一致
+            }
+
+            // Check proximity
+            var gapToDxEnd = daysBetween(pStart, dEnd); // negative if pStart after dEnd
+            var gapFromPEnd = daysBetween(dStart, pEnd); // negative if dStart after pEnd
+
+            // Calculate closest distance
+            var dist;
+            if (pStart > dEnd) {
+                dist = daysBetween(dEnd, pStart);
+            } else {
+                dist = daysBetween(pEnd, dStart);
+            }
+
+            if (dist <= proximityDays) {
+                return 'near'; // 近接一致
+            }
+            return 'none';
+        }
+
+        function runAnalysis() {
+            var proximityDays = parseInt(document.getElementById('proximityDays').value, 10) || 14;
+            var continuousThreshold = parseInt(document.getElementById('continuousThreshold').value, 10) || 3;
+
+            var rxData = rawData.rx ? csvToObjects(parseCSV(rawData.rx)) : [];
+            var injData = rawData.inj ? csvToObjects(parseCSV(rawData.inj)) : [];
+            var dxData = rawData.dx ? csvToObjects(parseCSV(rawData.dx)) : [];
+
+            // Build medication periods
+            var rxPeriods = buildMedicationPeriods(rxData, continuousThreshold);
+            var injPeriods = buildInjectionPeriods(injData, continuousThreshold);
+
+            // Collect patient IDs from rx/inj
+            var drugPatientIds = {};
+            rxPeriods.forEach(function (p) { drugPatientIds[p.patientId] = true; });
+            injPeriods.forEach(function (p) { drugPatientIds[p.patientId] = true; });
+
+            // Collect patient IDs from dx
+            var dxPatientIds = {};
+            dxData.forEach(function (d) { dxPatientIds[getPatientId(d)] = true; });
+
+            // Find common patients
+            var commonIds = {};
+            Object.keys(drugPatientIds).forEach(function (id) {
+                if (dxPatientIds[id]) commonIds[id] = true;
+            });
+
+            // Build patient records
+            var patients = {};
+            // From rx/inj, get patient info
+            rxData.forEach(function (r) {
+                var pid = getPatientId(r);
+                if (!commonIds[pid]) return;
+                if (!patients[pid]) patients[pid] = { id: pid, name: getPatientName(r), age: '', dept: getDept(r), rxPeriods: [], injPeriods: [], diseases: [], matchLevel: 'none', gender: '' };
+                if (!patients[pid].name) patients[pid].name = getPatientName(r);
+                if (!patients[pid].dept) patients[pid].dept = getDept(r);
+            });
+            injData.forEach(function (r) {
+                var pid = getPatientId(r);
+                if (!commonIds[pid]) return;
+                if (!patients[pid]) patients[pid] = { id: pid, name: getPatientName(r), age: '', dept: getDept(r), rxPeriods: [], injPeriods: [], diseases: [], matchLevel: 'none', gender: '' };
+                if (!patients[pid].name) patients[pid].name = getPatientName(r);
+                if (!patients[pid].dept) patients[pid].dept = getDept(r);
+            });
+
+            // Attach dx info
+            dxData.forEach(function (d) {
+                var pid = getPatientId(d);
+                if (!patients[pid]) return;
+                if (!patients[pid].age) patients[pid].age = getAge(d);
+                if (!patients[pid].gender) patients[pid].gender = getGender(d);
+                var startDate = parseDate(getDxStart(d));
+                var endDate = parseDate(getDxEnd(d));
+                patients[pid].diseases.push({
+                    name: getDxName(d),
+                    startDate: startDate,
+                    endDate: endDate,
+                    outcome: getDxOutcome(d),
+                    outcomeCode: getDxOutcomeCode(d),
+                    dept: getDept(d),
+                    raw: d
+                });
+            });
+
+            // Attach periods to patients
+            rxPeriods.forEach(function (p) { if (patients[p.patientId]) patients[p.patientId].rxPeriods.push(p); });
+            injPeriods.forEach(function (p) { if (patients[p.patientId]) patients[p.patientId].injPeriods.push(p); });
+
+            // Match each period against diseases
+            var MATCH_RANK = { full: 3, partial: 2, near: 1, none: 0 };
+            Object.keys(patients).forEach(function (pid) {
+                var pt = patients[pid];
+                var bestMatch = 'none';
+                var allPeriods = pt.rxPeriods.concat(pt.injPeriods);
+                allPeriods.forEach(function (period) {
+                    period.matches = [];
+                    pt.diseases.forEach(function (dx) {
+                        if (!dx.startDate) return;
+                        var level = matchPeriodWithDisease(period, dx, proximityDays);
+                        if (level !== 'none') {
+                            period.matches.push({ disease: dx, level: level });
+                        }
+                        if (MATCH_RANK[level] > MATCH_RANK[bestMatch]) bestMatch = level;
+                    });
+                });
+                pt.matchLevel = bestMatch;
+            });
+
+            // Convert to array
+            analysisResult = Object.keys(patients).map(function (pid) { return patients[pid]; });
+            return analysisResult;
+        }
+
+        // ===== Rendering =====
+        function getMatchLabel(level) {
+            switch (level) {
+                case 'full': return '<span class="match-badge match-full">🟢 完全一致</span>';
+                case 'partial': return '<span class="match-badge match-partial">🟡 部分一致</span>';
+                case 'near': return '<span class="match-badge match-near">🟠 近接一致</span>';
+                default: return '<span class="match-badge match-none">⚪ 不一致</span>';
+            }
+        }
+
+        function uniqueNames(periods) {
+            var seen = {};
+            var result = [];
+            periods.forEach(function (p) {
+                if (!seen[p.drug]) { seen[p.drug] = true; result.push(p.drug); }
+            });
+            return result;
+        }
+
+        function uniqueDiseaseNames(diseases) {
+            var seen = {};
+            var result = [];
+            diseases.forEach(function (d) {
+                if (!seen[d.name]) { seen[d.name] = true; result.push(d.name); }
+            });
+            return result;
+        }
+
+        function renderTags(names, tagClass) {
+            return names.map(function (n) { return '<span class="' + tagClass + '">' + escHtml(n) + '</span>'; }).join(' ');
+        }
+
+        function escHtml(s) {
+            var d = document.createElement('div');
+            d.appendChild(document.createTextNode(s));
+            return d.innerHTML;
+        }
+
+        function renderSummary() {
+            var total = analysisResult.length;
+            var full = 0, partial = 0, near = 0, none = 0;
+            analysisResult.forEach(function (p) {
+                switch (p.matchLevel) {
+                    case 'full': full++; break;
+                    case 'partial': partial++; break;
+                    case 'near': near++; break;
+                    default: none++; break;
+                }
+            });
+            document.getElementById('summary-panel').innerHTML =
+                '<div class="summary-card"><div class="num accent">' + total + '</div><div class="lbl">合計患者数</div></div>' +
+                '<div class="summary-card"><div class="num green">' + full + '</div><div class="lbl">🟢 完全一致</div></div>' +
+                '<div class="summary-card"><div class="num yellow">' + partial + '</div><div class="lbl">🟡 部分一致</div></div>' +
+                '<div class="summary-card"><div class="num orange">' + near + '</div><div class="lbl">🟠 近接一致</div></div>' +
+                '<div class="summary-card"><div class="num">' + none + '</div><div class="lbl">⚪ 不一致</div></div>';
+        }
+
+        function renderDeptFilter() {
+            var depts = {};
+            analysisResult.forEach(function (p) { if (p.dept) depts[p.dept] = true; });
+            var sel = document.getElementById('filter-dept');
+            sel.innerHTML = '<option value="">全診療科</option>';
+            Object.keys(depts).sort().forEach(function (d) {
+                sel.innerHTML += '<option value="' + escHtml(d) + '">' + escHtml(d) + '</option>';
+            });
+        }
+
+        function applyFilters() {
+            var search = document.getElementById('search-input').value.toLowerCase();
+            var dept = document.getElementById('filter-dept').value;
+            filteredResult = analysisResult.filter(function (p) {
+                // Match filter
+                if (activeMatchFilter !== 'all' && p.matchLevel !== activeMatchFilter) return false;
+                // Dept filter
+                if (dept && p.dept !== dept) return false;
+                // Search filter
+                if (search) {
+                    var haystack = (p.id + ' ' + p.name + ' ' +
+                        uniqueNames(p.rxPeriods).join(' ') + ' ' +
+                        uniqueNames(p.injPeriods).join(' ') + ' ' +
+                        uniqueDiseaseNames(p.diseases).join(' ')).toLowerCase();
+                    if (haystack.indexOf(search) < 0) return false;
+                }
+                return true;
+            });
+            sortResults();
+            renderTable();
+        }
+
+        function sortResults() {
+            var col = sortState.col;
+            var asc = sortState.asc;
+            var MATCH_ORDER = { full: 3, partial: 2, near: 1, none: 0 };
+            filteredResult.sort(function (a, b) {
+                var va, vb;
+                switch (col) {
+                    case 'id': va = a.id; vb = b.id; break;
+                    case 'name': va = a.name; vb = b.name; break;
+                    case 'age': va = parseInt(a.age) || 0; vb = parseInt(b.age) || 0; return asc ? va - vb : vb - va;
+                    case 'dept': va = a.dept; vb = b.dept; break;
+                    case 'match': va = MATCH_ORDER[a.matchLevel] || 0; vb = MATCH_ORDER[b.matchLevel] || 0; return asc ? va - vb : vb - va;
+                    default: va = a.id; vb = b.id;
+                }
+                if (va < vb) return asc ? -1 : 1;
+                if (va > vb) return asc ? 1 : -1;
+                return 0;
+            });
+        }
+
+        function renderTable() {
+            var tbody = document.getElementById('results-body');
+            var html = '';
+            filteredResult.forEach(function (p) {
+                var rxNames = uniqueNames(p.rxPeriods);
+                var injNames = uniqueNames(p.injPeriods);
+                var dxNames = uniqueDiseaseNames(p.diseases);
+                var isExpanded = expandedPatientId === p.id;
+                html += '<tr data-pid="' + escHtml(p.id) + '" class="' + (isExpanded ? 'expanded' : '') + '">' +
+                    '<td>' + escHtml(p.id) + '</td>' +
+                    '<td>' + escHtml(p.name) + '</td>' +
+                    '<td>' + escHtml(p.age) + '</td>' +
+                    '<td>' + escHtml(p.dept) + '</td>' +
+                    '<td class="cell-drugs">' + renderTags(rxNames, 'drug-tag') + '</td>' +
+                    '<td class="cell-drugs">' + renderTags(injNames, 'drug-tag inject-tag') + '</td>' +
+                    '<td class="cell-diseases">' + renderTags(dxNames, 'disease-tag') + '</td>' +
+                    '<td>' + getMatchLabel(p.matchLevel) + '</td>' +
+                    '</tr>';
+                if (isExpanded) {
+                    html += '<tr class="detail-row"><td colspan="8">' + renderDetailPanel(p) + '</td></tr>';
+                }
+            });
+            tbody.innerHTML = html;
+            document.getElementById('result-count').textContent = '表示: ' + filteredResult.length + ' / ' + analysisResult.length + ' 件';
+
+            // Attach row click
+            var rows = tbody.querySelectorAll('tr[data-pid]');
+            rows.forEach(function (row) {
+                row.addEventListener('click', function () {
+                    var pid = this.getAttribute('data-pid');
+                    expandedPatientId = (expandedPatientId === pid) ? null : pid;
+                    renderTable();
+                });
+            });
+        }
+
+        function renderDetailPanel(patient) {
+            var html = '<div class="detail-panel"><div class="detail-columns">';
+
+            // Rx column
+            html += '<div class="detail-col"><h4 class="rx-title">💊 処方薬品 (' + patient.rxPeriods.length + '期間)</h4>';
+            if (patient.rxPeriods.length === 0) html += '<div style="color:var(--text-muted);font-size:0.8rem;">データなし</div>';
+            patient.rxPeriods.forEach(function (p) {
+                var matchClass = '';
+                var matchInfo = '';
+                if (p.matches && p.matches.length > 0) {
+                    var best = p.matches.reduce(function (a, b) {
+                        var rank = { full: 3, partial: 2, near: 1, none: 0 };
+                        return rank[a.level] >= rank[b.level] ? a : b;
+                    });
+                    matchClass = 'matched-' + best.level;
+                    matchInfo = ' → ' + best.disease.name + ' (' + getMatchLabelText(best.level) + ')';
+                }
+                var meta = formatDate(p.startDate) + ' ～ ' + formatDate(p.endDate);
+                var recCount = p.records.length;
+                var firstRec = p.records[0];
+                var dept = getDept(firstRec);
+                var doctor = getDoctor(firstRec);
+                var slip = getSlipType(firstRec);
+                if (dept) meta += ' | ' + dept;
+                if (doctor) meta += ' | ' + doctor;
+                if (slip) meta += ' | ' + slip;
+                meta += ' (' + recCount + '件)';
+                html += '<div class="detail-item ' + matchClass + '">' +
+                    '<div class="item-name">' + escHtml(p.drug) + '</div>' +
+                    '<div class="item-meta">' + escHtml(meta) + '</div>';
+                if (matchInfo) html += '<div class="item-meta" style="color:var(--green)">' + escHtml(matchInfo) + '</div>';
+                html += '</div>';
+            });
+            html += '</div>';
+
+            // Inj column
+            html += '<div class="detail-col"><h4 class="inj-title">💉 注射薬品 (' + patient.injPeriods.length + '期間)</h4>';
+            if (patient.injPeriods.length === 0) html += '<div style="color:var(--text-muted);font-size:0.8rem;">データなし</div>';
+            patient.injPeriods.forEach(function (p) {
+                var matchClass = '';
+                var matchInfo = '';
+                if (p.matches && p.matches.length > 0) {
+                    var best = p.matches.reduce(function (a, b) {
+                        var rank = { full: 3, partial: 2, near: 1, none: 0 };
+                        return rank[a.level] >= rank[b.level] ? a : b;
+                    });
+                    matchClass = 'matched-' + best.level;
+                    matchInfo = ' → ' + best.disease.name + ' (' + getMatchLabelText(best.level) + ')';
+                }
+                var meta = formatDate(p.startDate) + ' ～ ' + formatDate(p.endDate);
+                var recCount = p.records.length;
+                var firstRec = p.records[0];
+                var dose = getInjDose(firstRec);
+                var unit = getInjUnit(firstRec);
+                var dept = getDept(firstRec);
+                if (dose) meta += ' | ' + dose + (unit || '');
+                if (dept) meta += ' | ' + dept;
+                meta += ' (' + recCount + '件)';
+                html += '<div class="detail-item ' + matchClass + '">' +
+                    '<div class="item-name">' + escHtml(p.drug) + '</div>' +
+                    '<div class="item-meta">' + escHtml(meta) + '</div>';
+                if (matchInfo) html += '<div class="item-meta" style="color:var(--green)">' + escHtml(matchInfo) + '</div>';
+                html += '</div>';
+            });
+            html += '</div>';
+
+            // Dx column
+            html += '<div class="detail-col"><h4 class="dx-title">🏥 診断病名 (' + patient.diseases.length + '件)</h4>';
+            if (patient.diseases.length === 0) html += '<div style="color:var(--text-muted);font-size:0.8rem;">データなし</div>';
+            patient.diseases.forEach(function (d) {
+                var endStr = d.endDate ? formatDate(d.endDate) : '継続中';
+                var outcome = d.outcome || (d.outcomeCode === '0' ? '継続中' : d.outcome);
+                var meta = formatDate(d.startDate) + ' ～ ' + endStr;
+                if (outcome) meta += ' | ' + outcome;
+                if (d.dept) meta += ' | ' + d.dept;
+                html += '<div class="detail-item">' +
+                    '<div class="item-name">' + escHtml(d.name) + '</div>' +
+                    '<div class="item-meta">' + escHtml(meta) + '</div>' +
+                    '</div>';
+            });
+            html += '</div>';
+
+            html += '</div></div>';
+            return html;
+        }
+
+        function getMatchLabelText(level) {
+            switch (level) {
+                case 'full': return '完全一致';
+                case 'partial': return '部分一致';
+                case 'near': return '近接一致';
+                default: return '不一致';
+            }
+        }
+
+        // ===== CSV Export =====
+        function exportCSV() {
+            var BOM = '\uFEFF';
+            var header = '患者ID,氏名,年齢,診療科,処方薬品,注射薬品,病名,マッチ状態\n';
+            var body = filteredResult.map(function (p) {
+                return [
+                    '"' + p.id + '"',
+                    '"' + p.name + '"',
+                    '"' + p.age + '"',
+                    '"' + p.dept + '"',
+                    '"' + uniqueNames(p.rxPeriods).join('; ') + '"',
+                    '"' + uniqueNames(p.injPeriods).join('; ') + '"',
+                    '"' + uniqueDiseaseNames(p.diseases).join('; ') + '"',
+                    '"' + getMatchLabelText(p.matchLevel) + '"'
+                ].join(',');
+            }).join('\n');
+            var blob = new Blob([BOM + header + body], { type: 'text/csv;charset=utf-8' });
+            var url = URL.createObjectURL(blob);
+            var a = document.createElement('a');
+            a.href = url; a.download = 'patient_matching_result.csv';
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        // ===== Event Handlers =====
+        function setupFileInput(inputId, cardId, infoId, dataKey) {
+            var input = document.getElementById(inputId);
+            var card = document.getElementById(cardId);
+            var info = document.getElementById(infoId);
+
+            input.addEventListener('change', function () {
+                if (!this.files[0]) return;
+                var file = this.files[0];
+                readFileAsText(file, function (text) {
+                    rawData[dataKey] = text;
+                    var rows = parseCSV(text);
+                    card.classList.add('loaded');
+                    info.classList.remove('hidden');
+                    info.textContent = '✓ ' + file.name + ' (' + (rows.length - 1) + ' 行)';
+                    updateAnalyzeButton();
+                });
+            });
+
+            // Drag & Drop
+            card.addEventListener('dragover', function (e) { e.preventDefault(); card.classList.add('dragover'); });
+            card.addEventListener('dragleave', function () { card.classList.remove('dragover'); });
+            card.addEventListener('drop', function (e) {
+                e.preventDefault(); card.classList.remove('dragover');
+                if (e.dataTransfer.files.length > 0) {
+                    input.files = e.dataTransfer.files;
+                    input.dispatchEvent(new Event('change'));
+                }
+            });
+        }
+
+        function updateAnalyzeButton() {
+            var hasRxOrInj = rawData.rx || rawData.inj;
+            var hasDx = !!rawData.dx;
+            document.getElementById('btn-analyze').disabled = !(hasRxOrInj && hasDx);
+        }
+
+        function init() {
+            setupFileInput('file-rx', 'card-rx', 'info-rx', 'rx');
+            setupFileInput('file-inj', 'card-inj', 'info-inj', 'inj');
+            setupFileInput('file-dx', 'card-dx', 'info-dx', 'dx');
+
+            document.getElementById('btn-analyze').addEventListener('click', function () {
+                document.getElementById('loading').classList.remove('hidden');
+                expandedPatientId = null;
+                setTimeout(function () {
+                    try {
+                        runAnalysis();
+                        renderSummary();
+                        renderDeptFilter();
+                        applyFilters();
+                        document.getElementById('results-area').classList.remove('hidden');
+                    } catch (e) {
+                        alert('分析中にエラーが発生しました: ' + e.message);
+                        console.error(e);
+                    }
+                    document.getElementById('loading').classList.add('hidden');
+                }, 100);
+            });
+
+            // Search & filter
+            document.getElementById('search-input').addEventListener('input', function () { applyFilters(); });
+            document.getElementById('filter-dept').addEventListener('change', function () { applyFilters(); });
+
+            // Match chips
+            document.querySelectorAll('.match-chip').forEach(function (chip) {
+                chip.addEventListener('click', function () {
+                    document.querySelectorAll('.match-chip').forEach(function (c) { c.classList.remove('active'); });
+                    this.classList.add('active');
+                    activeMatchFilter = this.getAttribute('data-match');
+                    applyFilters();
+                });
+            });
+
+            // Sort
+            document.querySelectorAll('.results-table thead th[data-col]').forEach(function (th) {
+                th.addEventListener('click', function () {
+                    var col = this.getAttribute('data-col');
+                    if (col === 'rxDrugs' || col === 'injDrugs' || col === 'diseases') return; // no sort for name lists
+                    if (sortState.col === col) { sortState.asc = !sortState.asc; }
+                    else { sortState.col = col; sortState.asc = true; }
+                    document.querySelectorAll('.results-table thead th').forEach(function (t) { t.classList.remove('sorted'); });
+                    this.classList.add('sorted');
+                    applyFilters();
+                });
+            });
+
+            // Export
+            document.getElementById('btn-export-csv').addEventListener('click', exportCSV);
+        }
+
+        document.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+
+</html>
