@@ -937,10 +937,12 @@
         <h3 style="margin-top:0;">ログイン情報入力</h3>
         <p style="font-size:12px; color:#666;">患者取得や編集を行うには2項目を入力してください</p>
         
-        <div style="text-align:left; font-size:12px; font-weight:bold;">1. システム用ID (カルテ連携用)</div>
+        <div style="text-align:left; font-size:12px; font-weight:bold; margin-bottom:2px;">1. システム用ID</div>
+        <div style="text-align:left; font-size:10px; color:#555; margin-bottom:4px;">※PrimeKarteのID (半角数字) を入力してください</div>
         <input type="text" id="ipt-system-id" placeholder="PrimeKarteのID (半角数字)" onkeyup="checkUserDictionary(this.value)" onchange="checkUserDictionary(this.value)" onkeypress="if(event.keyCode===13) doLogin()">
         
-        <div style="text-align:left; font-size:12px; font-weight:bold;">2. 表示名 (ボード上での名前)</div>
+        <div style="text-align:left; font-size:12px; font-weight:bold; margin-top:10px; margin-bottom:2px;">2. 表示名</div>
+        <div style="text-align:left; font-size:10px; color:#555; margin-bottom:4px;">※ボード上で他の人に表示される名前を入力してください (例: 山田)</div>
         <input type="text" id="ipt-user-name" placeholder="例: 山田" onkeypress="if(event.keyCode===13) doLogin()">
         
         <div style="margin-top:15px;">
@@ -3752,38 +3754,6 @@ function autoSave() {
     saveTimer = setTimeout(function(){ saveData(false); }, 2000); // 2秒後に保存
 }
 
-// --- プレースホルダーのポリフィル (HTA/IE対策) ---
-function applyPlaceholderPolyfill() {
-    var elements = document.querySelectorAll('input[type="text"], textarea');
-    for (var i = 0; i < elements.length; i++) {
-        var el = elements[i];
-        var ph = el.getAttribute("placeholder");
-        if (ph && !el.value) {
-            el.value = ph;
-            el.style.color = "#a9a9a9";
-        }
-        
-        // すでにバインド済みの場合はスキップ
-        if(el.getAttribute("data-ph-bound") === "true") continue;
-        el.setAttribute("data-ph-bound", "true");
-
-        el.attachEvent('onfocus', function(e) {
-            var target = e.srcElement || e.target;
-            if (target.value === target.getAttribute("placeholder")) {
-                target.value = "";
-                target.style.color = "";
-            }
-        });
-        el.attachEvent('onblur', function(e) {
-            var target = e.srcElement || e.target;
-            if (target.value === "") {
-                target.value = target.getAttribute("placeholder");
-                target.style.color = "#a9a9a9";
-            }
-        });
-    }
-}
-
 // ---------- 初期化処理 ----------
 var fetchTimer = null;
 window.onload = function() {
@@ -3793,14 +3763,10 @@ window.onload = function() {
     updateUIMode();
     renderWardSettingButtons(); // 初期表示用
     
-    // HTA（IE）向けプレースホルダー適用
-    setTimeout(applyPlaceholderPolyfill, 500);
-    
     // 定期読み込み（1分）: ローカルファイルのリロード用（他者が加えた変更の同期）
     setInterval(function(){
         if(!isEditMode) { // 閲覧モードでのみ完全自動リロードによる画面更新
             loadData(false);
-            applyPlaceholderPolyfill();
         }
     }, 60000);
 
