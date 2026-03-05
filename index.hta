@@ -4456,7 +4456,14 @@ window.onload = function() {
             myStorage.setItem('set-remove-maker', document.getElementById('set-remove-maker').checked);
             myStorage.setItem('set-add-number', document.getElementById('set-add-number').checked);
             
+            var incTiming = document.getElementById('includeTiming');
+            if(incTiming) myStorage.setItem('set-timing', incTiming.value);
+            
             yrShowAlert('設定を保存しました', 'info');
+
+            var text = document.getElementById('rawInput').value;
+            if (text) yrProcessData(text);
+            if (document.getElementById('macroInput').value) yrRunMacro();
         }
 
         function saveAbbrSetting() {
@@ -4464,11 +4471,6 @@ window.onload = function() {
             if (chk) {
                 myStorage.setItem('set-abbr-dict', chk.checked ? 'true' : 'false');
             }
-        }
-
-            var text = document.getElementById('rawInput').value;
-            if (text) yrProcessData(text);
-            if (document.getElementById('macroInput').value) yrRunMacro();
         }
 
         function formatText(str) {
