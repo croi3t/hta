@@ -1137,20 +1137,27 @@ function doLogin() {
     currentUserName = uName !== "" ? uName : sysId;
     isEditMode = true;
     closeLoginModal();
-    document.getElementById('edit-mode-indicator').innerText = '編集モード (ID: ' + escapeHtml(sysId) + ')';
-    document.getElementById('btn-login').innerText = 'ログアウト';
-    
-    // 入力エリア等の活性化のため再描画
-    renderPatients();
-    renderTodos();
-    // カルテリンクタブが表示中ならリンクを再描画
-    if (document.getElementById('tab-kartelink').style.display !== 'none') {
-        renderKarteLinks();
-    }
+    updateUIMode();
     
     // システムの最新データを強制取得
     fetchPatientData();
     setTimeout(function(){ fetchAdmissionSchedule(); }, 3000);
+}
+
+function updateUIMode() {
+    var display = document.getElementById('current-user-display');
+    var btnFetch = document.getElementById('btn-fetch');
+    var btnReset = document.getElementById('btn-reset');
+    var iptNewTodo = document.getElementById('ipt-new-todo');
+    if(document.getElementById('btn-add-todo')) document.getElementById('btn-add-todo').disabled = !isEditMode;
+    if(document.getElementById('btn-todo-deadline')) document.getElementById('btn-todo-deadline').disabled = !isEditMode;
+        
+    var btnAddTodo = document.getElementById('btn-add-todo');
+    var btnSaveSettings = document.getElementById('btn-save-settings');
+    var btnSave = document.getElementById('btn-save');
+    var btnAddNote = document.getElementById('btn-add-note');
+    var titleEl = document.getElementById("note-title");
+    var bodyEl = document.getElementById("note-editor-rich");
     var toolbarEl = document.getElementById("note-toolbar");
     var deleteBtn = document.querySelector("#note-editor .btn[onclick='deleteCurrentNote()']");
     var colorPicker = document.getElementById("editor-fore-color");
