@@ -1548,7 +1548,7 @@ function doExcelImport() {
     // 5. 保存とUI更新
     if (updatedCount > 0) {
         renderPatients();
-        autoSave();
+        saveData(false); // アラートより前に同期的に確実に保存する
     }
     
     var fileNames = [];
@@ -3552,6 +3552,9 @@ function loadData(manual) {
                     loaded.settings.ward3 = { name: "", code: "" };
                 }
                 
+                // パース前の文字列をマージ基準（ベース）として保持
+                window.baseAppDataStr = text;
+                
                 // 設定退避（更新検知用）
                 var oldAppData = appData;
                 appData = loaded;
@@ -3770,11 +3773,153 @@ function exportToExcel() {
     }
 }
 
+// ========== 3 Way Merge Algorithm ==========
+// 複数人が同時に編集した場合、ベース状態から変化した部分だけを抜き出してディスクの最新データに合成する
+function perform3WayMerge(baseData, diskData, myData) {
+    if(!diskData) return myData;
+    var result = {};
+    for(var k in diskData) result[k] = diskData[k]; // まずは他人の最新データをコピー
+    
+    // --- 1. 患者リストのマージ (ward1, ward2, ward3) ---
+    var wards = ["patientsWard1", "patientsWard2", "patientsWard3"];
+    for(var w=0; w<wards.length; w++) {
+        var wk = wards[w];
+        var diskList = diskData[wk] || [];
+        var myList = myData[wk] || [];
+        var baseList = baseData[wk] || [];
+        
+        var baseMap = {}; for(var i=0; i<baseList.length; i++) baseMap[baseList[i].id] = baseList[i];
+        var myMap = {}; for(var i=0; i<myList.length; i++) myMap[myList[i].id] = myList[i];
+        
+        // ディスク側のリストを基準に、自分が変更した要素を上書きする
+        for(var i=0; i<diskList.length; i++) {
+            var pId = diskList[i].id;
+            var b = baseMap[pId];
+            var m = myMap[pId];
+            if(b && m) {
+                // 自分側でメモやステータスがベースから変更されていれば、それをディスク最新データに上書き適用
+                if(m.memo !== b.memo) diskList[i].memo = m.memo;
+                if(m.status !== b.status) diskList[i].status = m.status;
+                if(m.alertLevel !== b.alertLevel) diskList[i].alertLevel = m.alertLevel;
+                // memoAuthors 等も変更があればコピー
+                if(stringifyData(m.memoAuthors) !== stringifyData(b.memoAuthors)) {
+                    diskList[i].memoAuthors = m.memoAuthors;
+                    diskList[i].memoAuthor = m.memoAuthor;
+                }
+                if(m.statusAuthor !== b.statusAuthor) diskList[i].statusAuthor = m.statusAuthor;
+            }
+        }
+        result[wk] = diskList;
+    }
+    
+    // --- 2. ToDoリストのマージ ---
+    // Todoは id プロパティ(タイムスタンプ等)で判別
+    var diskTodos = diskData.todos || [];
+    var myTodos = myData.todos || [];
+    var baseTodos = baseData.todos || [];
+    var baseTMap = {}; for(var i=0; i<baseTodos.length; i++) baseTMap[baseTodos[i].id] = baseTodos[i];
+    var myTMap = {}; for(var i=0; i<myTodos.length; i++) myTMap[myTodos[i].id] = myTodos[i];
+    
+    var mergedTodos = [];
+    var mergedTodoIds = {};
+    
+    // ディスク側にあるTodoについて、自分の変更を適用
+    for(var i=0; i<diskTodos.length; i++) {
+        var t = diskTodos[i];
+        var b = baseTMap[t.id];
+        var m = myTMap[t.id];
+        if(b && m) {
+            // 削除フラグやチェック状態が自分側で変更されていれば適用
+            if(m.deleted !== b.deleted) t.deleted = m.deleted;
+            if(m.checked !== b.checked) t.checked = m.checked;
+        }
+        mergedTodos.push(t);
+        mergedTodoIds[t.id] = true;
+    }
+    // 自分が新しく追加したTodo（ディスク側にないもの）を追記
+    for(var i=0; i<myTodos.length; i++) {
+        if(!mergedTodoIds[myTodos[i].id]) {
+            mergedTodos.push(myTodos[i]);
+            mergedTodoIds[myTodos[i].id] = true;
+        }
+    }
+    result.todos = mergedTodos;
+    
+    // --- 3. 共有ノートのマージ ---
+    // 最新1件（インデックス0）が自分が追記したものであれば上書き (簡易版)
+    var nWards = ["notesWard1", "notesWard2", "notesWard3"];
+    for(var w=0; w<nWards.length; w++) {
+        var nw = nWards[w];
+        if(myData[nw] && baseData[nw]) {
+            // 自分がページを追加・編集して、配列スナップショットが変わっていれば自分のものを優先
+            if(stringifyData(myData[nw]) !== stringifyData(baseData[nw])) {
+                // ただし他人も同時に編集していた場合、より配列が長い（レコード数が多い）方を残す簡易衝突回避
+                if(!diskData[nw] || myData[nw].length >= diskData[nw].length) {
+                    result[nw] = myData[nw];
+                }
+            }
+        }
+    }
+    
+    // --- 4. 履歴(history)の追記 ---
+    // myDataで新たに増えた履歴（先頭に追加されているもの）を抽出してディスクデータの先頭にくっつける
+    var diskHist = diskData.history || [];
+    var myHist = myData.history || [];
+    var baseHist = baseData.history || [];
+    
+    // 追加された差分を探す (createdAtで判別)
+    var baseTopTime = baseHist.length > 0 ? baseHist[0].createdAt : 0;
+    var newHists = [];
+    for(var i=0; i<myHist.length; i++) {
+        if(myHist[i].createdAt > baseTopTime) {
+            newHists.push(myHist[i]);
+        } else {
+            break;
+        }
+    }
+    if(newHists.length > 0) {
+        result.history = newHists.concat(diskHist);
+        // 上限クリップ
+        if(result.history.length > 100) result.history = result.history.slice(0, 100);
+    }
+    
+    // その他の設定(settings等)は、自分が変更していれば適用
+    if(stringifyData(myData.settings) !== stringifyData(baseData.settings)) {
+        result.settings = myData.settings;
+    }
+    
+    return result;
+}
+// ==========================================
+
 function saveData(manual) {
     if(!fso || !isEditMode) return;
     var path = getJsonPath();
     try {
-        var str = stringifyData(appData);
+        var mergedAppObj = appData;
+        
+        // --- 3 Way Merge 処理 ---
+        if(fso.FileExists(path) && typeof window.baseAppDataStr === "string") {
+            var diskStr = loadTextUtf8(path);
+            if(diskStr && diskStr !== window.baseAppDataStr) {
+                // ディスクのデータが自分が最後に読み込んだ時から変化している（他人が保存した）
+                var diskData = parseData(diskStr);
+                var baseData = parseData(window.baseAppDataStr);
+                if(diskData && baseData) {
+                    // マージを実行し、結果を保存対象とする
+                    mergedAppObj = perform3WayMerge(baseData, diskData, appData);
+                    // 次回の基準を更新しておく
+                    appData = mergedAppObj;
+                    window.baseAppDataStr = stringifyData(mergedAppObj);
+                }
+            } else {
+                window.baseAppDataStr = stringifyData(appData); // 変化なし時は単純に自分の最新をベース化
+            }
+        } else {
+            window.baseAppDataStr = stringifyData(appData); // 新規保存時
+        }
+
+        var str = stringifyData(mergedAppObj);
         if(!str || str === "{}") throw new Error("保存データが存在しません");
         saveTextUtf8(path, str);
         if(manual) {
@@ -3805,8 +3950,23 @@ window.onload = function() {
     
     // 定期読み込み（1分）: ローカルファイルのリロード用（他者が加えた変更の同期）
     setInterval(function(){
-        if(!isEditMode) { // 閲覧モードでのみ完全自動リロードによる画面更新
+        if(!isEditMode) { 
             loadData(false);
+        } else {
+            // 編集モードの場合、入力中に画面が再描画されて入力内容が消えるのを防ぐ
+            var activeEl = document.activeElement;
+            var isTyping = activeEl && (activeEl.tagName === "TEXTAREA" || (activeEl.tagName === "INPUT" && activeEl.type === "text") || activeEl.isContentEditable);
+            
+            // 薬歴作成ツール(yr-tab-macro)タブを開いている時は、作業中とみなして同期リロードを止める
+            var isMacroTabActive = false;
+            var macroPane = document.getElementById("yr-tab-macro");
+            if (macroPane && macroPane.classList.contains("yr-active")) {
+                isMacroTabActive = true;
+            }
+            
+            if (!isTyping && !isMacroTabActive) {
+                loadData(false);
+            }
         }
     }, 60000);
 
@@ -4446,7 +4606,7 @@ window.onload = function() {
             if (timingSetting !== null) {
                 document.getElementById('includeTiming').value = timingSetting;
             } else {
-                document.getElementById('includeTiming').value = 'none'; // デフォルト「なし」
+                document.getElementById('includeTiming').value = 'false'; // デフォルト「なし」
             }
         }
 
