@@ -32,6 +32,7 @@
         margin: 0;
         padding: 0;
         color: #333;
+        min-width: 1000px; /* ウィンドウ縮小時レイアウト崩れ対策 */
     }
     
     /* ヘッダー領域 */
@@ -75,6 +76,7 @@
     .container {
         padding: 15px;
         max-width: 1800px;
+        min-width: 980px; /* bodyのmin-widthに追従 */
         margin: 0 auto;
     }
 
@@ -438,13 +440,13 @@
 </head>
 <body>
 
-<div class="fixed-top-wrap hide-on-print" style="position: fixed; top: 0; left: 0; right: 0; z-index: 1000; background: #f4f6f9; border-bottom: 2px solid #ddd;">
+<div class="fixed-top-wrap hide-on-print" style="position: fixed; top: 0; left: 0; right: 0; z-index: 1000; background: #f4f6f9; border-bottom: 2px solid #ddd; min-width: 1000px;">
     <div class="header" style="box-shadow: none;">
         <h1 style="white-space:nowrap;">病棟共有ボード <span style="font-size:11px; font-weight:normal; color:#ccc;">(保存先: このファイルと同じ場所)</span></h1>
-        <div id="global-announcement-area" style="display:none; margin: 0 20px; flex-grow: 1; justify-content: center;">
-            <div style="background:#fff3cd; color:#856404; padding:6px 20px; border-radius:30px; font-size:14px; font-weight:bold; display:flex; align-items:center; box-shadow:0 1px 3px rgba(0,0,0,0.2);">
-                <span id="announcement-text"></span>
-                <button id="btn-edit-announcement" onclick="editAnnouncement()" style="display:none; background:transparent; border:none; cursor:pointer; font-size:14px; margin-left:10px;" title="お知らせを編集">✏️編集</button>
+        <div id="global-announcement-area" style="display:none; margin: 0 20px; flex-grow: 1; justify-content: center; min-width:0; overflow:hidden;">
+            <div style="background:#fff3cd; color:#856404; padding:6px 20px; border-radius:30px; font-size:14px; font-weight:bold; display:flex; align-items:center; box-shadow:0 1px 3px rgba(0,0,0,0.2); max-width:100%; overflow:hidden;">
+                <div id="announcement-text" style="max-width:400px; cursor:pointer; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="クリックでお知らせの全文を読む" onclick="if(appData && appData.announcement) alert('【お知らせ】\n\n' + appData.announcement)"></div>
+                <button id="btn-edit-announcement" onclick="editAnnouncement()" style="display:none; background:transparent; border:none; cursor:pointer; font-size:14px; margin-left:10px; flex-shrink:0; white-space:nowrap;" title="お知らせを編集">✏️編集</button>
             </div>
         </div>
         <div class="user-info">
@@ -471,7 +473,7 @@
     </div>
 </div>
 
-<div class="container" style="padding-top: 135px;">
+<div class="container" style="padding-top: 135px; min-width: 980px;">
 
     <!-- 患者情報タブ -->
     <div id="tab-patients" class="tab-content active">
@@ -2508,7 +2510,7 @@ function renderAdmissionSchedule() {
     if (countEl) countEl.innerText = admissionPatients.length;
 
     if (admissionPatients.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="9" align="center" style="padding:10px; color:#999;">本日の入院予定はありません</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="10" align="center" style="padding:10px; color:#999;">本日の入院予定はありません</td></tr>';
         return;
     }
 
@@ -2559,6 +2561,7 @@ function renderAdmissionSchedule() {
         html += '<td>' + escapeHtml(p.disease) + '</td>';
         html += '<td style="text-align:center;">-</td>';
         html += '<td class="status-cell ' + statClass + '" style="' + statUnderline + '" ' + clickEvent + ' title="クリックで状態を変更">' + statText + authorHtml + '</td>';
+        html += '<td style="text-align:center;">-</td>'; // 新設：処方列用ダミー
         html += '<td style="color:#e74c3c; font-size:14px; font-weight:bold; cursor:pointer; text-align:center; user-select:none;" class="alert-toggle ' + aClass + '" ' + alertEvent + '>' + escapeHtml(aText) + '</td>';
         html += '<td><textarea ' + memoDisabled + ' ' + memoChange + ' placeholder="メモ...">' + escapeHtml(p.memo || '') + '</textarea></td>';
         html += '</tr>';
