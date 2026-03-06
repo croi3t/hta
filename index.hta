@@ -440,7 +440,13 @@
 
 <div class="fixed-top-wrap hide-on-print" style="position: fixed; top: 0; left: 0; right: 0; z-index: 1000; background: #f4f6f9; border-bottom: 2px solid #ddd;">
     <div class="header" style="box-shadow: none;">
-        <h1>病棟共有ボード <span style="font-size:11px; font-weight:normal; color:#ccc;">(保存先: このファイルと同じ場所)</span></h1>
+        <h1 style="white-space:nowrap;">病棟共有ボード <span style="font-size:11px; font-weight:normal; color:#ccc;">(保存先: このファイルと同じ場所)</span></h1>
+        <div id="global-announcement-area" style="display:none; margin: 0 20px; flex-grow: 1; justify-content: center;">
+            <div style="background:#fff3cd; color:#856404; padding:6px 20px; border-radius:30px; font-size:14px; font-weight:bold; display:flex; align-items:center; box-shadow:0 1px 3px rgba(0,0,0,0.2);">
+                <span id="announcement-text"></span>
+                <button id="btn-edit-announcement" onclick="editAnnouncement()" style="display:none; background:transparent; border:none; cursor:pointer; font-size:14px; margin-left:10px;" title="お知らせを編集">✏️編集</button>
+            </div>
+        </div>
         <div class="user-info">
             <span id="current-user-display" class="current-user" style="cursor:pointer;" onclick="openLoginModal()" title="クリックしてログイン">👀 閲覧モード (クリックでログイン)</span>
             <button class="btn" onclick="saveData(true)" id="btn-save" style="display:none; margin-left:10px;">💾 手動保存</button>
@@ -477,14 +483,16 @@
             </div>
             <div>
                 <button class="btn" style="background-color:#2ecc71; color:white; margin-right:5px; padding: 6px 15px; font-size: 13px; font-weight: bold; border-radius: 6px;" onclick="exportToExcel()" title="現在の一覧をExcelに出力してレイアウト調整や印刷を行います">📊 Excelへ出力(印刷用)</button>
-                <button class="btn" style="background-color:#e74c3c; color:white; margin-right:5px; padding: 6px 15px; font-size: 13px; font-weight: bold; border-radius: 6px;" onclick="resetAllStatus()" id="btn-reset" disabled title="現在の病棟の介入状況をすべて初期化します">🔄 一括削除(リセット)</button>
+                <button class="btn" style="background-color:#e74c3c; color:white; margin-right:5px; padding: 6px 15px; font-size: 13px; font-weight: bold; border-radius: 6px;" onclick="resetAllStatus()" id="btn-reset" disabled title="現在の病棟の介入状況をすべて初期化します">🔄 介入一括削除</button>
+                <button class="btn" style="background-color:#fd7e14; color:white; margin-right:5px; padding: 6px 15px; font-size: 13px; font-weight: bold; border-radius: 6px;" onclick="resetAllPrescriptionChecks()" id="btn-reset-chk" disabled title="現在の病棟の『処方確認』チェックをすべて外します">☑ 処方一括クリア</button>
                 <button class="btn" style="background-color:#17a2b8; color:white; padding: 6px 15px; font-size: 13px; font-weight: bold; border-radius: 6px;" onclick="fetchPatientData()" id="btn-fetch" disabled title="カルテシステムから最新のリストを取得します">🌐 現在の病棟のシステム更新</button>
                 <button class="btn" style="background-color:#6f42c1; color:white; margin-left:5px; padding: 6px 15px; font-size: 13px; font-weight: bold; border-radius: 6px;" onclick="importFromExcel()" id="btn-excel-import" disabled title="デスクトップ上の服薬指導履歴Excelファイルから今週の◆マーク（薬剤師SOAP[コスト有]）を読み取り、該当患者の介入状況を『記録済』に設定します">📊 指導歴Excel取込</button>
             </div>
         </div>
 
     <div id="header" class="hide-on-print" style="font-size:11px; color:#666; margin-bottom:10px; display:flex; justify-content:space-between; align-items:center;">
-            <span>[介入状況] <span style="display:inline-block; border:1px solid #ccc; padding:0 4px; background:#fff;">未設定</span>➔<span style="display:inline-block; border:1px solid #ccc; padding:0 4px; background:#fff3cd; color:#856404;">介入予定</span>➔<span style="display:inline-block; border:1px solid #ccc; padding:0 4px; background:#d4edda; color:#155724;">指導済</span>➔<span style="display:inline-block; border:1px solid #ccc; padding:0 4px; background:#cce5ff; color:#004085;">記録済</span>➔(戻る)</span>
+            <span>[介入状況] <span style="display:inline-block; border:1px solid #ccc; padding:0 4px; background:#fff;">未設定</span>➔<span style="display:inline-block; border:1px solid #ccc; padding:0 4px; background:#fff3cd; color:#856404;">介入予定</span>➔<span style="display:inline-block; border:1px solid #ccc; padding:0 4px; background:#d4edda; color:#155724;">指導済</span>➔<span style="display:inline-block; border:1px solid #ccc; padding:0 4px; background:#cce5ff; color:#004085;">記録済</span>
+             <b style="color:#e74c3c; margin-left:10px;">※文字入力中・薬歴作成中は1分毎の自動更新が一時停止します</b></span>
             <div style="display:flex; align-items:center; gap:8px;">
                 <span style="margin-right:10px;">強調列: 【?】要確認 【!】緊急 (クリックで切替) / 情報共有に「退院・転院・ENT」記載で行ハイライト</span>
                 <input type="text" id="ipt-patient-search" placeholder="🔍 検索..." style="width:150px; padding:3px 6px; border:1px solid #ccc; border-radius:3px; font-size:11px;" onkeyup="filterPatientTable()">
@@ -499,14 +507,15 @@
         <table id="tbl-patients">
             <thead>
                 <tr>
-                    <th width="70" class="sortable" onclick="sortPatients('id')">患者ID <span class="sort-icon">↕</span></th>
+                    <th width="60" class="sortable" onclick="sortPatients('id')">患者ID <span class="sort-icon">↕</span></th>
                     <th width="110" class="sortable" onclick="sortPatients('name')">氏名 <span class="sort-icon">↕</span></th>
                     <th width="70" class="sortable hide-on-print" onclick="sortPatients('dept')">診療科 <span class="sort-icon">↕</span></th>
                     <th width="70" class="sortable hide-on-print" onclick="sortPatients('doctor')">主治医 <span class="sort-icon">↕</span></th>
                     <th width="120" class="sortable" onclick="sortPatients('disease')">主病名 <span class="sort-icon">↕</span></th>
-                    <th width="45" class="sortable" onclick="sortPatients('daysInHosp')">在院 <span class="sort-icon">↕</span></th>
-                    <th width="45" class="sortable" onclick="sortPatients('status')">介入 <span class="sort-icon">↕</span></th>
-                    <th width="40" class="sortable" onclick="sortPatients('alertLevel')">強調 <span class="sort-icon">↕</span></th>
+                    <th width="35" class="sortable" onclick="sortPatients('daysInHosp')">在院 <span class="sort-icon">↕</span></th>
+                    <th width="35" class="sortable" onclick="sortPatients('status')">介入 <span class="sort-icon">↕</span></th>
+                    <th width="35" class="sortable" onclick="sortPatients('chkPrescription')">処方 <span class="sort-icon">↕</span></th>
+                    <th width="35" class="sortable" onclick="sortPatients('alertLevel')">強調 <span class="sort-icon">↕</span></th>
                     <th width="auto">情報共有・メモ</th>
                     <th width="180" class="hide-on-print">更新履歴</th>
                 </tr>
@@ -526,14 +535,15 @@
                 <table id="tbl-admission" style="width:100%; border-collapse:collapse; font-size:12px;">
                     <thead>
                         <tr style="background:#e3f2fd;">
-                            <th width="70">患者ID</th>
+                            <th width="60">患者ID</th>
                             <th width="110">氏名</th>
                             <th width="70" class="hide-on-print">診療科</th>
                             <th width="70" class="hide-on-print">主治医</th>
                             <th width="120">主病名</th>
-                            <th width="45">在院</th>
-                            <th width="45">介入</th>
-                            <th width="40">強調</th>
+                            <th width="35">在院</th>
+                            <th width="35">介入</th>
+                            <th width="35">処方</th>
+                            <th width="35">強調</th>
                             <th width="auto">情報共有・メモ</th>
                         </tr>
                     </thead>
@@ -1171,6 +1181,8 @@ function updateUIMode() {
         btnSave.style.display = "inline-block";
         btnFetch.disabled = false;
         if(btnReset) btnReset.disabled = false;
+        var btnResetChk = document.getElementById('btn-reset-chk');
+        if(btnResetChk) btnResetChk.disabled = false;
         btnSaveSettings.disabled = false;
         btnAddTodo.disabled = false;
         iptNewTodo.disabled = false;
@@ -1194,6 +1206,8 @@ function updateUIMode() {
         btnSave.style.display = "none";
         btnFetch.disabled = true;
         if(btnReset) btnReset.disabled = true;
+        var btnResetChk = document.getElementById('btn-reset-chk');
+        if(btnResetChk) btnResetChk.disabled = true; // 新しいボタンを無効化
         btnSaveSettings.disabled = true;
         btnAddTodo.disabled = true;
         iptNewTodo.disabled = true;
@@ -1212,9 +1226,44 @@ function updateUIMode() {
     }
     
     // UI再描画
+    updateAnnouncementUI();
     renderPatients();
     renderTodos();
     renderWardSettingButtons(); // ログイン状態が変わったら設定ボタンの disabled 状態も再描画する
+}
+
+function editAnnouncement() {
+    if (currentSystemId !== "16622") return;
+    var cur = appData.announcement || "";
+    var msg = prompt("全体向けのお知らせメッセージを入力してください。\n(みんなの画面の上部に目立つように表示されます。空欄で[OK]を押すと削除されます)", cur);
+    if (msg !== null) {
+        appData.announcement = msg;
+        updateAnnouncementUI();
+        autoSave();
+    }
+}
+
+function updateAnnouncementUI() {
+    var area = document.getElementById("global-announcement-area");
+    var txt = document.getElementById("announcement-text");
+    var btn = document.getElementById("btn-edit-announcement");
+    if(!area || !txt || !btn) return;
+    
+    var msg = appData.announcement || "";
+    txt.innerText = msg;
+    
+    if (currentSystemId === "16622") {
+        area.style.display = "flex";
+        btn.style.display = "inline-block";
+        if(!msg) txt.innerText = "【お知らせ未設定】";
+    } else {
+        if (msg) {
+            area.style.display = "flex";
+        } else {
+            area.style.display = "none";
+        }
+        btn.style.display = "none";
+    }
 }
 
 // ---------- カルテリンク隠しタブ ----------
@@ -1524,23 +1573,31 @@ function doExcelImport() {
     }
     
     // 4. 病棟共有ボードの患者リストと照合
-    var list = getCurrentPatientsList();
+    // 4. 病棟共有ボードの患者リスト(大元のappData)と照合
     var updatedCount = 0;
     var alreadyRecorded = 0;
     var markIds = Object.keys ? Object.keys(patientsWithMark) : (function(obj) { var k=[]; for(var p in obj){ if(obj.hasOwnProperty(p)) k.push(p); } return k; })(patientsWithMark);
     
-    for (var pi = 0; pi < list.length; pi++) {
-        var p = list[pi];
-        var pId = String(p.id).replace(/[\s]/g, '');
-        // 先頭ゼロを除去して照合（0251607 と 251607 を同一として扱う）
-        var pIdNorm = pId.replace(/^0+/, '') || '0';
-        if (patientsWithMark[pId] || patientsWithMark[pIdNorm]) {
-            if (p.status === 3) {
-                alreadyRecorded++;
-            } else {
-                p.status = 3; // 記録済
-                p.statusAuthor = currentUserName;
-                updatedCount++;
+    // 現在選択中の病棟配列を直接操作して永続化させる
+    var targetArray = null;
+    if (currentWard === 1) targetArray = appData.patientsWard1;
+    else if (currentWard === 2) targetArray = appData.patientsWard2;
+    else if (currentWard === 3) targetArray = appData.patientsWard3;
+    
+    if (targetArray) {
+        for (var pi = 0; pi < targetArray.length; pi++) {
+            var p = targetArray[pi];
+            var pId = String(p.id).replace(/[\s]/g, '');
+            // 先頭ゼロを除去して照合（0251607 と 251607 を同一として扱う）
+            var pIdNorm = pId.replace(/^0+/, '') || '0';
+            if (patientsWithMark[pId] || patientsWithMark[pIdNorm]) {
+                if (p.status === 3) {
+                    alreadyRecorded++;
+                } else {
+                    p.status = 3; // 記録済
+                    p.statusAuthor = currentUserName;
+                    updatedCount++;
+                }
             }
         }
     }
@@ -1683,6 +1740,28 @@ function renderPatients() {
             memoAuthorHtml = escapeHtml(p.memoAuthor);
         }
 
+     var tK = "<button class='karte-btn' onclick='window.open(\"http://example.com/karte?id=" + escapeHtml(p.id) + "\")'>カルテ(K)</button>";
+    var tM = "<button class='karte-btn' onclick='window.open(\"http://example.com/karte2?id=" + escapeHtml(p.id) + "\")'>検査(M)</button>";
+    var tV = "<button class='karte-btn' onclick='window.open(\"http://example.com/vital?id=" + escapeHtml(p.id) + "\")'>バイタル(K)</button>";
+    var tT = "<button class='karte-btn' onclick='window.open(\"http://example.com/techo?id=" + escapeHtml(p.id) + "\")'>手帳(M)</button>";
+    var tA = "<button class='karte-btn' onclick='window.open(\"http://example.com/allergy?id=" + escapeHtml(p.id) + "\")'>バイタル(M)</button>";
+        // 処方確認列の3ステート対応
+        var chkVal = p.chkPrescription || 0;
+        if(typeof chkVal === "boolean") chkVal = chkVal ? 2 : 0;
+        
+        var chkClass = "";
+        var chkText = "";
+        var chkBg = "";
+        if(chkVal === 1) {
+            chkClass = "status-chk-half";
+            chkText = "☐";
+            chkBg = "background-color:#ffe8a1;";
+        } else if(chkVal === 2) {
+            chkClass = "status-chk-on";
+            chkText = "✔";
+        }
+        var chkEvent = isEditMode ? 'onclick="togglePrescriptionCheck('+i+')"' : 'onclick="alert(\'編集するには上部の「閲覧モード」をクリックしてIDを入力してください。\')"';
+
         html += '<tr id="tr-patient-' + escapeHtml(p.id) + '">';
         html += '<td>' + escapeHtml(p.id) + '</td>';
         html += '<td>' + escapeHtml(p.name) + '</td>';
@@ -1692,6 +1771,7 @@ function renderPatients() {
         // 在院日数の追加
         html += '<td style="text-align:center; font-size:12px;">' + escapeHtml(p.daysInHosp || "-") + '</td>';
         html += '<td class="status-cell ' + statClass + '" style="' + statUnderline + '" ' + clickEvent + ' title="クリックで状態を変更">' + statText + authorHtml + '</td>';
+        html += '<td style="text-align:center; font-size:20px; font-weight:bold; cursor:pointer; user-select:none; color:#fd7e14; ' + chkBg + '" class="chk-toggle ' + chkClass + '" ' + chkEvent + ' title="処方確認（クリックで☐・✔切替）">' + chkText + '</td>';
         html += '<td style="color:#e74c3c; font-size:14px; font-weight:bold; cursor:pointer; text-align:center; user-select:none;" class="alert-toggle ' + aClass + '" ' + alertEvent + '>' + escapeHtml(aText) + '</td>';
         html += '<td class="' + hlClass + '"><textarea ' + memoDisabled + ' ' + memoChange + ' placeholder="申し送り事項やメモを入力...">' + escapeHtml(p.memo) + '</textarea></td>';
         html += '<td class="hide-on-print ' + hlClass + '" style="font-size:10px; color:#666;">' + memoAuthorHtml + '</td>';
@@ -1740,18 +1820,54 @@ function toggleStatus(index) {
         if (td) {
             var statIdx = p.status;
             var statClass = STATUS_CLASSES[statIdx];
+            
             var rawStatText = STATUS_TEXTS[statIdx];
             var statText = rawStatText;
             if(rawStatText === "(未設定)") statText = "未";
             else if(rawStatText === "介入予定") statText = "予定";
             else if(rawStatText === "指導済") statText = "指導";
             else if(rawStatText === "記録済") statText = "記録";
-            
+
             var authorHtml = p.statusAuthor ? '<br><span class="status-author">' + p.statusAuthor + '</span>' : '';
+            var statUnderline = (statIdx === 1 || statIdx === 2) ? 'text-decoration:underline;' : '';
+            
             td.className = "status-cell " + statClass;
+            td.style.cssText = statUnderline; // titleはそのまま
             td.innerHTML = statText + authorHtml;
-            if(statIdx === 1 || statIdx === 2) td.style.textDecoration = 'underline';
-            else td.style.textDecoration = 'none';
+        }
+    }
+    autoSave();
+}
+
+function togglePrescriptionCheck(index) {
+    if(!isEditMode) return;
+    var list = getCurrentPatientsList();
+    var p = list[index];
+    
+    var currentVal = p.chkPrescription || 0;
+    if(typeof currentVal === "boolean") currentVal = currentVal ? 2 : 0;
+    p.chkPrescription = (currentVal + 1) % 3;
+    
+    // DOM上で直接更新
+    var trId = "tr-patient-" + p.id;
+    var tr = document.getElementById(trId);
+    if (tr) {
+        var td = tr.querySelector(".chk-toggle");
+        if (td) {
+            var val = p.chkPrescription;
+            if(val === 1) {
+                td.className = "chk-toggle status-chk-half";
+                td.innerText = "☐";
+                td.style.backgroundColor = "#ffe8a1";
+            } else if(val === 2) {
+                td.className = "chk-toggle status-chk-on";
+                td.innerText = "✔";
+                td.style.backgroundColor = "";
+            } else {
+                td.className = "chk-toggle";
+                td.innerText = "";
+                td.style.backgroundColor = "";
+            }
         }
     }
     autoSave();
@@ -1843,6 +1959,21 @@ function resetAllStatus() {
             autoSave();
             alert("介入状況のリセットが完了しました。");
         }
+    }
+}
+
+function resetAllPrescriptionChecks() {
+    if(!isEditMode) return;
+    var list = getCurrentPatientsList();
+    if(list.length === 0) return;
+    
+    if(confirm("表示中の病棟の「処方」確認状態（☐・✔）をすべて解除してよろしいですか？")) {
+        for(var i=0; i<list.length; i++) {
+            list[i].chkPrescription = 0;
+        }
+        renderPatients();
+        autoSave();
+        alert("処方確認のチェックをクリアしました。");
     }
 }
 
@@ -2114,6 +2245,7 @@ function processFetchedPatients(newPatients, wardName) {
                     status: list[j].status,
                     statusAuthor: list[j].statusAuthor,
                     memo: list[j].memo,
+                    chkPrescription: list[j].chkPrescription || false,
                     memoAuthors: list[j].memoAuthors || [],
                     memoAuthor: list[j].memoAuthor || "",
                     alertLevel: list[j].alertLevel || 0,
@@ -2139,6 +2271,7 @@ function processFetchedPatients(newPatients, wardName) {
                 np.status = oldMap[np.id].status;
                 np.statusAuthor = oldMap[np.id].statusAuthor;
                 np.memo = oldMap[np.id].memo;
+                np.chkPrescription = oldMap[np.id].chkPrescription || false;
                 np.memoAuthors = oldMap[np.id].memoAuthors || [];
                 np.memoAuthor = oldMap[np.id].memoAuthor || "";
                 np.alertLevel = oldMap[np.id].alertLevel || 0;
@@ -2158,6 +2291,7 @@ function processFetchedPatients(newPatients, wardName) {
                             np.status = wList[m].status;
                             np.statusAuthor = wList[m].statusAuthor;
                             np.memo = wList[m].memo;
+                            np.chkPrescription = wList[m].chkPrescription || false;
                             np.memoAuthors = wList[m].memoAuthors || [];
                             np.memoAuthor = wList[m].memoAuthor || "";
                             np.alertLevel = wList[m].alertLevel || 0;
@@ -2174,6 +2308,7 @@ function processFetchedPatients(newPatients, wardName) {
                     np.status = arc.status;
                     np.statusAuthor = arc.statusAuthor;
                     np.memo = arc.memo;
+                    np.chkPrescription = arc.chkPrescription || false;
                     np.memoAuthors = arc.memoAuthors || [];
                     np.memoAuthor = arc.memoAuthor || "";
                     np.alertLevel = arc.alertLevel || 0;
@@ -2552,7 +2687,7 @@ function renderTodos() {
             var deadlineInfo = "";
             if (t.deadline) {
                 var dState = parseTodoDate(t.deadline);
-                var dlStyle = dState.isOverdue ? "color:#c0392b; font-weight:bold;" : "color:#666;";
+                var dlStyle = dState.isOverdue ? "color:#c03928; font-weight:bold;" : "color:#666;";
                 deadlineInfo = '<div style="font-size:10px; margin-top:2px; ' + dlStyle + '">期限: ' + escapeHtml(t.deadline) + '</div>';
                 
                 if (dState.isOverdue) rowBg = "background-color: #fff3cd;"; // 期限切れ: 薄い黄色
@@ -3657,6 +3792,11 @@ function loadData(manual) {
                 renderPatients();
                 renderTodos();
                 renderHistory();
+                updateAnnouncementUI();
+                
+                // ローカル更新時間UIの明示的更新
+                var elLocalTime = document.getElementById("last-local-update-time");
+                if(elLocalTime) elLocalTime.innerText = "【ローカルデータ最新: " + getTimeString() + "】";
                 
                 if(manual) {
                     var btn = document.getElementById("btn-save"); // saveボタンを流用して一瞬通知
@@ -3800,6 +3940,7 @@ function perform3WayMerge(baseData, diskData, myData) {
                 // 自分側でメモやステータスがベースから変更されていれば、それをディスク最新データに上書き適用
                 if(m.memo !== b.memo) diskList[i].memo = m.memo;
                 if(m.status !== b.status) diskList[i].status = m.status;
+                if(m.chkPrescription !== b.chkPrescription) diskList[i].chkPrescription = m.chkPrescription;
                 if(m.alertLevel !== b.alertLevel) diskList[i].alertLevel = m.alertLevel;
                 // memoAuthors 等も変更があればコピー
                 if(stringifyData(m.memoAuthors) !== stringifyData(b.memoAuthors)) {
@@ -3888,6 +4029,11 @@ function perform3WayMerge(baseData, diskData, myData) {
         result.settings = myData.settings;
     }
     
+    // --- 5. お知らせ機能(announcement)のマージ ---
+    if(myData.announcement !== baseData.announcement) {
+        result.announcement = myData.announcement;
+    }
+    
     return result;
 }
 // ==========================================
@@ -3966,6 +4112,10 @@ window.onload = function() {
             
             if (!isTyping && !isMacroTabActive) {
                 loadData(false);
+            } else {
+                // スキップされた場合でも、動作していることを示すため時刻UIだけは明示的に「保留」として更新する
+                var elLocalTime = document.getElementById("last-local-update-time");
+                if(elLocalTime) elLocalTime.innerText = "【通信保留: " + getTimeString() + " (操作中のため)】";
             }
         }
     }, 60000);
