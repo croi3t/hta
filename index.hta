@@ -2084,6 +2084,21 @@ function processFetchedPatients(newPatients, wardName) {
         var nowStr = getTodayString() + " " + getTimeString();
         var historyAdded = 0;
         
+        // 退室者アーカイブ用（存在しなければ初期化）
+        if (!appData.dischargedArchive) appData.dischargedArchive = {};
+
+        // === アーカイブの自動クリーンアップ（約半年＝180日経過で削除） ===
+        var currentMs = new Date().getTime();
+        var limitMs = 180 * 24 * 60 * 60 * 1000;
+        for (var arcId in appData.dischargedArchive) {
+            if (appData.dischargedArchive.hasOwnProperty(arcId)) {
+                var arcDat = appData.dischargedArchive[arcId].archivedAt;
+                if (arcDat && (currentMs - arcDat > limitMs)) {
+                    delete appData.dischargedArchive[arcId];
+                }
+            }
+        }
+
         // 旧リストにあって、新リストにない人 ＝ 「退室」
         for(var j = 0; j < list.length; j++) {
             if(!newMap[list[j].id]) {
@@ -2093,6 +2108,17 @@ function processFetchedPatients(newPatients, wardName) {
                     createdAt: new Date().getTime(), user: currentUserName
                 });
                 historyAdded++;
+                
+                // 退室時にメモや介入フラグ情報をアーカイブへ保存
+                appData.dischargedArchive[list[j].id] = {
+                    status: list[j].status,
+                    statusAuthor: list[j].statusAuthor,
+                    memo: list[j].memo,
+                    memoAuthors: list[j].memoAuthors || [],
+                    memoAuthor: list[j].memoAuthor || "",
+                    alertLevel: list[j].alertLevel || 0,
+                    archivedAt: new Date().getTime()
+                };
             }
         }
         
@@ -2142,7 +2168,21 @@ function processFetchedPatients(newPatients, wardName) {
                     if(inherited) break;
                 }
                 
-                // どの病棟にも存在しない完全な新規患者の場合
+                // どの病棟にも存在しない場合、過去の退室アーカイブを探す
+                if(!inherited && appData.dischargedArchive && appData.dischargedArchive[np.id]) {
+                    var arc = appData.dischargedArchive[np.id];
+                    np.status = arc.status;
+                    np.statusAuthor = arc.statusAuthor;
+                    np.memo = arc.memo;
+                    np.memoAuthors = arc.memoAuthors || [];
+                    np.memoAuthor = arc.memoAuthor || "";
+                    np.alertLevel = arc.alertLevel || 0;
+                    inherited = true;
+                    // 引継ぎ完了後、アーカイブからは削除する
+                    delete appData.dischargedArchive[np.id];
+                }
+
+                // それでも存在しない完全な新規患者の場合
                 if(!inherited) {
                     np.status = 0;
                     np.statusAuthor = "";
