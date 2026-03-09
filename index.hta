@@ -516,7 +516,7 @@
                     <th width="120" class="sortable" onclick="sortPatients('disease')">主病名 <span class="sort-icon">↕</span></th>
                     <th width="35" class="sortable" onclick="sortPatients('daysInHosp')">在院 <span class="sort-icon">↕</span></th>
                     <th width="35" class="sortable" onclick="sortPatients('status')">介入 <span class="sort-icon">↕</span></th>
-                    <th width="35" class="sortable" onclick="sortPatients('chkPrescription')">処方 <span class="sort-icon">↕</span></th>
+                    <th width="35" class="sortable hide-on-print" onclick="sortPatients('chkPrescription')">処方 <span class="sort-icon">↕</span></th>
                     <th width="35" class="sortable" onclick="sortPatients('alertLevel')">強調 <span class="sort-icon">↕</span></th>
                     <th width="auto">情報共有・メモ</th>
                     <th width="180" class="hide-on-print">更新履歴</th>
@@ -1773,7 +1773,7 @@ function renderPatients() {
         // 在院日数の追加
         html += '<td style="text-align:center; font-size:12px;">' + escapeHtml(p.daysInHosp || "-") + '</td>';
         html += '<td class="status-cell ' + statClass + '" style="' + statUnderline + '" ' + clickEvent + ' title="クリックで状態を変更">' + statText + authorHtml + '</td>';
-        html += '<td style="text-align:center; font-size:20px; font-weight:bold; cursor:pointer; user-select:none; color:#fd7e14; ' + chkBg + '" class="chk-toggle ' + chkClass + '" ' + chkEvent + ' title="処方確認（クリックで☐・✔切替）">' + chkText + '</td>';
+        html += '<td style="text-align:center; font-size:20px; font-weight:bold; cursor:pointer; user-select:none; color:#fd7e14; ' + chkBg + '" class="hide-on-print chk-toggle ' + chkClass + '" ' + chkEvent + ' title="処方確認（クリックで☐・✔切替）">' + chkText + '</td>';
         html += '<td style="color:#e74c3c; font-size:14px; font-weight:bold; cursor:pointer; text-align:center; user-select:none;" class="alert-toggle ' + aClass + '" ' + alertEvent + '>' + escapeHtml(aText) + '</td>';
         html += '<td class="' + hlClass + '"><textarea ' + memoDisabled + ' ' + memoChange + ' placeholder="申し送り事項やメモを入力...">' + escapeHtml(p.memo) + '</textarea></td>';
         html += '<td class="hide-on-print ' + hlClass + '" style="font-size:10px; color:#666;">' + memoAuthorHtml + '</td>';
@@ -4600,6 +4600,12 @@ window.onload = function() {
                 if (!drugMatch) continue;
                 // 記号除去: ★（要届出）（要許可）等 + 【簡易懸濁】等の括弧注釈
                 drugMatch = drugMatch.replace(/^★+/, '').replace(/^（要[^）]*）/, '').replace(/\s*【[^】]*】/g, '').replace(/^[\s　]+/, '');
+                
+                // 接頭語の除去（麻、向、劇、毒、各種メーカー名など）
+                drugMatch = drugMatch.replace(/^（(向|麻|劇|毒|劇・向|毒・向|向・劇)）/, '');
+                drugMatch = drugMatch.replace(/^\((向|麻|劇|毒|劇・向|毒・向|向・劇)\)/, '');
+                drugMatch = drugMatch.replace(/^(ツムラ|クラシエ|オースギ|コタロー|JG|フソー|ファイザー|マイラン|サワイ|トーワ|テバ|アメル|日医工|ＮＰ|武田|タケダ|明治|Meiji)/i, '');
+                
                 if (!drugMatch || drugMatch.length < 2) continue;
                 
                 // 辞書引き → マッチしなければ先頭4文字半角カタカナ
