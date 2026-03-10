@@ -5227,11 +5227,23 @@ window.onload = function() {
         var yrDragSourceId = null;
         var yrDragSourceCat = null;
 
+        // --- IE互換用closest代替 ---
+        function yrGetClosestTr(el) {
+            while (el) {
+                if (el.tagName && el.tagName.toLowerCase() === 'tr') return el;
+                el = el.parentNode;
+            }
+            return null;
+        }
+
         function yrRowDragStart(e, cat, id) {
             yrDragSourceId = id;
             yrDragSourceCat = cat;
             e.dataTransfer.effectAllowed = 'move';
-            e.dataTransfer.setData('text/plain', id); // Firefox用
+            
+            // IEは 'text/plain' ではなく 'text' を指定する必要がある
+            try { e.dataTransfer.setData('text', id); } catch(ex){}
+            
             e.target.style.opacity = '0.5';
         }
 
@@ -5239,7 +5251,7 @@ window.onload = function() {
             e.preventDefault();
             e.dataTransfer.dropEffect = 'move';
             
-            var tr = e.target.closest('tr');
+            var tr = yrGetClosestTr(e.target);
             if (tr && tr.getAttribute('draggable') === 'true') {
                 tr.style.backgroundColor = '#e8f4f8';
                 tr.style.outline = '2px dashed #0d6efd';
@@ -5247,7 +5259,7 @@ window.onload = function() {
         }
 
         function yrRowDragLeave(e) {
-            var tr = e.target.closest('tr');
+            var tr = yrGetClosestTr(e.target);
             if (tr) {
                 tr.style.backgroundColor = '';
                 tr.style.outline = '';
@@ -5256,7 +5268,7 @@ window.onload = function() {
 
         function yrRowDrop(e, targetCat, targetId) {
             e.preventDefault();
-            var tr = e.target.closest('tr');
+            var tr = yrGetClosestTr(e.target);
             if (tr) {
                 tr.style.backgroundColor = '';
                 tr.style.outline = '';
