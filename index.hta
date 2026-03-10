@@ -823,14 +823,13 @@
                     <div style="margin-bottom: 10px; font-size: 0.85rem; color: #555;">※複数行を左のチェックボックスで選択し、各見出しの右側にある「🔄 選択行を統合」ボタンを押すと「〇時間毎」に合体します。</div>
                     <table class="yr-table" id="yr-resultTable">
                         <thead><tr>
-                            <th style="width: 3%;"><input type="checkbox" onchange="yrToggleAllCheckboxes(this)" title="すべて選択"></th>
-                            <th style="width: 12%;">期間・日付</th>
-                            <th style="width: 3%;">操作</th>
+                            <th style="width: 13%;">期間・日付</th>
                             <th style="width: 18%;">薬品名</th>
                             <th style="width: 5%;">用量</th>
                             <th style="width: 5%;">単位</th>
                             <th style="width: 12%;">用法</th>
-                            <th style="width: 42%;">薬歴テキスト (編集可能)</th>
+                            <th style="width: 3%;">操作</th>
+                            <th style="width: 44%;">薬歴テキスト (編集可能)</th>
                         </tr></thead>
                         <tbody><tr><td colspan="8" class="yr-text-center yr-text-muted" style="padding: 30px;">データがありません。「クリップボードから作成」ボタンを押してください。</td></tr></tbody>
                     </table>
@@ -1787,14 +1786,22 @@ function renderPatients() {
         var memoChangePersonal = isEditMode ? 'onchange="finalizePersonalMemo('+i+', this)" onkeyup="updatePersonalMemo('+i+', this.value, this)"' : '';
         
         html += '<td class="' + hlClass + '" style="padding:4px;">';
-        html += '<textarea rows="1" ' + memoDisabled + ' ' + memoChangeShared + ' placeholder="【共有】申し送りやメモ..." style="min-height:24px; line-height:1.2; padding:2px; font-size:12px; margin-bottom:2px; overflow:hidden;">' + escapeHtml(p.memo) + '</textarea>';
-        html += '<textarea rows="1" ' + memoDisabled + ' ' + memoChangePersonal + ' class="hide-on-print" placeholder="【個人(' + escapeHtml(currentUserName) + ')】自分用メモ..." style="min-height:24px; line-height:1.2; padding:2px; font-size:12px; background-color:#e8f4f8; border:1px dashed #b3d7ff; overflow:hidden;">' + escapeHtml(myMemo) + '</textarea>';
+        html += '<textarea rows="1" ' + memoDisabled + ' ' + memoChangeShared + ' placeholder="【共有】申し送りやメモ..." style="min-height:24px; line-height:1.2; padding:2px; font-size:12px; margin-bottom:2px; overflow:hidden;" onload="this.style.height=\'auto\';this.style.height=this.scrollHeight+\'px\';">' + escapeHtml(p.memo) + '</textarea>';
+        html += '<textarea rows="1" ' + memoDisabled + ' ' + memoChangePersonal + ' class="hide-on-print" placeholder="【個人(' + escapeHtml(currentUserName) + ')】自分用メモ..." style="min-height:24px; line-height:1.2; padding:2px; font-size:12px; background-color:#e8f4f8; border:1px dashed #b3d7ff; overflow:hidden;" onload="this.style.height=\'auto\';this.style.height=this.scrollHeight+\'px\';">' + escapeHtml(myMemo) + '</textarea>';
         html += '</td>';
         
         html += '<td class="hide-on-print ' + hlClass + '" style="font-size:10px; color:#666;">' + memoAuthorHtml + '</td>';
         html += '</tr>';
     }
     tbody.innerHTML = html;
+    
+    // 描画後、全テキストエリアの高さを文字量に合わせて自動調整
+    var textareas = tbody.getElementsByTagName('textarea');
+    for(var t=0; t<textareas.length; t++) {
+        var ta = textareas[t];
+        ta.style.height = 'auto'; // 一旦リセット
+        ta.style.height = ta.scrollHeight + 'px';
+    }
 }
 
 function toggleAlertLevel(index) {
@@ -1898,6 +1905,10 @@ function updateMemo(index, val, element) {
         
         // 入力中にもハイライトを即時反映（表全体の再描画を極力避けるためクラス操作）
         if (element) {
+            // 文字量に合わせて高さを自動拡張
+            element.style.height = "auto";
+            element.style.height = element.scrollHeight + "px";
+            
             var isHighlight = false;
             var highlightWords = ["退院", "転院", "ENT", "ent"];
             var lowerVal = val.toLowerCase();
@@ -5211,70 +5222,91 @@ window.onload = function() {
         // ==========================================
         // タブ①②: 薬歴自動作成 処理
         // ==========================================
-        function yrToggleAllCheckboxes(source) {
-            var checkboxes = document.querySelectorAll('.row-checkbox');
-            for (var i = 0; i < checkboxes.length; i++) {
-                var cb = checkboxes[i];
-                cb.checked = source.checked;
+
+        // --- ドラッグ＆ドロップによる行統合 ---
+        var yrDragSourceId = null;
+        var yrDragSourceCat = null;
+
+        function yrRowDragStart(e, cat, id) {
+            yrDragSourceId = id;
+            yrDragSourceCat = cat;
+            e.dataTransfer.effectAllowed = 'move';
+            e.dataTransfer.setData('text/plain', id); // Firefox用
+            e.target.style.opacity = '0.5';
+        }
+
+        function yrRowDragOver(e) {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'move';
+            
+            var tr = e.target.closest('tr');
+            if (tr && tr.getAttribute('draggable') === 'true') {
+                tr.style.backgroundColor = '#e8f4f8';
+                tr.style.outline = '2px dashed #0d6efd';
             }
         }
 
-        function yrMergeSelectedRows(targetCat) {
-            var checkboxes = document.querySelectorAll('.row-checkbox[data-cat="' + targetCat + '"]:checked');
-            if (checkboxes.length < 2) {
-                yrShowAlert("統合するには2つ以上の行を選択してください。", "error");
+        function yrRowDragLeave(e) {
+            var tr = e.target.closest('tr');
+            if (tr) {
+                tr.style.backgroundColor = '';
+                tr.style.outline = '';
+            }
+        }
+
+        function yrRowDrop(e, targetCat, targetId) {
+            e.preventDefault();
+            var tr = e.target.closest('tr');
+            if (tr) {
+                tr.style.backgroundColor = '';
+                tr.style.outline = '';
+            }
+            
+            // ドラッグ元を変数から取得
+            var sourceId = yrDragSourceId;
+            var sourceCat = yrDragSourceCat;
+            yrDragSourceId = null;
+            yrDragSourceCat = null;
+
+            if (!sourceId || sourceId === targetId) return;
+            if (sourceCat !== targetCat) {
+                yrShowAlert("異なるカテゴリの行は統合できません。", "error");
                 return;
             }
 
-            var selectedItems = [];
-            var selectedIds = [];
-            for(var i=0; i<checkboxes.length; i++) {
-                var cb = checkboxes[i];
-                selectedIds.push(cb.value);
-                var id = cb.value;
-                var item = null;
-                for(var x=0; x<globalResults[targetCat].length; x++) {
-                    if (globalResults[targetCat][x].id === id) {
-                        item = globalResults[targetCat][x];
-                        break;
-                    }
-                }
-                if (item) {
-                    selectedItems.push(item);
-                }
+            var cat = targetCat;
+            var sourceItem = null;
+            var targetItem = null;
+            
+            // sourceとtargetの取得
+            for (var i=0; i<globalResults[cat].length; i++) {
+                if (globalResults[cat][i].id === sourceId) sourceItem = globalResults[cat][i];
+                if (globalResults[cat][i].id === targetId) targetItem = globalResults[cat][i];
             }
+            
+            if (!sourceItem || !targetItem) return;
 
-            if (selectedItems.length < 2) return;
-
-            var firstItemName = selectedItems[0].name;
-            var allSameName = true; for(var m=0;m<selectedItems.length;m++){if(selectedItems[m].name !== firstItemName)allSameName=false;}
-            if (!allSameName) {
-                yrShowAlert("同じ薬品名の行を選択してください。", "error");
+            if (!confirm("「" + sourceItem.name + "」と\n「" + targetItem.name + "」を統合しますか？")) {
                 return;
             }
 
-            var count = selectedItems.length;
-            var newInst = Math.floor(24 / count) + "時間毎";
-
-            var baseItem = selectedItems[0];
-            baseItem.inst = newInst;
-
-            baseItem.fullText = (baseItem.dateStr ? baseItem.dateStr + " " : "")
-                + baseItem.name
-                + (baseItem.dose ? " " + baseItem.dose + baseItem.unit : "")
-                + " " + newInst;
-
-            for (var i = 1; i < selectedItems.length; i++) {
-                var idToRemove = selectedItems[i].id;
-                var newArr = []; for(var p=0;p<globalResults[targetCat].length;p++){if(globalResults[targetCat][p].id !== idToRemove) newArr.push(globalResults[targetCat][p]);} globalResults[targetCat] = newArr;
-            }
-
-            var masterCheckbox = document.querySelector('th input[type="checkbox"]');
-            if (masterCheckbox) masterCheckbox.checked = false;
+            // 新しいテキストの作成
+            var sep = (cat === 1) ? "\n" : (cat === 2 ? "\n" : "\n");
+            var combinedStr = targetItem.fullText + sep + sourceItem.fullText;
+            
+            // ベース行（ドロップ先）を更新
+            targetItem.fullText = combinedStr;
+            targetItem.dose = "-";
+            targetItem.unit = "-";
+            targetItem.inst = "-";
+            
+            // ドロップ元を削除扱いにする
+            sourceItem.deleted = true;
 
             renderTable();
-            yrShowAlert(count + "つの行を「" + newInst + "」に統合しました！", "info");
+            yrShowAlert("行を統合しました。", "info");
         }
+
 
         function yrReadFromClipboard() {
             try {
@@ -5777,7 +5809,7 @@ window.onload = function() {
 
                 var currentVal = currentSorts[cat];
 
-                tr.innerHTML = '<td colspan="8"><div class="yr-cat-header"><div style="display: flex; gap: 10px; align-items: center;"><button class="btn btn-sm" style="background:#fff; border:1px solid #0d6efd; color:#0d6efd; font-weight:bold; padding:2px 8px;" onclick="yrMergeSelectedRows(' + cat + ')">🔄 選択行を統合</button><span class="yr-cat-title" style="margin-left: 10px;">【 ' + title + ' 】</span></div><div style="display: flex; gap: 10px; align-items: center;"><select class="yr-form-select" style="width:auto;" onchange="sortCategory(' + cat + ', this.value)"><option value="default" ' + (currentVal === 'default' ? 'selected' : '') + '>▼ 並び替え (元の順)</option><option value="date_asc" ' + (currentVal === 'date_asc' ? 'selected' : '') + '>日付 (古い順)</option><option value="date_desc" ' + (currentVal === 'date_desc' ? 'selected' : '') + '>日付 (新しい順)</option><option value="name_asc" ' + (currentVal === 'name_asc' ? 'selected' : '') + '>薬品名 (昇順 ｱ-ﾝ)</option><option value="name_desc" ' + (currentVal === 'name_desc' ? 'selected' : '') + '>薬品名 (降順 ﾝ-ｱ)</option></select></div></div></td>';
+                tr.innerHTML = '<td colspan="7"><div class="yr-cat-header"><span class="yr-cat-title">【 ' + title + ' 】</span><span style="font-size:11px; color:#666; font-weight:normal; margin-left:10px;">※ 他の行をドラッグ＆ドロップで重ねると統合されます</span><div style="display: flex; gap: 10px; align-items: center;"><select class="yr-form-select" style="width:auto;" onchange="sortCategory(' + cat + ', this.value)"><option value="default" ' + (currentVal === 'default' ? 'selected' : '') + '>▼ 並び替え (元の順)</option><option value="date_asc" ' + (currentVal === 'date_asc' ? 'selected' : '') + '>日付 (古い順)</option><option value="date_desc" ' + (currentVal === 'date_desc' ? 'selected' : '') + '>日付 (新しい順)</option><option value="name_asc" ' + (currentVal === 'name_asc' ? 'selected' : '') + '>薬品名 (昇順 ｱ-ﾝ)</option><option value="name_desc" ' + (currentVal === 'name_desc' ? 'selected' : '') + '>薬品名 (降順 ﾝ-ｱ)</option></select></div></div></td>';
                 tbody.appendChild(tr);
             };
 
@@ -5798,7 +5830,16 @@ window.onload = function() {
                     var delBtnStyle = isDeleted ? 'yr-btn-success-sm' : 'yr-btn-danger-sm';
                     var delBtnIcon = isDeleted ? '↩️' : '✖';
                     
-                    tr.innerHTML = '<td class="yr-text-center"><input type="checkbox" class="row-checkbox" value="' + item.id + '" data-cat="' + cat + '"' + (isDeleted ? ' disabled' : '') + '></td><td class="yr-text-center">' + item.dateStr + '</td><td class="yr-text-center"><button class="' + delBtnStyle + '" onclick="yrDeleteRow(' + cat + ', \'' + item.id + '\')" title="' + delBtnTitle + '">' + delBtnIcon + '</button></td><td style="' + tkStyle + '">' + (isTk ? '🔴 ' : '') + item.name + '</td><td class="yr-text-center">' + item.dose + '</td><td class="yr-text-center">' + item.unit + '</td><td>' + item.inst + '</td><td style="padding: 0;"><div class="yr-editable-cell" contenteditable="' + (isDeleted ? 'false' : 'true') + '" onfocus="document.execCommand(\'selectAll\',false,null)" onblur="updateText(' + cat + ', \'' + item.id + '\', this.innerText)" onkeydown="handleEnter(event, this)">' + item.fullText + '</div></td>';
+                    // ドラッグ属性とイベントの付与
+                    var dragAttrs = isDeleted ? '' : ' draggable="true" ondragstart="yrRowDragStart(event, ' + cat + ', \'' + item.id + '\')" ondragover="yrRowDragOver(event)" ondragleave="yrRowDragLeave(event)" ondrop="yrRowDrop(event, ' + cat + ', \'' + item.id + '\')" title="他の行にドラッグ＆ドロップで統合します" style="cursor: grab;"';
+                    
+                    tr.innerHTML = '<td class="yr-text-center"' + dragAttrs + '>' + item.dateStr + '</td>' +
+                                   '<td style="' + tkStyle + '"' + dragAttrs + '>' + (isTk ? '🔴 ' : '') + item.name + '</td>' +
+                                   '<td class="yr-text-center"' + dragAttrs + '>' + item.dose + '</td>' +
+                                   '<td class="yr-text-center"' + dragAttrs + '>' + item.unit + '</td>' +
+                                   '<td' + dragAttrs + '>' + item.inst + '</td>' +
+                                   '<td class="yr-text-center"><button class="' + delBtnStyle + '" onclick="yrDeleteRow(' + cat + ', \'' + item.id + '\')" title="' + delBtnTitle + '">' + delBtnIcon + '</button></td>' +
+                                   '<td style="padding: 0;"><div class="yr-editable-cell" contenteditable="' + (isDeleted ? 'false' : 'true') + '" onfocus="document.execCommand(\'selectAll\',false,null)" onblur="updateText(' + cat + ', \'' + item.id + '\', this.innerText)" onkeydown="handleEnter(event, this)">' + item.fullText + '</div></td>';
                     tbody.appendChild(tr);
                 }
             };
@@ -5835,7 +5876,7 @@ window.onload = function() {
             }
 
             if (tbody.innerHTML === "") {
-                tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted" style="padding: 30px;">データがありません。</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted" style="padding: 30px;">データがありません。</td></tr>';
             }
         }
 
