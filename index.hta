@@ -784,8 +784,10 @@
                 <div style="position:relative;">
                     <label style="font-weight: bold; font-size: 0.85rem; color: #d9534f;">⚠️ 基準日</label>
                     <div style="display:flex; gap:4px; align-items:center;">
-                        <input type="text" id="baseDate" class="yr-form-control" style="width: 130px; font-weight: bold; background-color: #fff3cd; border: 2px solid #ffc107; box-shadow: 0 0 5px rgba(255,193,7,0.3); font-size: 1.05rem;" readonly>
+                        <button class="btn" style="background:#e9ecef; color:#333; padding:4px 8px; font-size:14px; border-radius:4px;" onclick="yrShiftDate(-1)" title="前日へ">◀</button>
+                        <input type="text" id="baseDate" class="yr-form-control" style="width: 130px; font-weight: bold; background-color: #fff3cd; border: 2px solid #ffc107; box-shadow: 0 0 5px rgba(255,193,7,0.3); font-size: 1.05rem; text-align:center;" readonly>
                         <button class="btn" style="background:#ffc107; color:#333; padding:4px 8px; font-size:14px; border-radius:4px;" onclick="toggleYrCalendar()" title="カレンダーから選択">📅</button>
+                        <button class="btn" style="background:#e9ecef; color:#333; padding:4px 8px; font-size:14px; border-radius:4px;" onclick="yrShiftDate(1)" title="翌日へ">▶</button>
                     </div>
                     <div id="yr-calendar-popup" style="display:none; position:absolute; top:100%; left:0; z-index:9999; background:#fff; border:2px solid #ffc107; border-radius:6px; box-shadow:0 4px 12px rgba(0,0,0,0.15); padding:8px; margin-top:4px; width:250px;">
                         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
@@ -823,12 +825,12 @@
                         <thead><tr>
                             <th style="width: 3%;"><input type="checkbox" onchange="yrToggleAllCheckboxes(this)" title="すべて選択"></th>
                             <th style="width: 12%;">期間・日付</th>
+                            <th style="width: 3%;">操作</th>
                             <th style="width: 18%;">薬品名</th>
                             <th style="width: 5%;">用量</th>
                             <th style="width: 5%;">単位</th>
                             <th style="width: 12%;">用法</th>
                             <th style="width: 42%;">薬歴テキスト (編集可能)</th>
-                            <th style="width: 3%;">操作</th>
                         </tr></thead>
                         <tbody><tr><td colspan="8" class="yr-text-center yr-text-muted" style="padding: 30px;">データがありません。「クリップボードから作成」ボタンを押してください。</td></tr></tbody>
                     </table>
@@ -859,15 +861,13 @@
                                     <label style="font-size: 0.85rem; font-weight: bold; margin: 0; cursor: pointer; color: #2c3e50; border: 1px dashed #ccc; padding: 2px 6px; border-radius: 4px; background-color: #fff;">
                                         <input type="checkbox" id="set-add-number" onchange="yrSaveSettings()"> Rp番号を付与
                                     </label>
+                                    <button class="yr-btn yr-btn-primary" style="font-size:0.85rem; padding:0.2rem 0.5rem;" onclick="yrRunMacro()">🔄 再変換</button>
                                     <button class="yr-btn yr-btn-success" style="font-size:0.85rem; padding:0.2rem 0.5rem;" onclick="yrCopyMacroResult()">全コピー</button>
                                 </div>
                             </div>
                             <textarea id="macroOutput" class="yr-form-control yr-pane-textarea" placeholder="ここに整理された結果が表示されます..."></textarea>
                             <div id="macro-tokuyaku-panel" style="display:none; margin-top:5px; padding:5px 8px; border-radius:4px; font-size:11px; max-height:60px; overflow-y:auto;"></div>
-                            
-                            <div style="margin-top: 10px; font-size: 0.85rem; padding: 5px; border-top: 1px dotted #ccc;">
-                                <label style="cursor:pointer;"><input type="checkbox" id="chk-use-abbr-dict" checked onchange="saveAbbrSetting()"> 標準的略称辞書（CEZ等）を適用</label>
-                            </div>
+                            <div id="macro-tokuyaku-panel" style="display:none; margin-top:5px; padding:5px 8px; border-radius:4px; font-size:11px; max-height:60px; overflow-y:auto;"></div>
                             
                             <div style="margin-top: 10px; display: flex; justify-content: space-between; align-items: center;">
                                 <span class="yr-text-muted yr-small">※変換を実行するたびに元のテキストが自動保存されます</span>
@@ -918,7 +918,10 @@
                             <div style="flex:1;">
                                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:3px;">
                                     <span style="font-size:12px; font-weight:bold;">✨ 略称結果</span>
-                                    <button class="yr-btn yr-btn-success" style="font-size:11px; padding:2px 8px;" onclick="copyAbbrResult()">コピー</button>
+                                    <div style="display:flex; align-items:center; gap:10px;">
+                                        <label style="cursor:pointer; font-size:11px; background:#fff; border:1px solid #ccc; padding:2px 6px; border-radius:3px;"><input type="checkbox" id="chk-use-abbr-dict" checked onchange="saveAbbrSetting(); generateAbbreviation();"> 標準的略称辞書（CEZ等）を適用</label>
+                                        <button class="yr-btn yr-btn-success" style="font-size:11px; padding:2px 8px;" onclick="copyAbbrResult()">コピー</button>
+                                    </div>
                                 </div>
                                 <textarea id="abbr-result" style="width:100%; box-sizing:border-box; padding:10px; border:1px solid #ccc; border-radius:4px; min-height:40px; background:#f5f5f5; font-size:14px; font-family:monospace; resize:vertical;" placeholder="結果がここに表示されます..."></textarea>
                                 <div style="margin-top:8px; font-size:12px; font-weight:bold;">📝 抽出された薬剤名</div>
@@ -1152,6 +1155,7 @@ function doLogin() {
     isEditMode = true;
     closeLoginModal();
     updateUIMode();
+    yrInit(); // ログイン確定後に自IDの設定をUIへ再ロード
     
     // システムの最新データを強制取得
     fetchPatientData();
@@ -1775,7 +1779,18 @@ function renderPatients() {
         html += '<td class="status-cell ' + statClass + '" style="' + statUnderline + '" ' + clickEvent + ' title="クリックで状態を変更">' + statText + authorHtml + '</td>';
         html += '<td style="text-align:center; font-size:20px; font-weight:bold; cursor:pointer; user-select:none; color:#fd7e14; ' + chkBg + '" class="hide-on-print chk-toggle ' + chkClass + '" ' + chkEvent + ' title="処方確認（クリックで☐・✔切替）">' + chkText + '</td>';
         html += '<td style="color:#e74c3c; font-size:14px; font-weight:bold; cursor:pointer; text-align:center; user-select:none;" class="alert-toggle ' + aClass + '" ' + alertEvent + '>' + escapeHtml(aText) + '</td>';
-        html += '<td class="' + hlClass + '"><textarea ' + memoDisabled + ' ' + memoChange + ' placeholder="申し送り事項やメモを入力...">' + escapeHtml(p.memo) + '</textarea></td>';
+        
+        // メモ欄（上段：共有、下段：個人）
+        var pMemos = p.personalMemos || {};
+        var myMemo = pMemos[currentSystemId] || "";
+        var memoChangeShared = isEditMode ? 'onchange="finalizeMemo('+i+', this)" onkeyup="updateMemo('+i+', this.value, this)"' : '';
+        var memoChangePersonal = isEditMode ? 'onchange="finalizePersonalMemo('+i+', this)" onkeyup="updatePersonalMemo('+i+', this.value, this)"' : '';
+        
+        html += '<td class="' + hlClass + '" style="padding:4px;">';
+        html += '<textarea rows="1" ' + memoDisabled + ' ' + memoChangeShared + ' placeholder="【共有】申し送りやメモ..." style="min-height:24px; line-height:1.2; padding:2px; font-size:12px; margin-bottom:2px; overflow:hidden;">' + escapeHtml(p.memo) + '</textarea>';
+        html += '<textarea rows="1" ' + memoDisabled + ' ' + memoChangePersonal + ' class="hide-on-print" placeholder="【個人(' + escapeHtml(currentUserName) + ')】自分用メモ..." style="min-height:24px; line-height:1.2; padding:2px; font-size:12px; background-color:#e8f4f8; border:1px dashed #b3d7ff; overflow:hidden;">' + escapeHtml(myMemo) + '</textarea>';
+        html += '</td>';
+        
         html += '<td class="hide-on-print ' + hlClass + '" style="font-size:10px; color:#666;">' + memoAuthorHtml + '</td>';
         html += '</tr>';
     }
@@ -1906,6 +1921,32 @@ function updateMemo(index, val, element) {
             }
         }
     }
+}
+
+function updatePersonalMemo(index, val, element) {
+    if(!isEditMode) return;
+    var list = getCurrentPatientsList();
+    var p = list[index];
+    if(!p.personalMemos) p.personalMemos = {};
+    if(p.personalMemos[currentSystemId] !== val) {
+        p.personalMemos[currentSystemId] = val;
+        
+        if (element) {
+            element.style.height = "auto";
+            element.style.height = (element.scrollHeight) + "px";
+        }
+        autoSave();
+    }
+}
+
+function finalizePersonalMemo(index, element) {
+    if(!isEditMode) return;
+    var list = getCurrentPatientsList();
+    var val = element.value;
+    var p = list[index];
+    if(!p.personalMemos) p.personalMemos = {};
+    p.personalMemos[currentSystemId] = val;
+    autoSave();
 }
 
 function finalizeMemo(index, element) {
@@ -2251,6 +2292,7 @@ function processFetchedPatients(newPatients, wardName) {
                     memoAuthors: list[j].memoAuthors || [],
                     memoAuthor: list[j].memoAuthor || "",
                     alertLevel: list[j].alertLevel || 0,
+                    personalMemos: list[j].personalMemos || {},
                     archivedAt: new Date().getTime()
                 };
             }
@@ -2277,6 +2319,7 @@ function processFetchedPatients(newPatients, wardName) {
                 np.memoAuthors = oldMap[np.id].memoAuthors || [];
                 np.memoAuthor = oldMap[np.id].memoAuthor || "";
                 np.alertLevel = oldMap[np.id].alertLevel || 0;
+                np.personalMemos = oldMap[np.id].personalMemos || {};
             } else {
                 // 病棟間移動時の情報引き継ぎ (cross-ward inheritance)
                 // この病棟の旧リストには居ないが、他の病棟データに同じIDの患者が存在するか探索する
@@ -2297,6 +2340,7 @@ function processFetchedPatients(newPatients, wardName) {
                             np.memoAuthors = wList[m].memoAuthors || [];
                             np.memoAuthor = wList[m].memoAuthor || "";
                             np.alertLevel = wList[m].alertLevel || 0;
+                            np.personalMemos = wList[m].personalMemos || {};
                             inherited = true;
                             break; // 見つかったらループを抜ける
                         }
@@ -2314,6 +2358,7 @@ function processFetchedPatients(newPatients, wardName) {
                     np.memoAuthors = arc.memoAuthors || [];
                     np.memoAuthor = arc.memoAuthor || "";
                     np.alertLevel = arc.alertLevel || 0;
+                    np.personalMemos = arc.personalMemos || {};
                     inherited = true;
                     // 引継ぎ完了後、アーカイブからは削除する
                     delete appData.dischargedArchive[np.id];
@@ -3826,8 +3871,12 @@ function exportToExcel() {
         var cloneTable = table.cloneNode(true);
         var textareas = cloneTable.getElementsByTagName("textarea");
         for(var i = textareas.length - 1; i >= 0; i--) {
+            // hide-on-print クラスを持つ textarea はテキスト化せずに要素ごと削る
+            if (textareas[i].className.indexOf("hide-on-print") !== -1) {
+                textareas[i].parentNode.removeChild(textareas[i]);
+                continue;
+            }
             // textarea要素の値を改行タグに変換して、親のtd要素に直接書き出すことでテキスト化する
-            // placeholder属性の文字はvalueではないのでここには含まれないが、念のためチェック
             var val = textareas[i].value || "";
             // placeholderの文字列が混入していた場合は除去
             if (val === textareas[i].getAttribute("placeholder")) val = "";
@@ -3951,6 +4000,17 @@ function perform3WayMerge(baseData, diskData, myData) {
                     diskList[i].memoAuthor = m.memoAuthor;
                 }
                 if(m.statusAuthor !== b.statusAuthor) diskList[i].statusAuthor = m.statusAuthor;
+                
+                // 個人メモ (personalMemos) のマージ：キーごとに独立して比較する
+                if (!diskList[i].personalMemos) diskList[i].personalMemos = {};
+                var bMemos = b.personalMemos || {};
+                var mMemos = m.personalMemos || {};
+                for (var key in mMemos) {
+                    if (mMemos[key] !== bMemos[key]) {
+                        // 自分の変更があったキーのみディスクに上書適用
+                        diskList[i].personalMemos[key] = mMemos[key];
+                    }
+                }
             }
         }
         result[wk] = diskList;
@@ -4030,6 +4090,11 @@ function perform3WayMerge(baseData, diskData, myData) {
     // その他の設定(settings等)は、自分が変更していれば適用
     if(stringifyData(myData.settings) !== stringifyData(baseData.settings)) {
         result.settings = myData.settings;
+    }
+    
+    // 薬歴ツール側の設定(yrSettings)
+    if(stringifyData(myData.yrSettings) !== stringifyData(baseData.yrSettings)) {
+        result.yrSettings = myData.yrSettings;
     }
     
     // --- 5. お知らせ機能(announcement)のマージ ---
@@ -4172,13 +4237,31 @@ window.onload = function() {
         }
 
         // HTA環境(fileスキーム等)ではlocalStorageがアクセス拒否・エラーになるため、
-        // インメモリの簡易ストレージ機能(myStorage)で代用する
+        // 共有設定領域（appData.yrSettings）をバックエンドとするストレージ機能で代用する
         var myStorage = {
-            _data: {},
-            setItem: function(id, val) { this._data[id] = String(val); },
-            getItem: function(id) { return this._data.hasOwnProperty(id) ? this._data[id] : null; },
-            removeItem: function(id) { delete this._data[id]; },
-            clear: function() { this._data = {}; }
+            setItem: function(id, val) { 
+                if(!appData.yrSettings) appData.yrSettings = {};
+                if(!currentSystemId) return; // ID未定時は保存しない
+                if(!appData.yrSettings[currentSystemId]) appData.yrSettings[currentSystemId] = {};
+                appData.yrSettings[currentSystemId][id] = String(val);
+                if (typeof autoSave === 'function') autoSave();
+            },
+            getItem: function(id) { 
+                if(!appData.yrSettings || !currentSystemId || !appData.yrSettings[currentSystemId]) return null;
+                return appData.yrSettings[currentSystemId].hasOwnProperty(id) ? appData.yrSettings[currentSystemId][id] : null; 
+            },
+            removeItem: function(id) { 
+                if(appData.yrSettings && currentSystemId && appData.yrSettings[currentSystemId]) {
+                    delete appData.yrSettings[currentSystemId][id];
+                    if (typeof autoSave === 'function') autoSave();
+                }
+            },
+            clear: function() { 
+                if(appData.yrSettings && currentSystemId) {
+                    appData.yrSettings[currentSystemId] = {};
+                    if (typeof autoSave === 'function') autoSave();
+                }
+            }
         };
         if (!Array.prototype.find) {
             Object.defineProperty(Array.prototype, 'find', {
@@ -4651,7 +4734,20 @@ window.onload = function() {
                 yrShowAlert("コピーに失敗しました。", "error");
             }
         }
+
         // ---------- 基準日カレンダー ----------
+        function yrShiftDate(days) {
+            var input = document.getElementById('baseDate');
+            if (!input || !input.value) return;
+            var parts = input.value.split('-');
+            if(parts.length < 3) return;
+            
+            var d = new Date(parseInt(parts[0],10), parseInt(parts[1],10)-1, parseInt(parts[2],10));
+            d.setDate(d.getDate() + days);
+            
+            input.value = d.getFullYear() + '-' + ('0'+(d.getMonth()+1)).slice(-2) + '-' + ('0'+d.getDate()).slice(-2);
+        }
+
         var yrCalYear = 0, yrCalMonth = 0;
         
         function toggleYrCalendar() {
@@ -4740,12 +4836,17 @@ window.onload = function() {
             document.getElementById('set-remove-iv-words').checked = myStorage.getItem('set-remove-iv-words') !== 'false';
             document.getElementById('set-remove-salt').checked = myStorage.getItem('set-remove-salt') !== 'false';
             document.getElementById('set-remove-maker').checked = myStorage.getItem('set-remove-maker') !== 'false';
-            document.getElementById('set-add-number').checked = myStorage.getItem('set-add-number') !== 'false';
+            document.getElementById('set-add-number').checked = myStorage.getItem('set-add-number') === 'true';
 
             var abbrDictSetting = myStorage.getItem('set-abbr-dict');
             if (abbrDictSetting !== null) {
                 var chk = document.getElementById('chk-use-abbr-dict');
                 if(chk) chk.checked = (abbrDictSetting === 'true');
+            }
+            
+            var hlToggle = document.getElementById('set-tokuyaku-highlight');
+            if(hlToggle) {
+                hlToggle.checked = myStorage.getItem('set-tokuyaku-highlight') !== 'false';
             }
 
             var kanaFormat = myStorage.getItem('set-kana-format');
@@ -4809,29 +4910,31 @@ window.onload = function() {
         }
 
         function yrSaveSettings() {
-            myStorage.setItem('set-halfwidth', document.getElementById('set-halfwidth').checked);
+            try { myStorage.setItem('set-halfwidth', document.getElementById('set-halfwidth').checked ? 'true' : 'false'); } catch(e){}
 
             var kanaFormatRadio = document.querySelector('input[name="set-kana-format"]:checked');
             if (kanaFormatRadio) {
-                myStorage.setItem('set-kana-format', kanaFormatRadio.value);
+                try { myStorage.setItem('set-kana-format', kanaFormatRadio.value); } catch(e){}
             }
 
-            myStorage.setItem('set-merge', document.getElementById('set-merge').checked);
-            myStorage.setItem('set-softdelete', document.getElementById('set-softdelete').checked);
-            myStorage.setItem('set-remove-form', document.getElementById('set-remove-form').checked);
-            myStorage.setItem('set-remove-iv-words', document.getElementById('set-remove-iv-words').checked);
-            myStorage.setItem('set-remove-salt', document.getElementById('set-remove-salt').checked);
-            myStorage.setItem('set-remove-maker', document.getElementById('set-remove-maker').checked);
-            myStorage.setItem('set-add-number', document.getElementById('set-add-number').checked);
+            try { myStorage.setItem('set-merge', document.getElementById('set-merge').checked ? 'true' : 'false'); } catch(e){}
+            try { myStorage.setItem('set-softdelete', document.getElementById('set-softdelete').checked ? 'true' : 'false'); } catch(e){}
+            try { myStorage.setItem('set-remove-form', document.getElementById('set-remove-form').checked ? 'true' : 'false'); } catch(e){}
+            try { myStorage.setItem('set-remove-iv-words', document.getElementById('set-remove-iv-words').checked ? 'true' : 'false'); } catch(e){}
+            try { myStorage.setItem('set-remove-salt', document.getElementById('set-remove-salt').checked ? 'true' : 'false'); } catch(e){}
+            try { myStorage.setItem('set-remove-maker', document.getElementById('set-remove-maker').checked ? 'true' : 'false'); } catch(e){}
+            try { myStorage.setItem('set-add-number', document.getElementById('set-add-number').checked ? 'true' : 'false'); } catch(e){}
+            
+            var chkAbbr = document.getElementById('chk-use-abbr-dict');
+            if(chkAbbr) { try{ myStorage.setItem('set-abbr-dict', chkAbbr.checked ? 'true' : 'false'); } catch(e){} }
+            
+            var hlToggle = document.getElementById('set-tokuyaku-highlight');
+            if(hlToggle) { try{ myStorage.setItem('set-tokuyaku-highlight', hlToggle.checked ? 'true' : 'false'); } catch(e){} }
             
             var incTiming = document.getElementById('includeTiming');
-            if(incTiming) myStorage.setItem('set-timing', incTiming.value);
+            if(incTiming) { try{ myStorage.setItem('set-timing', incTiming.value); } catch(e){} }
             
-            yrShowAlert('設定を保存しました', 'info');
-
-            var text = document.getElementById('rawInput').value;
-            if (text) yrProcessData(text);
-            if (document.getElementById('macroInput').value) yrRunMacro();
+            // 自動再描画は行わない（手動編集テキストがリセットされるのを防ぐため）
         }
 
         function saveAbbrSetting() {
@@ -5674,7 +5777,7 @@ window.onload = function() {
 
                 var currentVal = currentSorts[cat];
 
-                tr.innerHTML = '<td colspan="8"><div class="yr-cat-header"><span class="yr-cat-title">【 ' + title + ' 】</span><div style="display: flex; gap: 10px; align-items: center;"><button class="btn btn-sm" style="background:#fff; border:1px solid #0d6efd; color:#0d6efd; font-weight:bold; padding:2px 8px;" onclick="yrMergeSelectedRows(' + cat + ')">🔄 選択行を統合</button><select class="yr-form-select" style="width:auto;" onchange="sortCategory(' + cat + ', this.value)"><option value="default" ' + (currentVal === 'default' ? 'selected' : '') + '>▼ 並び替え (元の順)</option><option value="date_asc" ' + (currentVal === 'date_asc' ? 'selected' : '') + '>日付 (古い順)</option><option value="date_desc" ' + (currentVal === 'date_desc' ? 'selected' : '') + '>日付 (新しい順)</option><option value="name_asc" ' + (currentVal === 'name_asc' ? 'selected' : '') + '>薬品名 (昇順 ｱ-ﾝ)</option><option value="name_desc" ' + (currentVal === 'name_desc' ? 'selected' : '') + '>薬品名 (降順 ﾝ-ｱ)</option></select></div></div></td>';
+                tr.innerHTML = '<td colspan="8"><div class="yr-cat-header"><div style="display: flex; gap: 10px; align-items: center;"><button class="btn btn-sm" style="background:#fff; border:1px solid #0d6efd; color:#0d6efd; font-weight:bold; padding:2px 8px;" onclick="yrMergeSelectedRows(' + cat + ')">🔄 選択行を統合</button><span class="yr-cat-title" style="margin-left: 10px;">【 ' + title + ' 】</span></div><div style="display: flex; gap: 10px; align-items: center;"><select class="yr-form-select" style="width:auto;" onchange="sortCategory(' + cat + ', this.value)"><option value="default" ' + (currentVal === 'default' ? 'selected' : '') + '>▼ 並び替え (元の順)</option><option value="date_asc" ' + (currentVal === 'date_asc' ? 'selected' : '') + '>日付 (古い順)</option><option value="date_desc" ' + (currentVal === 'date_desc' ? 'selected' : '') + '>日付 (新しい順)</option><option value="name_asc" ' + (currentVal === 'name_asc' ? 'selected' : '') + '>薬品名 (昇順 ｱ-ﾝ)</option><option value="name_desc" ' + (currentVal === 'name_desc' ? 'selected' : '') + '>薬品名 (降順 ﾝ-ｱ)</option></select></div></div></td>';
                 tbody.appendChild(tr);
             };
 
@@ -5695,7 +5798,7 @@ window.onload = function() {
                     var delBtnStyle = isDeleted ? 'yr-btn-success-sm' : 'yr-btn-danger-sm';
                     var delBtnIcon = isDeleted ? '↩️' : '✖';
                     
-                    tr.innerHTML = '<td class="yr-text-center"><input type="checkbox" class="row-checkbox" value="' + item.id + '" data-cat="' + cat + '"' + (isDeleted ? ' disabled' : '') + '></td><td class="yr-text-center">' + item.dateStr + '</td><td style="' + tkStyle + '">' + (isTk ? '🔴 ' : '') + item.name + '</td><td class="yr-text-center">' + item.dose + '</td><td class="yr-text-center">' + item.unit + '</td><td>' + item.inst + '</td><td style="padding: 0;"><div class="yr-editable-cell" contenteditable="' + (isDeleted ? 'false' : 'true') + '" onfocus="document.execCommand(\'selectAll\',false,null)" onblur="updateText(' + cat + ', \'' + item.id + '\', this.innerText)" onkeydown="handleEnter(event, this)">' + item.fullText + '</div></td><td class="yr-text-center"><button class="' + delBtnStyle + '" onclick="yrDeleteRow(' + cat + ', \'' + item.id + '\')" title="' + delBtnTitle + '">' + delBtnIcon + '</button></td>';
+                    tr.innerHTML = '<td class="yr-text-center"><input type="checkbox" class="row-checkbox" value="' + item.id + '" data-cat="' + cat + '"' + (isDeleted ? ' disabled' : '') + '></td><td class="yr-text-center">' + item.dateStr + '</td><td class="yr-text-center"><button class="' + delBtnStyle + '" onclick="yrDeleteRow(' + cat + ', \'' + item.id + '\')" title="' + delBtnTitle + '">' + delBtnIcon + '</button></td><td style="' + tkStyle + '">' + (isTk ? '🔴 ' : '') + item.name + '</td><td class="yr-text-center">' + item.dose + '</td><td class="yr-text-center">' + item.unit + '</td><td>' + item.inst + '</td><td style="padding: 0;"><div class="yr-editable-cell" contenteditable="' + (isDeleted ? 'false' : 'true') + '" onfocus="document.execCommand(\'selectAll\',false,null)" onblur="updateText(' + cat + ', \'' + item.id + '\', this.innerText)" onkeydown="handleEnter(event, this)">' + item.fullText + '</div></td>';
                     tbody.appendChild(tr);
                 }
             };
