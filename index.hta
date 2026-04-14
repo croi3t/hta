@@ -6690,8 +6690,9 @@ function removeClass(el, className) {
 
             text = text.replace(/^[ \t]*.*(?:院外|院内)[\s\(].*\d{4}\/\d{2}\/\d{2}.*?$[\r\n]*/gm, '\n◆外来\n');
             text = text.replace(/^[ \t]*.*\[?(?:定期|臨時|緊急|実施済|退院)\]?.*\d{4}\/\d{2}\/\d{2}.*?$[\r\n]*/gm, '\n◇入院\n');
-            text = text.replace(/^[ \t]*.*【持参薬】.*検認.*\d{4}\/\d{2}\/\d{2}.*?$[\r\n]*/gm, '\n▼持参薬検認\n');
-            text = text.replace(/^[ \t]*.*【持参薬】(?!.*検認).*\d{4}\/\d{2}\/\d{2}.*?$[\r\n]*/gm, '\n■持参薬\n');
+            text = text.replace(/^[ \t]*.*【持参薬】.*検認.*?(?:\r?\n[^\r\n]*?)?\d{4}\/\d{2}\/\d{2}[^\r\n]*[\r\n]*/gm, '\n▼持参薬検認\n');
+            text = text.replace(/^[ \t]*.*【持参薬】(?!.*検認).*?(?:\r?\n[^\r\n]*?)?\d{4}\/\d{2}\/\d{2}[^\r\n]*[\r\n]*/gm, '\n■持参薬\n');
+
 
             text = text.replace(/^[ \t]*.*院内[\(].*?$[\r\n]*/gm, '');
             text = text.replace(/^[ \t]*.*院内採用.*?$[\r\n]*/gm, '');
@@ -6703,10 +6704,11 @@ function removeClass(el, className) {
             text = text.replace(/^[ \t]*.*院外専用薬.*?$[\r\n]*/gm, '');
             text = text.replace(/^[ \t]*\d{4}\/\d{2}\/\d{2}[ \t]*(?:朝|昼|夕|眠前)?.*?$[\r\n]*/gm, '');
 
-            text = text.replace(/(\n▼持参薬検認\n)+/g, '\n▼持参薬検認\n');
-            text = text.replace(/(\n■持参薬\n)+/g, '\n■持参薬\n');
-            text = text.replace(/(\n◆外来\n)+/g, '\n◆外来\n');
-            text = text.replace(/(\n◇入院\n)+/g, '\n◇入院\n');
+            text = text.replace(/(\n▼持参薬検認\s*)+/g, '\n▼持参薬検認\n');
+            text = text.replace(/(\n■持参薬\s*)+/g, '\n■持参薬\n');
+            text = text.replace(/(\n◆外来\s*)+/g, '\n◆外来\n');
+            text = text.replace(/(\n◇入院\s*)+/g, '\n◇入院\n');
+
 
             text = text.replace(/「.*?」/g, '');
             text = text.replace(/【.*?】/g, '');
@@ -6724,7 +6726,8 @@ function removeClass(el, className) {
             var textLines = text.split('\n');
             var detectingClinic = false;
             for (var k = 0; k < textLines.length; k++) {
-                if (textLines[k].indexOf('【持参薬】') !== -1 && textLines[k].indexOf('No.') !== -1) {
+                if (textLines[k].indexOf('▼持参薬検認') !== -1 || textLines[k].indexOf('■持参薬') !== -1) {
+
                     detectingClinic = true;
                 } else if (detectingClinic) {
                     if (textLines[k].match(/^[ \t]*Rp.?\d+/i) || textLines[k].match(/^[ \t]*（持参薬）/)) {
