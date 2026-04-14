@@ -1783,21 +1783,29 @@ function initFSO() {
 }
 
 function saveTextUtf8(path, text) {
-    try {
-        var stream = new ActiveXObject("ADODB.Stream");
-        stream.Type = 2; stream.Charset = "UTF-8";
-        stream.Open(); stream.WriteText(text);
-        stream.SaveToFile(path, 2); stream.Close();
-        return true;
-    } catch (e1) {
-        // フォールバック: FSO で書き込み（Shift-JISまたは環境依存、緊急避難用）
+    var maxRetries = 10; // 最大10回(約2秒)リトライ
+    for (var i = 0; i < maxRetries; i++) {
         try {
-            if (!fso) initFSO();
-            var ts = fso.OpenTextFile(path, 2, true, -1); // unicode=true
-            ts.Write(text); ts.Close();
+            var stream = new ActiveXObject("ADODB.Stream");
+            stream.Type = 2; stream.Charset = "UTF-8";
+            stream.Open(); stream.WriteText(text);
+            stream.SaveToFile(path, 2); stream.Close();
             return true;
-        } catch (e2) { return false; }
+        } catch (e1) {
+            try {
+                if (!fso) initFSO();
+                var ts = fso.OpenTextFile(path, 2, true, -1);
+                ts.Write(text);
+                ts.Close();
+                return true;
+            } catch (e2) {
+                // ロックされている場合は200ms待機して再試行
+                var start = new Date().getTime();
+                while (new Date().getTime() < start + 200);
+            }
+        }
     }
+    return false;
 }
 
 function loadTextUtf8(path) {
@@ -2742,6 +2750,7 @@ function openKarteLink(type, pid) {
 window.onload = function() {
     // データ管理モジュールの初期化
     if (typeof DataManager !== "undefined") {
+        DataManager.saveTextUtf8 = saveTextUtf8; // 外部プログラムの保存処理もリトライ付きに強制上書き
         DataManager.init();
     }
     
@@ -5962,15 +5971,22 @@ function removeClass(el, className) {
             } catch(e) { return {}; }
         },
         _save: function(data) {
-            try {
-                var path = this._getFilePath();
-                var stream = new ActiveXObject("ADODB.Stream");
-                stream.Type = 2; stream.Charset = "utf-8";
-                stream.Open(); 
-                var text = (typeof JSON !== 'undefined') ? JSON.stringify(data) : stringifyData(data);
-                stream.WriteText(text);
-                stream.SaveToFile(path, 2); stream.Close();
-            } catch(e) {}
+            var maxRetries = 10;
+            for (var i = 0; i < maxRetries; i++) {
+                try {
+                    var path = this._getFilePath();
+                    var stream = new ActiveXObject("ADODB.Stream");
+                    stream.Type = 2; stream.Charset = "utf-8";
+                    stream.Open(); 
+                    var text = (typeof JSON !== 'undefined') ? JSON.stringify(data) : stringifyData(data);
+                    stream.WriteText(text);
+                    stream.SaveToFile(path, 2); stream.Close();
+                    return; // 成功したら抜ける
+                } catch(e) {
+                    var start = new Date().getTime();
+                    while (new Date().getTime() < start + 200);
+                }
+            }
         },
         setItem: function(id, val) {
             if(!currentSystemId) return;
