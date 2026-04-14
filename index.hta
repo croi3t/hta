@@ -5746,6 +5746,26 @@ function exportToExcel() {
         for(var i = 0; i < hideElems.length; i++) {
             if (hideElems[i].parentNode) hideElems[i].parentNode.removeChild(hideElems[i]);
         }
+
+        // テスト患者の行をExcel出力から除外する処理
+        var rows = cloneTable.getElementsByTagName("tr");
+        // 特定のテスト患者IDリスト（カンマ区切りで追加可能）
+        var testIds = ["9999999", "8888888", "1234567"]; 
+        // 下からループして安全に削除
+        for (var r = rows.length - 1; r >= 1; r--) {
+            var tr = rows[r];
+            var cells = tr.getElementsByTagName("td");
+            if (cells.length > 1) {
+                var pid = (cells[0].innerText || cells[0].textContent || "").trim();
+                var pname = (cells[1].innerText || cells[1].textContent || "").trim();
+                var pidNum = parseInt(pid, 10);
+                
+                // 名前が「テスト」「てすと」「test」を含むか、IDがリスト内または9000000以上の場合は行ごと削除
+                if (pname.indexOf("テスト") !== -1 || pname.indexOf("てすと") !== -1 || pname.toLowerCase().indexOf("test") !== -1 || testIds.indexOf(pid) !== -1 || (!isNaN(pidNum) && pidNum >= 9000000)) {
+                    if (tr.parentNode) tr.parentNode.removeChild(tr);
+                }
+            }
+        }
         
         var outputHTML = "<table border='1'>" + cloneTable.innerHTML + "</table>";
         window.clipboardData.setData("Text", outputHTML);
