@@ -1107,39 +1107,62 @@ function generateAbbreviation() {}
                                 <div style="margin-top:8px; font-size:11px; color:#e91e63;">※正確な最新条件および疑義解釈等については厚労省の診療報酬改定資料をご確認ください。</div>
                             </div>
                         </div>
-                        <div style="display:flex; justify-content:flex-end; margin-bottom:10px; gap:10px; align-items:flex-end;">
-                            <div style="flex-grow:1; display:flex; align-items:center; background:#fff; border:1px solid #f8bbd0; border-radius:4px; padding:5px 10px; gap:8px;">
-                                <span style="font-size:12px; font-weight:bold; color:#d81b60; white-space:nowrap;">🔍 患者検索:</span>
-                                <input type="text" id="ipt-med-adj-patient-search" class="yr-form-control" style="width:180px; height:28px; font-size:12px;" placeholder="IDまたは名前を入力..." onkeypress="if(event.keyCode===13) searchPatientForMedAdj()">
-                                <button class="yr-btn yr-btn-primary" style="font-size:11px; padding:3px 8px;" onclick="searchPatientForMedAdj()">検索</button>
-                                <div id="med-adj-patient-result" style="font-size:12px; color:#333; margin-left:5px;"></div>
+                        <div style="margin-bottom:15px; background:#fff; padding:10px; border:1px solid #f8bbd0; border-radius:4px;">
+                            <div style="display:flex; align-items:center; margin-bottom:8px;">
+                                <label style="font-size:12px; font-weight:bold; color:#e64a19; cursor:pointer; display:flex; align-items:center;">
+                                    <input type="checkbox" id="chk-med-adj-1year" style="margin-right:5px;" onchange="document.getElementById('div-1year-prev').style.display=(this.checked?'inline-flex':'none'); calcMedAdj(true);"> 1年以内の再算定 (種類数減少の継続が必要)
+                                </label>
+                                <div id="div-1year-prev" style="display:none; align-items:center; margin-left:15px;">
+                                    <span style="font-size:11px; color:#555; margin-right:5px;">前回算定時の種類数:</span>
+                                    <input type="text" id="ipt-med-adj-prev-count" class="yr-form-control" style="width:50px; height:24px; text-align:center; font-size:12px;" placeholder="数" onchange="calcMedAdj(true)">
+                                </div>
+                            </div>
+                            <div style="display:flex; align-items:center;">
+                                <span style="font-size:12px; font-weight:bold; color:#d81b60; margin-right:10px;">🔍 対象薬剤の開始日計算:</span>
+                                <input type="text" id="ipt-med-adj-patient-search" class="yr-form-control" style="width:180px; height:28px; font-size:12px; margin-right:5px;" placeholder="IDまたは名前を入力..." onkeypress="if(event.keyCode===13) searchPatientForMedAdj()">
+                                <button class="yr-btn yr-btn-primary" style="font-size:11px; padding:3px 8px; margin-right:10px;" onclick="searchPatientForMedAdj()">検索</button>
+                                <div id="med-adj-patient-result" style="font-size:12px; color:#333; flex-grow:1;"></div>
                             </div>
                         </div>
-                        <div style="display:flex; gap:10px;">
-                            <div style="flex:1; display:flex; flex-direction:column;">
-                                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:3px;">
+
+                        <div style="display:flex; justify-content:space-between; align-items:stretch;">
+                            <div style="width:42%;">
+                                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:5px;">
                                     <span style="font-size:12px; font-weight:bold;">入 院 前 (持参薬)</span>
                                     <button class="yr-btn yr-btn-outline-secondary" style="font-size:11px; padding:2px 5px;" onclick="document.getElementById('med-adj-in').value='';">クリア</button>
                                 </div>
-                                <textarea id="med-adj-in" class="yr-form-control" style="height:150px; font-family:monospace; font-size:12px; white-space:pre; resize:vertical;" placeholder="電子カルテ等から処方を貼り付けてください。上の✨ボタンで自動整理されます。"></textarea>
+                                <textarea id="med-adj-in" class="yr-form-control" style="width:100%; height:150px; box-sizing:border-box; font-family:monospace; font-size:12px; white-space:pre; resize:vertical;" placeholder="電子カルテ等から処方を貼り付けてください。上の✨ボタンで自動整理されます。"></textarea>
                             </div>
-                            <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; padding-top:20px;">
-                                <button id="btn-med-adj-compare" class="yr-btn yr-btn-primary" style="font-weight:bold; padding:8px 12px; width:140px;" onclick="calcMedAdj()">▶ 比較・判定 ▶<br><span style="font-size:10px; font-weight:normal;">(自動整理あり)</span></button>
-                                <button id="btn-med-adj-recalc" class="yr-btn yr-btn-outline-secondary" style="font-weight:bold; padding:8px 12px; width:140px; margin-top:10px;" onclick="calcMedAdj(true)">🔄 再計算<br><span style="font-size:10px;">(整理なし)</span></button>
+                            <div style="width:14%; display:flex; flex-direction:column; justify-content:center; padding:0 10px; box-sizing:border-box;">
+                                <button id="btn-med-adj-compare" class="yr-btn yr-btn-primary" style="font-weight:bold; padding:8px 0; width:100%; margin-bottom:15px; font-size:13px;" onclick="calcMedAdj()">▶ 比較・判定 ▶<br><span style="font-size:10px; font-weight:normal;">(自動整理あり)</span></button>
+                                <button id="btn-med-adj-recalc" class="yr-btn yr-btn-outline-secondary" style="font-weight:bold; padding:8px 0; width:100%; font-size:13px;" onclick="calcMedAdj(true)">🔄 再計算<br><span style="font-size:10px;">(整理なし)</span></button>
                             </div>
-                            <div style="flex:1; display:flex; flex-direction:column;">
-                                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:3px;">
+                            <div style="width:42%;">
+                                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:5px;">
                                     <span style="font-size:12px; font-weight:bold;">退 院 時</span>
                                     <button class="yr-btn yr-btn-outline-secondary" style="font-size:11px; padding:2px 5px;" onclick="document.getElementById('med-adj-out').value='';">クリア</button>
                                 </div>
-                                <textarea id="med-adj-out" class="yr-form-control" style="height:150px; font-family:monospace; font-size:12px; white-space:pre; resize:vertical;" placeholder="電子カルテ等から退院時の処方を貼り付けてください。"></textarea>
+                                <textarea id="med-adj-out" class="yr-form-control" style="width:100%; height:150px; box-sizing:border-box; font-family:monospace; font-size:12px; white-space:pre; resize:vertical;" placeholder="電子カルテ等から退院時の処方を貼り付けてください。"></textarea>
                             </div>
                         </div>
                         
                         <div id="med-adj-result-panel" style="margin-top:15px; border:2px solid #ccc; border-radius:6px; padding:15px; background:#fafafa; display:none;">
-                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-                                <h5 style="margin:0; font-size:15px;">📊 判定結果</h5>
-                                <button class="yr-btn yr-btn-success" onclick="copyMedAdjResult()">📝 カルテ貼付用テキストをコピー</button>
+                            <div style="display:flex; flex-direction:column; margin-bottom:10px;">
+                                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                                    <h5 style="margin:0; font-size:15px;">📊 判定結果</h5>
+                                    <button class="yr-btn yr-btn-success" onclick="copyMedAdjResult()">📝 カルテ貼付用テキストをコピー</button>
+                                </div>
+                                <div style="display:flex; flex-direction:column; padding:10px 12px; background:#fff; border:1px solid #eee; border-radius:4px;">
+                                    <span style="font-size:12px; font-weight:bold; color:#666; border-bottom:1px solid #ddd; padding-bottom:4px;">[カルテ記載要件チェック]</span>
+                                    <label style="font-size:12px; cursor:pointer; margin-bottom:8px;"><input type="checkbox" id="chk-med-adj-req2"> 多職種連携による評価・共有を実施</label>
+                                    <label style="font-size:12px; cursor:pointer;"><input type="checkbox" id="chk-med-adj-req4"> 退院先の薬局等へ文書による情報連携を実施</label>
+                                    <div id="req3-container" style="display:none; background:#fff3cd; border:1px solid #ffecb5; border-left:4px solid #ffc107; padding:8px; border-radius:4px;">
+                                        <label style="font-size:12px; cursor:pointer; color:#856404; font-weight:bold; margin:0;">
+                                            <input type="checkbox" id="chk-med-adj-req3" onchange="calcMedAdj(true)">
+                                            【追加のみの場合】追加された薬は、入院前の「当該処方」の総合的評価に関連する
+                                        </label>
+                                    </div>
+                                </div>
                             </div>
                             <div id="med-adj-summary" style="font-size:18px; font-weight:bold; text-align:center; padding:10px; border-radius:4px; margin-bottom:15px;"></div>
                             
@@ -1187,56 +1210,55 @@ function generateAbbreviation() {}
                             <div style="margin-top:8px; font-size:11px; color:#e91e63;">※正確な最新条件および疑義解釈等については厚労省の診療報酬改定資料をご確認ください。</div>
                         </div>
                     </div>
-                    <div style="display:flex; justify-content:flex-end; margin-bottom:10px; gap:10px; align-items:flex-end;">
-                        <div style="flex-grow:1; display:flex; flex-direction:column; gap:5px;">
-                            <div style="display:flex; align-items:center; background:#fff; border:1px solid #ffccbc; border-radius:4px; padding:5px 10px; gap:12px;">
-                                <label style="font-size:12px; font-weight:bold; color:#e64a19; cursor:pointer; display:flex; align-items:center;">
-                                    <input type="checkbox" id="chk-med-adj-1year-2026" style="margin-right:5px;" onchange="var d=document.getElementById('div-1year-prev-2026'); d.style.display=(this.checked?'flex':'none'); calcMedAdj2026(true);"> 1年以内の再算定 (種類数減少の継続が必要)
-                                </label>
-                                <div id="div-1year-prev-2026" style="display:none; align-items:center; gap:5px; border-left:1px solid #ffccbc; padding-left:12px;">
-                                    <span style="font-size:11px; color:#555;">前回算定時の種類数:</span>
-                                    <input type="text" id="ipt-med-adj-prev-count-2026" class="yr-form-control" style="width:40px; height:24px; text-align:center; font-size:12px;" placeholder="数" onchange="calcMedAdj2026(true)">
-                                </div>
-                            </div>
-                            <div style="display:flex; align-items:center; background:#fff; border:1px solid #f8bbd0; border-radius:4px; padding:5px 10px; gap:8px;">
-                                <span style="font-size:12px; font-weight:bold; color:#d81b60; white-space:nowrap;">🔍 対象薬剤の開始日計算:</span>
-                                <input type="text" id="ipt-med-adj-patient-search-2026" class="yr-form-control" style="width:180px; height:28px; font-size:12px;" placeholder="IDまたは名前を入力.." onkeypress="if(event.keyCode===13) searchPatientForMedAdj2026()">
-                                <button class="yr-btn yr-btn-primary" style="font-size:11px; padding:3px 8px;" onclick="searchPatientForMedAdj2026()">検索</button>
-                                <div id="med-adj-patient-result-2026" style="font-size:12px; color:#333; margin-left:5px;"></div>
+                    <div style="margin-bottom:15px; background:#fff; padding:10px; border:1px solid #f8bbd0; border-radius:4px;">
+                        <div style="display:flex; align-items:center; margin-bottom:8px;">
+                            <label style="font-size:12px; font-weight:bold; color:#e64a19; cursor:pointer; display:flex; align-items:center;">
+                                <input type="checkbox" id="chk-med-adj-1year-2026" style="margin-right:5px;" onchange="document.getElementById('div-1year-prev-2026').style.display=(this.checked?'inline-flex':'none'); calcMedAdj2026(true);"> 1年以内の再算定 (種類数減少の継続が必要)
+                            </label>
+                            <div id="div-1year-prev-2026" style="display:none; align-items:center; margin-left:15px;">
+                                <span style="font-size:11px; color:#555; margin-right:5px;">前回算定時の種類数:</span>
+                                <input type="text" id="ipt-med-adj-prev-count-2026" class="yr-form-control" style="width:50px; height:24px; text-align:center; font-size:12px;" placeholder="数" onchange="calcMedAdj2026(true)">
                             </div>
                         </div>
+                        <div style="display:flex; align-items:center;">
+                            <span style="font-size:12px; font-weight:bold; color:#d81b60; margin-right:10px;">🔍 対象薬剤の開始日計算:</span>
+                            <input type="text" id="ipt-med-adj-patient-search-2026" class="yr-form-control" style="width:180px; height:28px; font-size:12px; margin-right:5px;" placeholder="IDまたは名前を入力..." onkeypress="if(event.keyCode===13) searchPatientForMedAdj2026()">
+                            <button class="yr-btn yr-btn-primary" style="font-size:11px; padding:3px 8px; margin-right:10px;" onclick="searchPatientForMedAdj2026()">検索</button>
+                            <div id="med-adj-patient-result-2026" style="font-size:12px; color:#333; flex-grow:1;"></div>
+                        </div>
                     </div>
-                    <div style="display:flex; gap:10px;">
-                        <div style="flex:1; display:flex; flex-direction:column;">
-                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:3px;">
+
+                    <div style="display:flex; justify-content:space-between; align-items:stretch;">
+                        <div style="width:42%;">
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:5px;">
                                 <span style="font-size:12px; font-weight:bold;">入 院 前 (持参薬)</span>
                                 <button class="yr-btn yr-btn-outline-secondary" style="font-size:11px; padding:2px 5px;" onclick="document.getElementById('med-adj-in-2026').value='';">クリア</button>
                             </div>
-                            <textarea id="med-adj-in-2026" class="yr-form-control" style="height:150px; font-family:monospace; font-size:12px; white-space:pre; resize:vertical;" placeholder="電子カルテから処方を貼り付けてください。"></textarea>
+                            <textarea id="med-adj-in-2026" class="yr-form-control" style="width:100%; height:150px; box-sizing:border-box; font-family:monospace; font-size:12px; white-space:pre; resize:vertical;" placeholder="電子カルテ等から処方を貼り付けてください。上の✨ボタンで自動整理されます。"></textarea>
                         </div>
-                        <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; padding-top:20px;">
-                            <button id="btn-med-adj-compare-2026" class="yr-btn yr-btn-primary" style="font-weight:bold; padding:8px 12px; width:140px;" onclick="calcMedAdj2026()">▶ 比較・判定 ▶<br><span style="font-size:10px; font-weight:normal;">(自動整理あり)</span></button>
-                            <button id="btn-med-adj-recalc-2026" class="yr-btn yr-btn-outline-secondary" style="font-weight:bold; padding:8px 12px; width:140px; margin-top:10px;" onclick="calcMedAdj2026(true)">🔄 再計算<br><span style="font-size:10px;">(整理なし)</span></button>
+                        <div style="width:14%; display:flex; flex-direction:column; justify-content:center; padding:0 10px; box-sizing:border-box;">
+                            <button id="btn-med-adj-compare-2026" class="yr-btn yr-btn-primary" style="font-weight:bold; padding:8px 0; width:100%; margin-bottom:15px; font-size:13px;" onclick="calcMedAdj2026()">▶ 比較・判定 ▶<br><span style="font-size:10px; font-weight:normal;">(自動整理あり)</span></button>
+                            <button id="btn-med-adj-recalc-2026" class="yr-btn yr-btn-outline-secondary" style="font-weight:bold; padding:8px 0; width:100%; font-size:13px;" onclick="calcMedAdj2026(true)">🔄 再計算<br><span style="font-size:10px;">(整理なし)</span></button>
                         </div>
-                        <div style="flex:1; display:flex; flex-direction:column;">
-                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:3px;">
+                        <div style="width:42%;">
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:5px;">
                                 <span style="font-size:12px; font-weight:bold;">退 院 時</span>
                                 <button class="yr-btn yr-btn-outline-secondary" style="font-size:11px; padding:2px 5px;" onclick="document.getElementById('med-adj-out-2026').value='';">クリア</button>
                             </div>
-                            <textarea id="med-adj-out-2026" class="yr-form-control" style="height:150px; font-family:monospace; font-size:12px; white-space:pre; resize:vertical;" placeholder="電子カルテから退院時の処方を貼り付けてください。"></textarea>
+                            <textarea id="med-adj-out-2026" class="yr-form-control" style="width:100%; height:150px; box-sizing:border-box; font-family:monospace; font-size:12px; white-space:pre; resize:vertical;" placeholder="電子カルテ等から退院時の処方を貼り付けてください。"></textarea>
                         </div>
                     </div>
                     
                     <div id="med-adj-result-panel-2026" style="margin-top:15px; border:2px solid #ccc; border-radius:6px; padding:15px; background:#fafafa; display:none;">
-                        <div style="display:flex; flex-direction:column; gap:10px; margin-bottom:10px;">
-                            <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <div style="display:flex; flex-direction:column; margin-bottom:10px;">
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
                                 <h5 style="margin:0; font-size:15px;">📊 判定結果</h5>
                                 <button class="yr-btn yr-btn-success" onclick="copyMedAdjResult2026()">📝 カルテ貼付用テキストをコピー</button>
                             </div>
-                            <div style="display:flex; flex-direction:column; gap:8px; padding:10px 12px; background:#fff; border:1px solid #eee; border-radius:4px;">
+                            <div style="display:flex; flex-direction:column; padding:10px 12px; background:#fff; border:1px solid #eee; border-radius:4px;">
                                 <span style="font-size:12px; font-weight:bold; color:#666; border-bottom:1px solid #ddd; padding-bottom:4px;">[カルテ記載要件チェック]</span>
-                                <label style="font-size:12px; cursor:pointer;"><input type="checkbox" id="chk-med-adj-req1-2026"> 療養上必要な指導を実施</label>
-                                <label style="font-size:12px; cursor:pointer;"><input type="checkbox" id="chk-med-adj-req2-2026"> 多職種連携による評価・共有を実施</label>
+                                <label style="font-size:12px; cursor:pointer; margin-bottom:8px;"><input type="checkbox" id="chk-med-adj-req1-2026"> 療養上必要な指導を実施</label>
+                                <label style="font-size:12px; cursor:pointer; margin-bottom:8px;"><input type="checkbox" id="chk-med-adj-req2-2026"> 多職種連携による評価・共有を実施</label>
                                 <label style="font-size:12px; cursor:pointer;"><input type="checkbox" id="chk-med-adj-req4-2026"> 退院先の薬局等へ文書による情報連携を実施 <span style="color:#c62828;font-weight:bold;">(※26年より必須)</span></label>
                                 <div id="req3-container-2026" style="display:none; background:#fff3cd; border:1px solid #ffecb5; border-left:4px solid #ffc107; padding:8px; border-radius:4px;">
                                     <label style="font-size:12px; cursor:pointer; color:#856404; font-weight:bold; margin:0;">
@@ -2321,6 +2343,14 @@ function loadData(manual) {
     }
     
     cachedUniqueUsers = null;
+    
+    // 自分の病棟設定を復元（共有ファイルのデータで自分の画面が上書きされるのを防ぐ）
+    if (currentSystemId && appData.settings && appData.settings.userWards && appData.settings.userWards[currentSystemId]) {
+        var myCodes = appData.settings.userWards[currentSystemId];
+        if (myCodes.length > 0) {
+            appData.settings.activeWardCodes = myCodes;
+        }
+    }
     
     // UIコンポーネントの再描画
     renderWardTabs(); 
@@ -6597,7 +6627,7 @@ function removeClass(el, className) {
             addClass(targetPane, 'yr-show');
             addClass(targetPane, 'yr-active');
 
-            if (tabId === 'yr-tab-macro' || tabId === 'yr-tab-settings' || tabId === 'yr-tab-abbr' || tabId === 'yr-tab-med-adj') {
+            if (tabId === 'yr-tab-macro' || tabId === 'yr-tab-settings' || tabId === 'yr-tab-abbr' || tabId === 'yr-tab-med-adj' || tabId === 'yr-tab-med-adj-2026') {
                 document.getElementById('yr-main-controls').style.display = 'none';
             } else {
                 document.getElementById('yr-main-controls').style.display = 'flex';
@@ -7968,6 +7998,7 @@ function yrFormatTextCore(text, keepIndentation) {
 
 // ---------- 薬剤調整加算ツール ロジック ----------
 var medAdjState = { input: [], output: [] };
+var manualMedAdjLinks = {};
 
 /**
  * 薬剤テキストの解析（インデント深度・キーワードによる除外判定）
@@ -8081,7 +8112,7 @@ function getDrugNameBase(raw) {
 
 function getStdForm(raw) {
     var s = raw.replace(/^\d+\)[\s　]*/, ''); // "1) " を消す
-    s = s.replace(/[\s\t　]*[0-9０-９]+日(分|用)?[\s\t　]*$/, "").trim();
+    s = s.replace(/[\s\t　]*[0-9０-９]+日(分|用)?/g, "").trim();
     s = s.replace(/ミヤBM(?:処方|細粒|錠)?(?:20[mM][gG])?/gi, "ミヤBM");
     return s;
 }
@@ -8218,6 +8249,24 @@ function calcMedAdj(skipFormat) {
     for(var j=0; j<outDrugs.length; j++) {
         if(!outDrugs[j].isExcluded && !matchedOut[j]) { outDrugs[j].status = "追加"; outDrugs[j].inRef = -1; }
     }
+
+    // 4. 手動紐付け情報の反映 (再定義した関数用)
+    for (var j = 0; j < outDrugs.length; j++) {
+        if (outDrugs[j].status === "追加" && manualMedAdjLinks[outDrugs[j].raw]) {
+            var targetInRaw = manualMedAdjLinks[outDrugs[j].raw];
+            for (var i = 0; i < inDrugs.length; i++) {
+                if (inDrugs[i].status === "中止" && inDrugs[i].raw === targetInRaw) {
+                    inDrugs[i].status = "手動紐付(継続)";
+                    outDrugs[j].status = "手動紐付(継続)";
+                    inDrugs[i].outRef = j;
+                    outDrugs[j].inRef = i;
+                    matchedIn[i] = true;
+                    matchedOut[j] = true;
+                    break;
+                }
+            }
+        }
+    }
     
     medAdjState.input = inDrugs;
     medAdjState.output = outDrugs;
@@ -8225,6 +8274,8 @@ function calcMedAdj(skipFormat) {
 }
 
 function renderMedAdjResult() {
+    var addedList = [];
+    var discontList = [];
     var inD = medAdjState.input;
     var outD = medAdjState.output;
     var tbody = document.getElementById("med-adj-tbody");
@@ -8239,21 +8290,32 @@ function renderMedAdjResult() {
         var statColor = "#666";
         var outHtml = "";
         
-        if(inD[i].status === "継続") {
+        if(inD[i].status === "継続" || inD[i].status === "手動紐付(継続)") {
             statColor = "#0d6efd";
             outHtml = escapeHtml(outD[inD[i].outRef].raw);
-        } else if(inD[i].status === "変更前") {
-            statColor = "#fd7e14";
+            if (inD[i].status === "手動紐付(継続)") outHtml += ' <button class="yr-btn-danger-sm" style="margin-left:10px;" onclick="unlinkMedAdjDrug(\'' + escapeHtml(outD[inD[i].outRef].raw).replace(/'/g, "\\'") + '\')">解除</button>';
+        } else if(inD[i].status === "変更前" || inD[i].status === "院内採用等へ変更") {
+            statColor = (inD[i].status === "院内採用等へ変更") ? "#20c997" : "#fd7e14";
             outHtml = escapeHtml(outD[inD[i].outRef].raw);
+            if (inD[i].status === "院内採用等へ変更") outHtml += ' <button class="yr-btn-danger-sm" style="margin-left:10px;" onclick="unlinkMedAdjDrug(\'' + escapeHtml(outD[inD[i].outRef].raw).replace(/'/g, "\\'") + '\')">解除</button>';
         } else if(inD[i].status === "中止") {
             statColor = "#dc3545";
             outHtml = '<span style="color:#aaa;">(なし)</span>';
         }
         
-        html += '<tr class="yr-row-regular">';
+        // ドラッグ＆ドロップ（ドロップ先）の属性付与
+        var dragAttrs = (inD[i].status === "中止") ? ' ondragover="event.preventDefault(); this.style.backgroundColor=\'#e8f4f8\';" ondragleave="this.style.backgroundColor=\'\'" ondrop="event.preventDefault(); this.style.backgroundColor=\'\'; linkMedAdjDrugs(' + i + ', event.dataTransfer.getData(\'text\'))"' : '';
+
+        html += '<tr class="yr-row-regular" ' + dragAttrs + '>';
         html += '<td style="text-align:center;"><input type="checkbox" onchange="toggleMedAdjInCheck('+i+')" '+(inD[i].checked?'checked':'')+' title="4週間以上継続している場合はチェック"></td>';
         html += '<td>' + escapeHtml(inD[i].raw) + '</td>';
-        html += '<td style="text-align:center; font-weight:bold; color:'+statColor+';">' + inD[i].status.replace("変更前","用量変更") + '</td>';
+        
+        // ステータス切り替え（クリック）の属性付与
+        var isToggleable = (inD[i].outRef !== undefined && inD[i].outRef !== -1);
+        var toggleStyle = isToggleable ? ' cursor:pointer; text-decoration:underline;' : '';
+        var toggleAttr = isToggleable ? ' onclick="toggleMedAdjStatus(' + i + ')" title="クリックで『継続』と『変更』を手動で切り替えます"' : '';
+        
+        html += '<td style="text-align:center; font-weight:bold; color:'+statColor+';' + toggleStyle + '"' + toggleAttr + '>' + inD[i].status.replace("変更前","用量変更") + '</td>';
         html += '<td>' + outHtml + '</td>';
         html += '</tr>';
     }
@@ -8262,7 +8324,8 @@ function renderMedAdjResult() {
         if(outD[j].isExcluded) continue;
         outCount++;
         if(outD[j].status === "追加") {
-            html += '<tr class="yr-row-brought-in">';
+            // ドラッグ＆ドロップ（ドラッグ元）の属性付与
+            html += '<tr class="yr-row-brought-in" draggable="true" ondragstart="event.dataTransfer.setData(\'text\', \'medadj_out_\' + ' + j + ')" style="cursor:grab;" title="ドラッグして中止された薬に重ねると、院内採用薬への変更として紐付けます">';
             html += '<td style="text-align:center;">-</td>';
             html += '<td style="color:#aaa;">(なし)</td>';
             html += '<td style="text-align:center; font-weight:bold; color:#198754;">追加</td>';
@@ -8289,8 +8352,6 @@ function renderMedAdjResult() {
     tbody.innerHTML = html;
     
     // --- 追加・中止の一覧を抽出してサマリー表示（UI改善） ---
-    var addedList = [];
-    var discontList = [];
     for(var j=0; j<outD.length; j++) {
         if(outD[j].status === "追加" && !outD[j].isExcluded) addedList.push(escapeHtml(outD[j].raw));
     }
@@ -8320,31 +8381,59 @@ function renderMedAdjResult() {
     
     var diff = baseCount - outCount;
     var summaryEl = document.getElementById("med-adj-summary");
+    if (!summaryEl) return;
     var resMsg = "ベースライン <span style='font-size:24px;'>" + baseCount + "</span> 種類 → 退院時 <span style='font-size:24px;'>" + outCount + "</span> 種類 （" + (diff>=0?"-":"+") + Math.abs(diff) + "種類）";
     
-    // 総合評価(100点)の要件：6種類以上で、何らかの変更（中止・追加・用量変更等）が行われたか
-    var hasAnyChange = (addedList.length > 0) || (discontList.length > 0);
-    // 「用量変更」がinDにあるかもチェック
+    var hasBaselineChange = false;
+    var hasAddition = (addedList.length > 0);
     for(var i=0; i<inD.length; i++) {
-        if(!inD[i].isExcluded && inD[i].status === "変更前") hasAnyChange = true;
+        if(!inD[i].isExcluded && (inD[i].status === "変更前" || inD[i].status === "中止" || inD[i].status === "院内採用等へ変更")) {
+            hasBaselineChange = true;
+        }
+    }
+    var req3Check = document.getElementById("chk-med-adj-req3");
+    var isAddValid = req3Check && req3Check.checked;
+    var hasAnyChange = hasBaselineChange || (hasAddition && isAddValid);
+    
+    var req3Container = document.getElementById("req3-container");
+    if (req3Container) {
+        if (hasAddition && !hasBaselineChange && baseCount >= 6) {
+            req3Container.style.display = "block";
+        } else {
+            req3Container.style.display = "none";
+            if (req3Check) req3Check.checked = false;
+        }
+    }
+    
+    var isOneYearRule = document.getElementById("chk-med-adj-1year") && document.getElementById("chk-med-adj-1year").checked;
+    var prevCountEl = document.getElementById("ipt-med-adj-prev-count");
+    var prevCount = prevCountEl ? (parseInt(prevCountEl.value, 10) || 0) : 0;
+    
+    var meet150Points = false;
+    if (isOneYearRule) {
+        if (prevCount > 0 && (prevCount - outCount) >= 2) meet150Points = true;
+    } else {
+        if (diff >= 2) meet150Points = true;
     }
     
     if (baseCount >= 6) {
-        if (diff >= 2) {
-            summaryEl.innerHTML = "<span style='color:#198754'>✅ 250点 算定可能 (評価100点 + 加算150点)</span><div style='font-size:12px;font-weight:normal;margin-top:4px;'>※2種類以上の減少を達成</div><div style='margin-top:8px; margin-bottom:8px;'>" + resMsg + "</div>" + listsHtml;
-            summaryEl.style.backgroundColor = "#d1e7dd";
-            summaryEl.style.color = "#0f5132";
-            summaryEl.style.border = "2px solid #badbcc";
-        } else if (hasAnyChange) {
-            summaryEl.innerHTML = "<span style='color:#0d6efd'>✅ 100点 のみ算定可能 (総合評価加算)</span><div style='font-size:12px;font-weight:normal;margin-top:4px;'>※処方変更はありますが、2種類以上の減少ではないため150点の上乗せは不可</div><div style='margin-top:8px; margin-bottom:8px;'>" + resMsg + "</div>" + listsHtml;
-            summaryEl.style.backgroundColor = "#cff4fc";
-            summaryEl.style.color = "#055160";
-            summaryEl.style.border = "2px solid #b6effb";
-        } else {
-            summaryEl.innerHTML = "<span style='color:#dc3545'>❌ 算定不可</span><br><span style='font-size:14px;font-weight:normal;'>" + resMsg + " （ベースラインは6種類ですが、処方内容の変更がありません）</span>" + listsHtml;
+        if (!hasAnyChange) {
+            var reasonTxt = (hasAddition && !isAddValid) ? "追加薬が当該処方の見直しに関連するものではないため要件未達です。" : "ベースライン（当該処方）の薬に変更・中止・追加がありません。";
+            summaryEl.innerHTML = "<span style='color:#dc3545'>❌ 算定不可</span><div style='font-size:12px;font-weight:bold;margin-top:4px;'>※" + reasonTxt + "</div><div style='margin-top:8px; margin-bottom:8px;'>" + resMsg + "</div>" + listsHtml;
             summaryEl.style.backgroundColor = "#f8d7da";
             summaryEl.style.color = "#842029";
             summaryEl.style.border = "2px solid #f5c2c7";
+        } else if (meet150Points) {
+            var methodMsg = isOneYearRule ? "※前回算定時(" + prevCount + "種類)から2種類以上減少" : "※2種類以上の減少を達成";
+            summaryEl.innerHTML = "<span style='color:#198754'>✅ 250点 算定可能 (評価100点 + 加算150点)</span><div style='font-size:12px;font-weight:normal;margin-top:4px;'>" + methodMsg + "</div><div style='margin-top:8px; margin-bottom:8px;'>" + resMsg + "</div>" + listsHtml;
+            summaryEl.style.backgroundColor = "#d1e7dd";
+            summaryEl.style.color = "#0f5132";
+            summaryEl.style.border = "2px solid #badbcc";
+        } else {
+            summaryEl.innerHTML = "<span style='color:#0d6efd'>✅ 100点 のみ算定可能 (総合評価加算)</span><div style='font-size:12px;font-weight:normal;margin-top:4px;'>※処方内容の変更(中止/用量変更/関連する追加)はありますが、2種類以上の減少要件を満たしません</div><div style='margin-top:8px; margin-bottom:8px;'>" + resMsg + "</div>" + listsHtml;
+            summaryEl.style.backgroundColor = "#cff4fc";
+            summaryEl.style.color = "#055160";
+            summaryEl.style.border = "2px solid #b6effb";
         }
     } else {
         summaryEl.innerHTML = "<span style='color:#dc3545'>❌ 算定不可</span><br><span style='font-size:14px;font-weight:normal;'>" + resMsg + " （ベースラインが6種類未満です）</span>" + listsHtml;
@@ -8353,12 +8442,13 @@ function renderMedAdjResult() {
         summaryEl.style.border = "2px solid #f5c2c7";
     }
     
-    document.getElementById("med-adj-result-panel").style.display = "block";
+    var panel = document.getElementById("med-adj-result-panel");
+    if (panel) panel.style.display = "block";
 }
 
 function toggleMedAdjInCheck(idx) {
     medAdjState.input[idx].checked = !medAdjState.input[idx].checked;
-    renderMedAdjResult();
+    calcMedAdj(true);
 }
 
 function copyMedAdjResult() {
@@ -8381,9 +8471,7 @@ function copyMedAdjResult() {
     var diff = baseCount - outCount;
     txt += "ベースライン: " + baseCount + "種類 → 退院時: " + outCount + "種類 (" + (diff>=0?"-":"+") + Math.abs(diff) + "種類)\n";
     
-    var hasAnyChange = (addedList && addedList.length > 0) || (changes.length > 0);
-    // addedList etc are scoped differently, let's just use changes array length
-    hasAnyChange = changes.length > 0;
+    var hasAnyChange = changes.length > 0;
     
     if (baseCount >= 6) {
         if (diff >= 2) {
@@ -8410,6 +8498,39 @@ function copyMedAdjResult() {
     } catch(e) {
         yrShowAlert('コピーに失敗しました。', 'error');
     }
+}
+
+function linkMedAdjDrugs(inIdx, data) {
+    if (!data || data.indexOf('medadj_out_') !== 0 || data.indexOf('medadj_out_2026_') === 0) return;
+    var outIdx = parseInt(data.replace('medadj_out_', ''), 10);
+    if (isNaN(outIdx)) return;
+    var inRaw = medAdjState.input[inIdx].raw;
+    var outRaw = medAdjState.output[outIdx].raw;
+    manualMedAdjLinks[outRaw] = inRaw;
+    calcMedAdj(true);
+}
+
+function unlinkMedAdjDrug(outRaw) {
+    if (manualMedAdjLinks[outRaw]) {
+        delete manualMedAdjLinks[outRaw];
+        calcMedAdj(true);
+    }
+}
+
+function toggleMedAdjStatus(inIdx) {
+    if (!medAdjState.input[inIdx]) return;
+    var p = medAdjState.input[inIdx];
+    if (p.outRef === undefined || p.outRef === -1) return; // 紐付いていない行（中止など）は無視
+
+    var out = medAdjState.output[p.outRef];
+    if (p.status === "変更前" || p.status === "院内採用等へ変更") {
+        p.status = "継続";
+        out.status = "継続";
+    } else if (p.status === "継続" || p.status === "手動紐付(継続)") {
+        p.status = "変更前";
+        out.status = "用量変更";
+    }
+    renderMedAdjResult();
 }
 // ---------- 薬剤調整加算(2026年改定版) 判定ロジック ----------
 var medAdjState2026 = { input: [], output: [] };
@@ -8548,6 +8669,8 @@ function calcMedAdj2026(skipFormat) {
 }
 
 function renderMedAdjResult2026() {
+    var addedList = [];
+    var discontList = [];
     var inD = medAdjState2026.input;
     var outD = medAdjState2026.output;
     var tbody = document.getElementById("med-adj-tbody-2026");
