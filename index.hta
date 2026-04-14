@@ -874,7 +874,8 @@ function generateAbbreviation() {}
             <input type="text" id="ipt-kartelink-search" placeholder="🔍 検索..." style="width:150px; padding:3px 6px; border:1px solid #ccc; border-radius:3px; font-size:11px;" onkeyup="filterKarteLinkTable()">
         </div>
         <div style="margin-bottom:8px; font-size:11px; color:#888; display:flex; justify-content:space-between; align-items:center;">
-            <span>💡 ボタンクリックでブラウザで開きます (Ctrl+Shift+K で表示切替)</span>
+            <span>💡 ボタンクリックで開きます [凡例 ⇒ K：カルテ、M：メニュー、S：簡易、D：詳細]</span>
+
             <button style="padding:4px 12px;font-size:11px;border-radius:3px;color:#fff;cursor:pointer;border:none;background:#1976d2;" onclick="openAdmissionMenu()">📋 補助機能メニュー</button>
         </div>
         <table class="table" id="tbl-kartelink" style="font-size:12px;">
@@ -889,12 +890,16 @@ function generateAbbreviation() {}
                     <th>バイタル</th>
                     <th>手帳</th>
                     <th>アレルギー</th>
+                    <th>処方</th>
+                    <th>注射</th>
+                    <th>手術</th>
                     <th width="300">情報共有・メモ</th>
                     <th width="180" class="hide-on-print">更新履歴</th>
                 </tr>
             </thead>
             <tbody id="tbody-kartelink">
-                <tr><td colspan="11" align="center">患者データを先に読み込んでください。</td></tr>
+                <tr><td colspan="14" align="center">患者データを先に読み込んでください。</td></tr>
+
             </tbody>
         </table>
     </div>
@@ -2370,7 +2375,8 @@ function renderKarteLinks() {
 	if (!tbody) return;
 	var list = getCurrentPatientsList();
 	if (!list || list.length === 0) {
-    	tbody.innerHTML = '<tr><td colspan="11" align="center">患者データがありません。</td></tr>';
+    	tbody.innerHTML = '<tr><td colspan="14" align="center">患者データがありません。</td></tr>';
+
     	return;
 	}
     
@@ -2407,11 +2413,16 @@ function renderKarteLinks() {
     	html += '<td style="font-size:11px;">' + escapeHtml(p.dept || "") + '</td>';
     	html += '<td style="font-size:11px;">' + escapeHtml(p.disease || "") + '</td>';
     	// 各種リンクボタン
-    	html += '<td style="text-align:center;"><button style="background:#1976d2;' + bs + '" onclick="openKarteLink(\'karte\',\'' + pid + '\')">カルテ</button></td>';
-    	html += '<td style="text-align:center;"><button style="background:#388e3c;' + bs + '" onclick="openKarteLink(\'kentai_karte\',\'' + pid + '\')">カルテ</button> <button style="background:#66bb6a;' + bs + '" onclick="openKarteLink(\'kentai_menu\',\'' + pid + '\')">メニュー</button></td>';
-    	html += '<td style="text-align:center;"><button style="background:#e65100;' + bs + '" onclick="openKarteLink(\'vital_karte\',\'' + pid + '\')">カルテ</button> <button style="background:#ff9800;' + bs + '" onclick="openKarteLink(\'vital_menu\',\'' + pid + '\')">メニュー</button></td>';
-    	html += '<td style="text-align:center;"><button style="background:#6a1b9a;' + bs + '" onclick="openKarteLink(\'document_karte\',\'' + pid + '\')">カルテ</button> <button style="background:#ab47bc;' + bs + '" onclick="openKarteLink(\'document_menu\',\'' + pid + '\')">メニュー</button></td>';
-    	html += '<td style="text-align:center;"><button style="background:#c62828;' + bs + '" onclick="openKarteLink(\'allergy_karte\',\'' + pid + '\')">カルテ</button> <button style="background:#ef5350;' + bs + '" onclick="openKarteLink(\'allergy_menu\',\'' + pid + '\')">メニュー</button></td>';
+    	html += '<td style="text-align:center; vertical-align:middle;"><button style="background:#1976d2;' + bs + '" onclick="openKarteLink(\'karte\',\'' + pid + '\')">カルテ</button></td>';
+    	html += '<td style="text-align:center; vertical-align:middle; white-space:nowrap;"><button style="background:#388e3c;' + bs + '" onclick="openKarteLink(\'kentai_karte\',\'' + pid + '\')">検査K</button><button style="background:#66bb6a;' + bs + '" onclick="openKarteLink(\'kentai_menu\',\'' + pid + '\')">検査M</button><br><button style="background:#43a047;' + bs + '" onclick="openKarteLink(\'kentai_s\',\'' + pid + '\')">項目S</button><button style="background:#2e7d32;' + bs + '" onclick="openKarteLink(\'kentai_d\',\'' + pid + '\')">項目D</button></td>';
+    	html += '<td style="text-align:center; vertical-align:middle;"><button style="background:#e65100;' + bs + '" onclick="openKarteLink(\'vital_karte\',\'' + pid + '\')">ﾊﾞｲﾀﾙK</button><br><button style="background:#ff9800;' + bs + '" onclick="openKarteLink(\'vital_menu\',\'' + pid + '\')">ﾊﾞｲﾀﾙM</button></td>';
+    	html += '<td style="text-align:center; vertical-align:middle;"><button style="background:#6a1b9a;' + bs + '" onclick="openKarteLink(\'document_karte\',\'' + pid + '\')">手帳K</button><br><button style="background:#ab47bc;' + bs + '" onclick="openKarteLink(\'document_menu\',\'' + pid + '\')">手帳M</button></td>';
+    	html += '<td style="text-align:center; vertical-align:middle;"><button style="background:#c62828;' + bs + '" onclick="openKarteLink(\'allergy_karte\',\'' + pid + '\')">ｱﾚﾙｷﾞｰK</button><br><button style="background:#ef5350;' + bs + '" onclick="openKarteLink(\'allergy_menu\',\'' + pid + '\')">ｱﾚﾙｷﾞｰM</button></td>';
+    	html += '<td style="text-align:center; vertical-align:middle;"><button style="background:#1565c0;' + bs + '" onclick="openKarteLink(\'shohou_s\',\'' + pid + '\')">処方S</button><br><button style="background:#0d47a1;' + bs + '" onclick="openKarteLink(\'shohou_d\',\'' + pid + '\')">処方D</button></td>';
+    	html += '<td style="text-align:center; vertical-align:middle;"><button style="background:#00838f;' + bs + '" onclick="openKarteLink(\'chuusha_s\',\'' + pid + '\')">注射S</button><br><button style="background:#006064;' + bs + '" onclick="openKarteLink(\'chuusha_d\',\'' + pid + '\')">注射D</button></td>';
+    	html += '<td style="text-align:center; vertical-align:middle;"><button style="background:#5d4037;' + bs + '" onclick="openKarteLink(\'ope_record\',\'' + pid + '\')">手術</button></td>';
+
+
     	// 情報共有・メモ（2段構成）
         var memoAuthorHtml = '';
         if (p.memoAuthors && p.memoAuthors.length > 0) {
@@ -3045,6 +3056,28 @@ function openKarteLink(type, kanjaId) {
         case 'allergy_karte':
             url = baseUrl + 'allergy_karte.php?start_flag=1&kanja_id=' + kanjaId + '&start_date=&end_date=&hakkou_date=&user_id=' + userId + '&section_code=&document_code=100000004&disp_selectsection=&range_date=180/0/0/0&disp_zoom=100';
             break;
+        case 'shohou_s':
+            url = baseUrl + 'search/search_order.php?kana_name=&search_code=1&user_id=' + userId + '&kanja_id=' + kanjaId;
+            break;
+        case 'shohou_d':
+            url = baseUrl + 'karte.php?kanja_id=' + kanjaId + '&user_id=' + userId + '&order_search_flg=1&order_search_code=1&order_search_name=#top';
+            break;
+        case 'kentai_s':
+            url = baseUrl + 'search/search_order.php?kana_name=&search_code=3&user_id=' + userId + '&kanja_id=' + kanjaId;
+            break;
+        case 'kentai_d':
+            url = baseUrl + 'karte.php?kanja_id=' + kanjaId + '&user_id=' + userId + '&order_search_flg=1&order_search_code=3&order_search_name=#top';
+            break;
+        case 'chuusha_s':
+            url = baseUrl + 'search/search_order.php?kana_name=&search_code=4&user_id=' + userId + '&kanja_id=' + kanjaId;
+            break;
+        case 'chuusha_d':
+            url = baseUrl + 'karte.php?kanja_id=' + kanjaId + '&user_id=' + userId + '&order_search_flg=1&order_search_code=4&order_search_name=#top';
+            break;
+        case 'ope_record':
+            url = baseUrl + 'jyoken_disp/jyoken_disp_reference.php?kanja_id=' + kanjaId + '&user_id=' + userId + '&section_code=0000023&order_kind_code_str=0091,1091&document_code=300360001,400430002,630000003,700360003,730360001&multi_kind=1';
+            break;
+
     }
     
     if (!url) return;
@@ -5446,8 +5479,30 @@ function filterHistoryTable() {
     }
 }
 
+function filterKarteLinkTable() {
+    var input = document.getElementById("ipt-kartelink-search");
+    if (!input) return;
+    var filter = input.value.toLowerCase();
+    var tbody = document.getElementById("tbody-kartelink");
+    if (!tbody) return;
+    var tr = tbody.getElementsByTagName("tr");
+
+    for (var i = 0; i < tr.length; i++) {
+        var row = tr[i];
+        if (row.cells.length < 5) continue; // メッセージ行などを除外
+        
+        var text = (row.textContent || row.innerText || "").toLowerCase();
+        if (text.indexOf(filter) > -1) {
+            row.style.display = "";
+        } else {
+            row.style.display = "none";
+        }
+    }
+}
+
 
 function toggleHistoryDetail(pId, rowIndex) {
+
     var detailRow = document.getElementById("tr-history-detail-" + rowIndex);
     var detailCell = document.getElementById("td-history-detail-" + rowIndex);
     if (!detailRow || !detailCell) return;
