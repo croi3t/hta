@@ -2356,7 +2356,14 @@ function loadData(manual) {
     if (currentSystemId && appData.settings && appData.settings.userWards && appData.settings.userWards[currentSystemId]) {
         var myCodes = appData.settings.userWards[currentSystemId];
         if (myCodes.length > 0) {
-            appData.settings.activeWardCodes = myCodes;
+            // 参照を切るためにconcatを使用
+            appData.settings.activeWardCodes = [].concat(myCodes);
+            // 現在表示中の病棟タブが自分のリストに無い場合は先頭に戻す
+            var hasCurrent = false;
+            for (var i = 0; i < myCodes.length; i++) {
+                if (myCodes[i] === currentWard) hasCurrent = true;
+            }
+            if (!hasCurrent) currentWard = myCodes[0];
         }
     }
     
@@ -3418,9 +3425,12 @@ function renderPatients() {
         return;
     }
     
-    // セッション内ソート状態がある場合、自動で再適用（他ユーザー更新後もソート維持）
+    // 表示用の配列コピーを作成（元のデータを直接ソートして他ユーザーの基本順序を破壊しないため）
+    var displayList = [].concat(list);
+
+    // セッション内ソート状態がある場合、コピーに対して再適用
     if (sortKey) {
-        list.sort(function(a, b) {
+        displayList.sort(function(a, b) {
             var valA = a[sortKey] || "";
             var valB = b[sortKey] || "";
             if (!isNaN(valA) && !isNaN(valB) && valA !== "" && valB !== "") {
@@ -3433,9 +3443,8 @@ function renderPatients() {
     var html = "";
     // ハイライトのキーワード設定
     var highlightWords = ["退院", "転院", "ENT", "ent"];
-
-    for(var i=0; i<list.length; i++) {
-        var p = list[i];
+    for(var i=0; i<displayList.length; i++) {
+        var p = displayList[i];
         if (!p || typeof p !== 'object') continue;
         if (!p.id) continue;
         
@@ -5072,18 +5081,6 @@ function sortPatients(key) {
         sortKey = key;
         sortOrder = 1; // 新規キーは昇順から
     }
-    
-    var list = getCurrentPatientsList();
-    list.sort(function(a, b) {
-        var valA = a[sortKey] || "";
-        var valB = b[sortKey] || "";
-        // IDなどの数字は数値比較にする
-        if (!isNaN(valA) && !isNaN(valB) && valA !== "" && valB !== "") {
-            return (Number(valA) - Number(valB)) * sortOrder;
-        }
-        return valA.toString().localeCompare(valB.toString()) * sortOrder;
-    });
-    
     renderPatients();
 }
 
