@@ -3307,7 +3307,7 @@ function doExcelImport() {
                     alreadyRecorded++;
                 } else {
                     p.status = 3; // 記録済
-                    p.statusAuthor = currentUserName;
+                    p.statusAuthor = "";
                     updatedCount++;
                 }
             }
@@ -8582,6 +8582,8 @@ function renderMedAdjResult2026() {
         html += '<td>' + outHtml + '</td>';
         html += '</tr>';
     }
+    var addedList = [];
+    var discontList = [];
     for(var j=0; j<outD.length; j++) {
         if(outD[j].isExcluded) continue;
         outCount++;
@@ -8596,8 +8598,6 @@ function renderMedAdjResult2026() {
     }
     tbody.innerHTML = html;
     
-    var addedList = [];
-    var discontList = [];
     for(var j=0; j<outD.length; j++) if(outD[j].status === "追加" && !outD[j].isExcluded) addedList.push(escapeHtml(outD[j].raw));
     for(var i=0; i<inD.length; i++) if(inD[i].status === "中止" && !inD[i].isExcluded) discontList.push(escapeHtml(inD[i].raw));
 
