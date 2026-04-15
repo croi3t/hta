@@ -154,6 +154,11 @@ var DataManager = (function() {
             if (!initFSO()) return myData;
             
             var diskData = this.loadAll(); // 保存直前に最新のサーバー状態を取得
+            return this._mergeAndSave(myData, diskData);
+        },
+
+        // 内部メループ＆保存共通処理（二重ロードを防ぐため分離）
+        _mergeAndSave: function(myData, diskData) {
             var merged = {};
 
             // 1. 患者データの結合
@@ -180,7 +185,7 @@ var DataManager = (function() {
 
             var myHist = (myData.history instanceof Array) ? myData.history : [];
             var dHist = (diskData.history instanceof Array) ? diskData.history : [];
-            merged.history = myHist.concat(dHist); // 簡易結合（重複は実運用で間引かれる）
+            merged.history = myHist.concat(dHist);
 
             // 3. 設定の深いマージ（他人の病棟設定を消さない超重要処理）
             merged.settings = diskData.settings || {};
@@ -212,12 +217,21 @@ var DataManager = (function() {
             // ★重要：yrSettings は myStorage (HTA側) が直接操作するため、ここでは一切触れない（上書き破壊を防ぐ）
             if (merged.settings.yrSettings) delete merged.settings.yrSettings;
 
-            // 4. ファイルへの書き込み
-            saveFile(getJsonPath("patients"), stringifyData({ patients: merged.patients, admissionSchedule: merged.admissionSchedule, dischargedArchive: merged.dischargedArchive }));
-            saveFile(getJsonPath("todos"), stringifyData(merged.todos));
-            saveFile(getJsonPath("notes"), stringifyData({ wardNotes: merged.wardNotes }));
-            saveFile(getJsonPath("settings"), stringifyData(merged.settings));
-            saveFile(getJsonPath("history"), stringifyData(merged.history));
+            // 4. ファイルへの書き込み―データが空の場合は書き込みをスキップしてファイル破椁を防ぐ
+            var patStr = stringifyData({ patients: merged.patients, admissionSchedule: merged.admissionSchedule, dischargedArchive: merged.dischargedArchive });
+            if (patStr && patStr.length > 2) saveFile(getJsonPath("patients"), patStr);
+
+            var todoStr = stringifyData(merged.todos);
+            if (todoStr && todoStr.length > 1) saveFile(getJsonPath("todos"), todoStr);
+
+            var notesStr = stringifyData({ wardNotes: merged.wardNotes });
+            if (notesStr && notesStr.length > 2) saveFile(getJsonPath("notes"), notesStr);
+
+            var settingsStr = stringifyData(merged.settings);
+            if (settingsStr && settingsStr.length > 2) saveFile(getJsonPath("settings"), settingsStr);
+
+            var histStr = stringifyData(merged.history);
+            if (histStr && histStr.length > 1) saveFile(getJsonPath("history"), histStr);
 
             return merged; // HTA側に最新の結合済みデータを返す
         }
