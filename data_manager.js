@@ -120,7 +120,7 @@ var DataManager = (function() {
             if (!initFSO()) return {};
             var disk = {
                 patients: {}, wardNotes: {}, todos: [], history: [],
-                settings: { adminIds: ["16622"], activeWardCodes: ["99"] },
+                settings: { adminIds: ["16622", "17049", "17494", "17701", "17702", "3107", "17397", "17050", "16623", "17496", "3429", "17626"], activeWardCodes: ["99"] },
                 users: {}, announcement: "", admissionSchedule: [], dischargedArchive: {}
             };
 
@@ -139,8 +139,10 @@ var DataManager = (function() {
             disk.wardNotes = notes.wardNotes || notes || {};
             
             var settings = safeRead("settings") || {};
-            disk.settings = settings;
-            if (settings.users) disk.users = settings.users;
+            for (var key in settings) {
+                disk.settings[key] = settings[key];
+            }
+            if (disk.settings.users) disk.users = disk.settings.users;
             if (settings.announcement !== undefined) disk.announcement = settings.announcement;
 
             disk.history = safeRead("history") || [];
