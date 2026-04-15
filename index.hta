@@ -2336,6 +2336,7 @@ function loadData(manual) {
 
     if (typeof DataManager !== "undefined") {
         appData = DataManager.loadAll();
+        DataManager.appData = appData; // TodoUIなど外部モジュールの参照を同期
         window.baseAppDataStr = stringifyData(appData);
     }
     
