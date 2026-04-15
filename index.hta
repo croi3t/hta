@@ -1624,6 +1624,10 @@ function switchWard(wardCode) {
     currentWard = wardCode;
     renderWardTabs();
     renderPatients();
+    
+    // ▼ この1行を追加して、病棟切り替え時に入院予定も再取得させる
+    fetchAdmissionSchedule();
+
     // カルテLinkタブが表示中なら患者一覧も更新する
     var klTab = document.getElementById('tab-kartelink');
     if (klTab && klTab.className.indexOf('active') !== -1) {
@@ -6791,9 +6795,8 @@ function removeClass(el, className) {
             for (var k = 0; k < textLines.length; k++) {
                 if (textLines[k].indexOf('▼持参薬検認') !== -1 || textLines[k].indexOf('■持参薬') !== -1) {
 
-                    detectingClinic = true;
-                } else if (detectingClinic) {
-                    if (textLines[k].match(/^[ \t]*Rp.?\d+/i) || textLines[k].match(/^[ \t]*（持参薬）/)) {
+                        } else if (detectingClinic) {
+                    if (textLines[k].match(/^[ \t]*Rp.?\d+/i) || textLines[k].match(/^[ \t]*[（\(]持参薬[）\)]/) || textLines[k].match(/^[ \t]*\d+\)/)) {
                         detectingClinic = false;
                     } else {
                         var tmpLine = textLines[k].trim();
