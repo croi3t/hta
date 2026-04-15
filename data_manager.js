@@ -176,8 +176,8 @@ var DataManager = (function() {
                 merged.wardNotes[nw] = mergeArrayById((diskData.wardNotes||{})[nw], (myData.wardNotes||{})[nw], mergeObj);
             }
 
-            var myHist = myData.history || [];
-            var dHist = diskData.history || [];
+            var myHist = (myData.history instanceof Array) ? myData.history : [];
+            var dHist = (diskData.history instanceof Array) ? diskData.history : [];
             merged.history = myHist.concat(dHist); // 簡易結合（重複は実運用で間引かれる）
 
             // 3. 設定の深いマージ（他人の病棟設定を消さない超重要処理）
