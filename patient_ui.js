@@ -232,7 +232,15 @@ var PatientUI = {
                 td.innerHTML = statText + authorHtml;
             }
         }
-        DataManager.saveCategory("patients", DataManager.appData);
+        
+        // 伝票発行 (REQ.3)
+        DataManager.appendTransaction("TOGGLE_STATUS", {
+            patientId: patientId,
+            wardCode: currentWard,
+            value: p.status
+        });
+
+        if (typeof autoSave === "function") autoSave();
     },
 
     /**
@@ -269,7 +277,15 @@ var PatientUI = {
                 }
             }
         }
-        DataManager.saveCategory("patients", DataManager.appData);
+
+        // 伝票発行 (REQ.3)
+        DataManager.appendTransaction("TOGGLE_PRESCRIPTION", {
+            patientId: patientId,
+            wardCode: currentWard,
+            value: p.chkPrescription
+        });
+
+        if (typeof autoSave === "function") autoSave();
     },
 
     /**
@@ -295,7 +311,15 @@ var PatientUI = {
                 td.innerText = aText;
             }
         }
-        DataManager.saveCategory("patients", DataManager.appData);
+
+        // 伝票発行 (REQ.3)
+        DataManager.appendTransaction("TOGGLE_ALERT", {
+            patientId: patientId,
+            wardCode: currentWard,
+            value: p.alertLevel
+        });
+
+        if (typeof autoSave === "function") autoSave();
     },
 
     /**
@@ -339,8 +363,15 @@ var PatientUI = {
         // 遅延再描画: onchange直後のDOMが消える前にクリックイベントを先に消化させる
         var self = this;
         setTimeout(function() {
+            // 伝票発行 (REQ.3)
+            DataManager.appendTransaction("UPDATE_PATIENT_MEMO", {
+                patientId: patientId,
+                wardCode: currentWard,
+                value: val
+            });
+
             self.render();
-            DataManager.saveCategory("patients", DataManager.appData);
+            if (typeof autoSave === "function") autoSave();
         }, 150);
     },
 
@@ -356,7 +387,16 @@ var PatientUI = {
 
         if (!p.personalMemos) p.personalMemos = {};
         p.personalMemos[currentSystemId] = element.value;
-        DataManager.saveCategory("patients", DataManager.appData);
+
+        // 伝票発行 (自分自身の他端末同期用)
+        DataManager.appendTransaction("UPDATE_PERSONAL_MEMO", {
+            patientId: patientId,
+            wardCode: currentWard,
+            userId: currentSystemId,
+            value: element.value
+        });
+
+        if (typeof autoSave === "function") autoSave();
     },
 
     /**
