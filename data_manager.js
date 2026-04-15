@@ -211,11 +211,11 @@ var DataManager = (function() {
             if (merged.settings.yrSettings) delete merged.settings.yrSettings;
 
             // 4. ファイルへの書き込み
-            saveFile(getJsonPath("patients"), { patients: merged.patients, admissionSchedule: merged.admissionSchedule, dischargedArchive: merged.dischargedArchive });
-            saveFile(getJsonPath("todos"), merged.todos);
-            saveFile(getJsonPath("notes"), { wardNotes: merged.wardNotes });
-            saveFile(getJsonPath("settings"), merged.settings);
-            saveFile(getJsonPath("history"), merged.history);
+            saveFile(getJsonPath("patients"), stringifyData({ patients: merged.patients, admissionSchedule: merged.admissionSchedule, dischargedArchive: merged.dischargedArchive }));
+            saveFile(getJsonPath("todos"), stringifyData(merged.todos));
+            saveFile(getJsonPath("notes"), stringifyData({ wardNotes: merged.wardNotes }));
+            saveFile(getJsonPath("settings"), stringifyData(merged.settings));
+            saveFile(getJsonPath("history"), stringifyData(merged.history));
 
             return merged; // HTA側に最新の結合済みデータを返す
         }
