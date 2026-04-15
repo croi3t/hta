@@ -1401,7 +1401,7 @@ var selectedNoteId = null; // 共有ノートの選択中ノートID
 // 扱うデータ構造
 var appData = {
     settings: {
-        adminIds: ["16622"], // 編集を許可するシステムIDリスト
+        adminIds: ["16622", "17049", "17494", "17701", "17702", "3107", "17397", "17050", "16623", "17496", "3429", "17626"], // 編集を許可するシステムIDリスト
         activeWardCodes: ["99"] // 現在読み込まれて表示対象となっている病棟コード
     },
     patients: {},  // 病棟コードをキーにした患者リスト: { "31": [], ... }
@@ -1422,7 +1422,7 @@ if (typeof DataManager !== "undefined") {
 // 旧形式(Vol.15以前)のデータ構造を新形式へ移行・初期化する関数
 function ensureNewStructure() {
     if (!appData.settings) appData.settings = {};
-    if (!appData.settings.adminIds) appData.settings.adminIds = ["16622"];
+    if (!appData.settings.adminIds) appData.settings.adminIds = ["16622", "17049", "17494", "17701", "17702", "3107", "17397", "17050", "16623", "17496", "3429", "17626"];
     
     // patients をマップ形式に統一
     if (!appData.patients) appData.patients = {};
