@@ -314,6 +314,11 @@ var TodoUI = {
                 assignee = currentUserName;
             }
 
+            var selReminder = document.getElementById("sel-todo-reminder");
+            var reminderOffset = selReminder ? parseInt(selReminder.value, 10) : 0;
+            var chkNotify = document.getElementById("chk-todo-notify-done");
+            var notifyOnDone = chkNotify ? chkNotify.checked : false;
+
             DataManager.appData.todos.push({
                 id: now.getTime(),
                 text: val,
@@ -323,7 +328,9 @@ var TodoUI = {
                 assignee: assignee,
                 wardId: wardId,
                 done: false,
-                deleted: false
+                deleted: false,
+                reminderOffset: reminderOffset || 0,
+                notifyOnDone: notifyOnDone
             });
         }
 
