@@ -2360,6 +2360,14 @@ function loadData(manual) {
     if(elTime) elTime.innerText = "[同期完了: " + getTimeString() + "]";
 }
 
+// 削除されていたautoSave関数を安全なラッパーラッパーとして再定義
+var autoSaveTimer = null;
+function autoSave(force) {
+    if (!isEditMode && !force) return;
+    clearTimeout(autoSaveTimer);
+    autoSaveTimer = setTimeout(function() { saveData(false); }, 2000);
+}
+
 function renderHistory() {
     var tbody = document.getElementById("tbody-history");
     if (!tbody) return;
