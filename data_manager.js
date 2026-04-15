@@ -146,15 +146,229 @@ var DataManager = (function() {
             if (settings.announcement !== undefined) disk.announcement = settings.announcement;
 
             disk.history = safeRead("history") || [];
+            
+            // 冪等性確保用の適用済みIDリスト
+            disk.appliedTxIds = pat.appliedTxIds || []; 
+            
             return disk;
         },
 
-        // メモリ上のデータとサーバーデータを安全に結合して保存する
+        // メモリ上のデータとサーバーデータを安全に結合して保存する（チェックポイント）
         saveAll: function(myData) {
             if (!initFSO()) return myData;
             
             var diskData = this.loadAll(); // 保存直前に最新のサーバー状態を取得
-            return this._mergeAndSave(myData, diskData);
+            var merged = this._mergeAndSave(myData, diskData);
+
+            // 1時間以上経過した伝票を整理
+            this._lazyArchive();
+
+            return merged;
+        },
+
+        // -------------------------------------------------------
+        // トランザクション処理 (伝票方式による差分同期)
+        // -------------------------------------------------------
+
+        // トランザクションディレクトリの取得・作成
+        getTxDir: function() {
+            if (!initFSO()) return "";
+            var txDir = fso.BuildPath(SHARED_DATA_PATH, "tx");
+            var archiveDir = fso.BuildPath(txDir, "archive");
+            try {
+                if (!fso.FolderExists(txDir)) fso.CreateFolder(txDir);
+                if (!fso.FolderExists(archiveDir)) fso.CreateFolder(archiveDir);
+            } catch(e) { return ""; }
+            return txDir;
+        },
+
+        // 変更を伝票として発行
+        appendTransaction: function(op, payload) {
+            var txDir = this.getTxDir();
+            if (!txDir) return false;
+
+            var ts = new Date().getTime();
+            var rand = Math.floor(Math.random() * 0x10000).toString(16);
+            // ID形式: [ts]_[uid]_[rand]
+            var txId = ts + "_" + (window.currentSystemId || "unknown") + "_" + rand;
+            
+            var txData = {
+                txId: txId,
+                ts: ts,
+                uId: window.currentSystemId,
+                uName: window.currentUserName,
+                op: op,
+                data: payload
+            };
+
+            var filePath = fso.BuildPath(txDir, "tx_" + txId + ".json");
+            return saveFile(filePath, stringifyData(txData));
+        },
+
+        // 他端末の伝票を読み込んでリプレイする
+        replayTransactions: function(appData) {
+            var txDir = this.getTxDir();
+            if (!txDir || !appData) return false;
+
+            var folder = fso.GetFolder(txDir);
+            var fc = new Enumerator(folder.Files);
+            var targets = [];
+
+            // 未適用のファイルをフィルタリング
+            for (; !fc.atEnd(); fc.moveNext()) {
+                var file = fc.item();
+                if (file.Name.indexOf("tx_") === 0 && file.Name.indexOf(".json") !== -1) {
+                    var txId = file.Name.replace("tx_", "").replace(".json", "");
+                    
+                    // 適用済みチェック (冪等性の確保)
+                    var alreadyApplied = false;
+                    var appliedIds = appData.appliedTxIds || [];
+                    for(var j=0; j<appliedIds.length; j++) {
+                        if(appliedIds[j] === txId) { alreadyApplied = true; break; }
+                    }
+
+                    if (!alreadyApplied) {
+                        var parts = txId.split("_");
+                        targets.push({ id: txId, ts: parseInt(parts[0],10), path: file.Path });
+                    }
+                }
+            }
+
+            if (targets.length === 0) return false;
+
+            // タイムスタンプ順に適用
+            targets.sort(function(a, b) { return a.ts - b.ts; });
+
+            var updatedCount = 0;
+            if (!appData.appliedTxIds) appData.appliedTxIds = [];
+
+            for (var i = 0; i < targets.length; i++) {
+                var raw = loadFile(targets[i].path);
+                var tx = parseData(raw);
+                if (tx) {
+                    // 自分以外が発行した伝票のみ適用するが、IDは自分のものでも記録する
+                    if (tx.uId !== window.currentSystemId) {
+                        this._applyDelta(appData, tx.op, tx.data, tx.uName);
+                        updatedCount++;
+                    }
+                }
+                appData.appliedTxIds.push(targets[i].id);
+            }
+            
+            // 適用済みリストを直近1000件程度に維持
+            if (appData.appliedTxIds.length > 1000) {
+                appData.appliedTxIds = appData.appliedTxIds.slice(-1000);
+            }
+
+            return updatedCount > 0;
+        },
+
+        // 各オペレーションの具体的反映
+        _applyDelta: function(appData, op, data, uName) {
+            try {
+                var p = null;
+                if (data && data.patientId && data.wardCode) {
+                    p = this._findPatientInAppData(appData, data.patientId, data.wardCode);
+                }
+
+                switch (op) {
+                    case "UPDATE_PATIENT_MEMO":
+                        if (p) {
+                            p.memo = data.value;
+                            this._updateMemoAuthors(p, uName);
+                        }
+                        break;
+                    case "TOGGLE_STATUS":
+                        if (p) p.status = data.value;
+                        break;
+                    case "TOGGLE_PRESCRIPTION":
+                        if (p) p.chkPrescription = data.value;
+                        break;
+                    case "TOGGLE_ALERT":
+                        if (p) p.alertLevel = data.value;
+                        break;
+                    case "UPDATE_PERSONAL_MEMO":
+                        if (p) {
+                            if (!p.personalMemos) p.personalMemos = {};
+                            p.personalMemos[data.userId] = data.value;
+                        }
+                        break;
+                    case "ADD_TODO":
+                        if (!appData.todos) appData.todos = [];
+                        appData.todos.push(data);
+                        break;
+                    case "TOGGLE_TODO":
+                        if (appData.todos) {
+                            for(var k=0; k<appData.todos.length; k++) {
+                                if (String(appData.todos[k].id) === String(data.id)) {
+                                    appData.todos[k].done = data.done;
+                                    break;
+                                }
+                            }
+                        }
+                        break;
+                    case "DELETE_TODO":
+                        if (appData.todos) {
+                            for(var k=0; k<appData.todos.length; k++) {
+                                if (String(appData.todos[k].id) === String(data.id)) {
+                                    appData.todos[k].deleted = data.deleted;
+                                    break;
+                                }
+                            }
+                        }
+                        break;
+                }
+            } catch(e) {}
+        },
+
+        // メモ履歴の統合
+        _updateMemoAuthors: function(p, uName) {
+            var now = new Date();
+            var tsDisplay = (now.getMonth() + 1) + "/" + now.getDate() + " " + now.getHours() + ":" + (now.getMinutes() < 10 ? "0" : "") + now.getMinutes();
+            var authorStr = uName + " (" + tsDisplay + ")";
+            
+            if (!p.memoAuthors) p.memoAuthors = [];
+            if (p.memoAuthors[0] && p.memoAuthors[0].indexOf(uName) === 0) {
+                p.memoAuthors[0] = authorStr;
+            } else {
+                p.memoAuthors.unshift(authorStr);
+            }
+            if (p.memoAuthors.length > 3) p.memoAuthors = p.memoAuthors.slice(0, 3);
+            p.memoAuthor = p.memoAuthors[0];
+        },
+
+        _findPatientInAppData: function(appData, pid, wardCode) {
+            var wk = "patientsWard" + wardCode;
+            var list = appData[wk];
+            if (!list) return null;
+            for (var i = 0; i < list.length; i++) {
+                if (String(list[i].id) === String(pid)) return list[i];
+            }
+            return null;
+        },
+
+        // 蓄積した伝票のアーカイブ (Lazy Archive)
+        _lazyArchive: function() {
+            var txDir = this.getTxDir();
+            if (!txDir) return;
+            var archiveDir = fso.BuildPath(txDir, "archive");
+            var now = new Date().getTime();
+            var threshold = 3600000; // 1時間
+
+            try {
+                var folder = fso.GetFolder(txDir);
+                var fc = new Enumerator(folder.Files);
+                for (; !fc.atEnd(); fc.moveNext()) {
+                    var file = fc.item();
+                    if (file.Name.indexOf("tx_") === 0) {
+                        try {
+                            if (now - new Date(file.DateLastModified).getTime() > threshold) {
+                                fso.MoveFile(file.Path, fso.BuildPath(archiveDir, file.Name));
+                            }
+                        } catch(e) { /* 使用中のファイル等はスキップ */ }
+                    }
+                }
+            } catch(e) {}
         },
 
         // 内部メループ＆保存共通処理（二重ロードを防ぐため分離）
@@ -232,7 +446,13 @@ var DataManager = (function() {
             if (merged.settings.yrSettings) delete merged.settings.yrSettings;
 
             // 4. ファイルへの書き込み―データが空の場合は書き込みをスキップしてファイル破椁を防ぐ
-            var patStr = stringifyData({ patients: merged.patients, admissionSchedule: merged.admissionSchedule, dischargedArchive: merged.dischargedArchive });
+            var patObj = { 
+                patients: merged.patients, 
+                admissionSchedule: merged.admissionSchedule, 
+                dischargedArchive: merged.dischargedArchive,
+                appliedTxIds: merged.appliedTxIds // 適用済みIDも永続化
+            };
+            var patStr = stringifyData(patObj);
             if (patStr && patStr.length > 2) saveFile(getJsonPath("patients"), patStr);
 
             var todoStr = stringifyData(merged.todos);
