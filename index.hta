@@ -2330,6 +2330,10 @@ function loadData(manual) {
         return;
     }
 
+    // 一時的に追加した病棟タブの状態を保持
+    var prevCodes = (typeof appData !== "undefined" && appData.settings && appData.settings.activeWardCodes) ? [].concat(appData.settings.activeWardCodes) : null;
+    var prevCurrentWard = (typeof currentWard !== "undefined") ? currentWard : null;
+
     if (typeof DataManager !== "undefined") {
         appData = DataManager.loadAll();
         window.baseAppDataStr = stringifyData(appData);
@@ -2337,8 +2341,12 @@ function loadData(manual) {
     
     cachedUniqueUsers = null;
     
-    // 自分の病棟設定を復元（他人の設定を見ていた場合、自分の設定に戻す）
-    if (currentSystemId && appData.settings && appData.settings.userWards && appData.settings.userWards[currentSystemId]) {
+    // 表示用の病棟を復元（「+」ボタンで一時追加した病棟タブが消えないようにする対応）
+    if (prevCodes && prevCodes.length > 0) {
+        if (!appData.settings) appData.settings = {};
+        appData.settings.activeWardCodes = prevCodes;
+        if (prevCurrentWard) currentWard = prevCurrentWard;
+    } else if (currentSystemId && appData.settings && appData.settings.userWards && appData.settings.userWards[currentSystemId]) {
         var myCodes = appData.settings.userWards[currentSystemId];
         if (myCodes.length > 0) {
             appData.settings.activeWardCodes = [].concat(myCodes);
