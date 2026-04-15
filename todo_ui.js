@@ -21,6 +21,7 @@ var TodoUI = {
         for (var i = 0; i < todos.length; i++) {
             var t = todos[i];
             if (t.archived) continue;
+            if (t.hardDeleted) continue; // 完全削除済みは表示しない
 
             // フィルタリングロジック
             if (!this.isMatchCurrentTab(t)) continue;
@@ -220,7 +221,8 @@ var TodoUI = {
             var todos = DataManager.appData.todos || [];
             for (var i = 0; i < todos.length; i++) {
                 if (String(todos[i].id) === String(id)) {
-                    todos.splice(i, 1);
+                    // spliceではなく hardDeleted フラグを立てる（spliceだとマージ時にディスクから復活するため）
+                    todos[i].hardDeleted = true;
                     break;
                 }
             }
