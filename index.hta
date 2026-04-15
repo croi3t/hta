@@ -2308,61 +2308,40 @@ function perform3WayMerge(baseData, diskData, myData) {
 
 function saveData(manual) {
     if (!isEditMode) return;
-    
-    // データ保護ガード
     if (appData._isLoadFailed) {
         alert("【致命的エラー】データの読み出しに失敗しているため、保存を中止しました。");
         return;
     }
 
-    if (typeof DataManager !== "undefined" && DataManager.fso) {
-        // DataManager 経由で全カテゴリを 3-way マージして保存
-        DataManager.saveAll(appData);
+    if (typeof DataManager !== "undefined") {
+        // DataManagerにすべて任せる。安全にマージされた最新データが返ってくる
+        appData = DataManager.saveAll(appData); 
         window.baseAppDataStr = stringifyData(appData);
-    } else {
-        // フォールバック
-        var diskData = loadDiskData();
-        var baseData = parseData(window.baseAppDataStr || "{}") || {};
-        var merged = perform3WayMerge(baseData, diskData, appData);
-        if (saveDiskData(merged)) {
-            appData = merged;
-            window.baseAppDataStr = stringifyData(appData);
-        }
     }
     
     if (manual) alert("データを保存しました。");
 }
 
 function loadData(manual) {
-    // フォルダ存在チェック (DataManager.init 済みを前提)
     if (!fso || !fso.FolderExists(SHARED_DATA_PATH)) {
         var el = document.getElementById("last-local-update-time");
         if(el) el.innerText = "[接続エラー: 共有データ未検出]";
-        // DataManagerが初期化できていない場合はここでリトライ
         if (typeof DataManager !== "undefined") DataManager.init();
         return;
     }
 
     if (typeof DataManager !== "undefined") {
-        // DataManager 経由で全ファイルを読み込み・マージ
         appData = DataManager.loadAll();
-        window.baseAppDataStr = stringifyData(appData);
-    } else {
-        // フォールバック
-        var diskData = loadDiskData();
-        appData = diskData;
         window.baseAppDataStr = stringifyData(appData);
     }
     
     cachedUniqueUsers = null;
     
-    // 自分の病棟設定を復元（共有ファイルのデータで自分の画面が上書きされるのを防ぐ）
+    // 自分の病棟設定を復元（他人の設定を見ていた場合、自分の設定に戻す）
     if (currentSystemId && appData.settings && appData.settings.userWards && appData.settings.userWards[currentSystemId]) {
         var myCodes = appData.settings.userWards[currentSystemId];
         if (myCodes.length > 0) {
-            // 参照を切るためにconcatを使用
             appData.settings.activeWardCodes = [].concat(myCodes);
-            // 現在表示中の病棟タブが自分のリストに無い場合は先頭に戻す
             var hasCurrent = false;
             for (var i = 0; i < myCodes.length; i++) {
                 if (myCodes[i] === currentWard) hasCurrent = true;
@@ -2371,27 +2350,15 @@ function loadData(manual) {
         }
     }
     
-    // UIコンポーネントの再描画
     renderWardTabs(); 
     renderPatients(); 
-    renderTodos(); 
+    renderTodos();
     renderHistory();
     updateAnnouncementUI();
 
-    var el = document.getElementById("last-local-update-time");
-    if(el) el.innerText = "[同期完了: " + getTimeString() + "]";
+    var elTime = document.getElementById("last-local-update-time");
+    if(elTime) elTime.innerText = "[同期完了: " + getTimeString() + "]";
 }
-
-var autoSaveTimer = null;
-function autoSave(force) {
-    if (!isEditMode && !force) return;
-    clearTimeout(autoSaveTimer);
-    autoSaveTimer = setTimeout(function() { saveData(false); }, 2000);
-}
-
-
-// 2348行目に最新の実装があるため、ここから削除しました。
-// -> DataManager / TodoUI へ移行しました。
 
 function renderHistory() {
     var tbody = document.getElementById("tbody-history");
