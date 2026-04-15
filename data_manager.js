@@ -185,7 +185,21 @@ var DataManager = (function() {
 
             var myHist = (myData.history instanceof Array) ? myData.history : [];
             var dHist = (diskData.history instanceof Array) ? diskData.history : [];
-            merged.history = myHist.concat(dHist);
+            // IDベースで重複排除（myData優先 - 自分の変更を優先するため先に追加）
+            var histSeen = {};
+            var histResult = [];
+            var histCombo = myHist.concat(dHist);
+            for (var hi = 0; hi < histCombo.length; hi++) {
+                var hItem = histCombo[hi];
+                if (!hItem) continue;
+                var hKey = hItem.id ? String(hItem.id) : (hItem.createdAt ? String(hItem.createdAt) : null);
+                if (hKey) {
+                    if (!histSeen[hKey]) { histSeen[hKey] = true; histResult.push(hItem); }
+                } else {
+                    histResult.push(hItem); // IDなし履歴はそのまま追加
+                }
+            }
+            merged.history = histResult;
 
             // 3. 設定の深いマージ（他人の病棟設定を消さない超重要処理）
             merged.settings = diskData.settings || {};
