@@ -2316,6 +2316,7 @@ function saveData(manual) {
     if (typeof DataManager !== "undefined") {
         // DataManagerにすべて任せる。安全にマージされた最新データが返ってくる
         appData = DataManager.saveAll(appData); 
+        DataManager.appData = appData; // 外部モジュールの参照も同期
         window.baseAppDataStr = stringifyData(appData);
     }
     
@@ -2333,6 +2334,15 @@ function loadData(manual) {
     // 一時的に追加した病棟タブの状態を保持
     var prevCodes = (typeof appData !== "undefined" && appData.settings && appData.settings.activeWardCodes) ? [].concat(appData.settings.activeWardCodes) : null;
     var prevCurrentWard = (typeof currentWard !== "undefined") ? currentWard : null;
+
+    // 表示更新前に未保存の変更があれば先に保存する（autoSaveのタイミング競合を防ぐ）
+    if (autoSaveTimer) {
+        clearTimeout(autoSaveTimer);
+        autoSaveTimer = null;
+        if (isEditMode && typeof DataManager !== "undefined") {
+            DataManager.saveAll(appData);
+        }
+    }
 
     if (typeof DataManager !== "undefined") {
         appData = DataManager.loadAll();
