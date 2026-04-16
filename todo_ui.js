@@ -233,10 +233,9 @@ var TodoUI = {
             var todos = DataManager.appData.todos || [];
             for (var i = 0; i < todos.length; i++) {
                 if (String(todos[i].id) === String(id)) {
-                    // spliceではなく hardDeleted フラグを立てる（spliceだとマージ時にディスクから復活するため）
                     todos[i].hardDeleted = true;
 
-                    // 追加: 完全削除の伝票発行 (REQ)
+                    // ★追加: 完全削除の伝票発行
                     DataManager.appendTransaction("HARD_DELETE_TODO", { id: id });
 
                     break;
@@ -335,6 +334,15 @@ var TodoUI = {
             var chkNotify = document.getElementById("chk-todo-notify-done");
             var notifyOnDone = chkNotify ? chkNotify.checked : false;
 
+            // ★修正：newTodo のオブジェクト定義を正しく記述
+            var newTodo = {
+                id: new Date().getTime(),
+                text: val,
+                author: currentUserName,
+                date: dateStr,
+                wardId: wardId,
+                assignee: assignee,
+                deadline: this.pendingDeadline,
                 done: false,
                 deleted: false,
                 reminderOffset: reminderOffset || 0,
@@ -342,7 +350,6 @@ var TodoUI = {
             };
             DataManager.appData.todos.push(newTodo);
             
-            // 伝票発行 (REQ.3)
             DataManager.appendTransaction("ADD_TODO", newTodo);
         }
 
