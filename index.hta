@@ -2346,6 +2346,10 @@ function loadData(manual) {
 
     if (typeof DataManager !== "undefined") {
         appData = DataManager.loadAll();
+
+        // 追加: マスターロード直後に最新の差分伝票を上乗せする (REQ)
+        DataManager.replayTransactions(appData);
+
         DataManager.appData = appData; // TodoUIなど外部モジュールの参照を同期
         window.baseAppDataStr = stringifyData(appData);
     }
@@ -2680,6 +2684,16 @@ function saveCurrentNote() {
                 notes[i].author = currentUserName;
                 notes[i].date = getTodayString() + " " + getTimeString();
                 isChanged = true;
+
+                // 追加: 病棟共有(ノート)の伝票発行 (REQ)
+                DataManager.appendTransaction("UPDATE_NOTE", {
+                    wardCode: currentWard,
+                    id: selectedNoteId,
+                    title: titleVal,
+                    content: contentVal,
+                    author: currentUserName,
+                    date: notes[i].date
+                });
             }
             break;
         }
@@ -2787,8 +2801,12 @@ window.onload = function() {
 
         // 文字入力中、または薬歴・病棟共有タブを開いている場合は自動更新をスキップして画面を保護する
         if (isTyping || isYakurekiActive || isNotesActive) {
+            // 追加: 画面更新はスキップするが、裏でデータは最新に保つ (REQ)
+            if (typeof DataManager !== "undefined") {
+                DataManager.replayTransactions(appData);
+            }
             var elTime = document.getElementById("last-local-update-time");
-            if (elTime) elTime.innerText = "[編集中のため自動更新 一時停止]";
+            if (elTime) elTime.innerText = "[編集中: 自動更新一時停止 (バックグラウンド同期中)]";
             return;
         }
 
