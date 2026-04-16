@@ -16,6 +16,10 @@ var DataManager = (function() {
         }
     }
 
+    // パフォーマンス管理用タイムスタンプ
+    var lastReplayTs = 0;
+    var lastArchiveTs = 0;
+
     function getJsonPath(cat) {
         // HTA側で定義されている SHARED_DATA_PATH を使用
         if (typeof SHARED_DATA_PATH === "undefined") return "";
@@ -205,7 +209,7 @@ var DataManager = (function() {
             return saveFile(filePath, stringifyData(txData));
         },
 
-        // 他端末の伝票を読み込んでリプレイする
+        // 他端末の伝票を読み込んでリプレイする (超高速化版)
         replayTransactions: function(appData) {
             var txDir = this.getTxDir();
             if (!txDir || !appData) return false;
@@ -214,13 +218,18 @@ var DataManager = (function() {
             var fc = new Enumerator(folder.Files);
             var targets = [];
 
-            // 未適用のファイルをフィルタリング
             for (; !fc.atEnd(); fc.moveNext()) {
                 var file = fc.item();
                 if (file.Name.indexOf("tx_") === 0 && file.Name.indexOf(".json") !== -1) {
+                    var parts = file.Name.split("_");
+                    var ts = parseInt(parts[1], 10);
+                    
+                    // 【高速化1】前回処理した時間(lastReplayTs)より古いファイルは、開く前に無視する
+                    if (ts <= lastReplayTs) continue;
+
                     var txId = file.Name.replace("tx_", "").replace(".json", "");
                     
-                    // 適用済みチェック (冪等性の確保)
+                    // 適用済みチェック
                     var alreadyApplied = false;
                     var appliedIds = appData.appliedTxIds || [];
                     for(var j=0; j<appliedIds.length; j++) {
@@ -228,8 +237,7 @@ var DataManager = (function() {
                     }
 
                     if (!alreadyApplied) {
-                        var parts = txId.split("_");
-                        targets.push({ id: txId, ts: parseInt(parts[0],10), path: file.Path });
+                        targets.push({ id: txId, ts: ts, path: file.Path });
                     }
                 }
             }
@@ -241,21 +249,25 @@ var DataManager = (function() {
 
             var updatedCount = 0;
             if (!appData.appliedTxIds) appData.appliedTxIds = [];
+            var maxTs = lastReplayTs;
 
             for (var i = 0; i < targets.length; i++) {
+                // 【高速化2】必要なファイルだけを開いてパースする
                 var raw = loadFile(targets[i].path);
                 var tx = parseData(raw);
                 if (tx) {
-                    // 自分以外が発行した伝票のみ適用するが、IDは自分のものでも記録する
                     if (tx.uId !== window.currentSystemId) {
                         this._applyDelta(appData, tx.op, tx.data, tx.uName);
                         updatedCount++;
                     }
                 }
                 appData.appliedTxIds.push(targets[i].id);
+                if (targets[i].ts > maxTs) maxTs = targets[i].ts;
             }
             
-            // 適用済みリストを直近1000件程度に維持
+            // 処理済みタイムスタンプを更新
+            lastReplayTs = maxTs;
+            
             if (appData.appliedTxIds.length > 1000) {
                 appData.appliedTxIds = appData.appliedTxIds.slice(-1000);
             }
@@ -393,10 +405,13 @@ var DataManager = (function() {
         },
 
         _lazyArchive: function() {
+            var now = new Date().getTime();
+            // 【高速化3】お掃除処理は、前回の実行から「10分」以上経過している時だけ実行する
+            if (now - lastArchiveTs < 600000) return; 
+            
             var txDir = this.getTxDir();
             if (!txDir) return;
             var archiveDir = fso.BuildPath(txDir, "archive");
-            var now = new Date().getTime();
             var threshold = 3600000; // 1時間
 
             try {
@@ -412,6 +427,8 @@ var DataManager = (function() {
                         } catch(e) {}
                     }
                 }
+                // 実行時間を記録
+                lastArchiveTs = now;
             } catch(e) {}
         },
 
