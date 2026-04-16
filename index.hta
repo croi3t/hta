@@ -3597,6 +3597,13 @@ function toggleAlertLevel(id) {
             td.innerText = aText;
         }
     }
+    // 追加: 強調マークの伝票発行
+    DataManager.appendTransaction("TOGGLE_ALERT", {
+        patientId: id,
+        wardCode: currentWard,
+        value: p.alertLevel
+    });
+    
     autoSave();
 }
 
@@ -3632,6 +3639,13 @@ function toggleStatus(id) {
             td.innerHTML = statText + authorHtml;
         }
     }
+    // 追加: 介入状況の伝票発行
+    DataManager.appendTransaction("TOGGLE_STATUS", {
+        patientId: id,
+        wardCode: currentWard,
+        value: p.status
+    });
+
     autoSave();
 }
 
@@ -3830,6 +3844,13 @@ function togglePrescriptionCheck(id) {
             }
         }
     }
+    // 追加: 処方確認の伝票発行
+    DataManager.appendTransaction("TOGGLE_PRESCRIPTION", {
+        patientId: id,
+        wardCode: currentWard,
+        value: p.chkPrescription
+    });
+
     autoSave();
 }
 
@@ -3882,6 +3903,14 @@ function finalizePersonalMemo(id, element) {
     if(!p) return; // ガード (Vol.15.14)
     if(!p.personalMemos) p.personalMemos = {};
     p.personalMemos[currentSystemId] = val;
+    // 追加: 個人メモの伝票発行
+    DataManager.appendTransaction("UPDATE_PERSONAL_MEMO", {
+        patientId: id,
+        wardCode: currentWard,
+        userId: currentSystemId,
+        value: p.personalMemos[currentSystemId]
+    });
+
     autoSave();
 }
 
@@ -3922,6 +3951,13 @@ function finalizeMemo(id, element) {
             tdHistory.innerHTML = historyText;
         }
     }
+    // 追加: 共有メモの伝票発行
+    DataManager.appendTransaction("UPDATE_PATIENT_MEMO", {
+        patientId: id,
+        wardCode: currentWard,
+        value: p.memo
+    });
+
     autoSave();
 }
 
