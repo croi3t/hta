@@ -178,6 +178,12 @@ var TodoUI = {
                 if (todos[i].done && todos[i].notifyOnDone && typeof showGhostNotification === "function") {
                     showGhostNotification("ToDo完了: " + todos[i].text);
                 }
+                
+                // 伝票発行 (REQ.3)
+                DataManager.appendTransaction("TOGGLE_TODO", {
+                    id: todos[i].id,
+                    done: todos[i].done
+                });
                 break;
             }
         }
@@ -195,6 +201,12 @@ var TodoUI = {
                     author: currentUserName,
                     wasDone: !!todos[i].done
                 };
+
+                // 伝票発行 (REQ.3)
+                DataManager.appendTransaction("DELETE_TODO", {
+                    id: todos[i].id,
+                    deleted: todos[i].deleted
+                });
                 break;
             }
         }
@@ -223,6 +235,10 @@ var TodoUI = {
                 if (String(todos[i].id) === String(id)) {
                     // spliceではなく hardDeleted フラグを立てる（spliceだとマージ時にディスクから復活するため）
                     todos[i].hardDeleted = true;
+
+                    // 追加: 完全削除の伝票発行 (REQ)
+                    DataManager.appendTransaction("HARD_DELETE_TODO", { id: id });
+
                     break;
                 }
             }
@@ -319,19 +335,15 @@ var TodoUI = {
             var chkNotify = document.getElementById("chk-todo-notify-done");
             var notifyOnDone = chkNotify ? chkNotify.checked : false;
 
-            DataManager.appData.todos.push({
-                id: now.getTime(),
-                text: val,
-                author: currentUserName || "不明",
-                date: dateStr,
-                deadline: this.pendingDeadline,
-                assignee: assignee,
-                wardId: wardId,
                 done: false,
                 deleted: false,
                 reminderOffset: reminderOffset || 0,
                 notifyOnDone: notifyOnDone
-            });
+            };
+            DataManager.appData.todos.push(newTodo);
+            
+            // 伝票発行 (REQ.3)
+            DataManager.appendTransaction("ADD_TODO", newTodo);
         }
 
         ipt.value = "";
