@@ -2388,7 +2388,9 @@ var autoSaveTimer = null;
 function autoSave(force) {
     if (!isEditMode && !force) return;
     clearTimeout(autoSaveTimer);
-    autoSaveTimer = setTimeout(function() { saveData(false); }, 2000);
+    // 【高速化4】2秒(2000) -> 15秒(15000)に延長。
+    // トランザクションファイルは即座に発行されているので、マスター保存は急ぐ必要がありません。
+    autoSaveTimer = setTimeout(function() { saveData(false); }, 15000);
 }
 
 function renderHistory() {
