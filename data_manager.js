@@ -317,6 +317,44 @@ var DataManager = (function() {
                             }
                         }
                         break;
+                    case "UPDATE_NOTE":
+                        if (!appData.wardNotes) appData.wardNotes = {};
+                        var wCode = data.wardCode || "99";
+                        if (!appData.wardNotes[wCode]) appData.wardNotes[wCode] = [];
+                        
+                        var wardNotes = appData.wardNotes[wCode];
+                        var foundNote = false;
+                        for (var n = 0; n < wardNotes.length; n++) {
+                            if (String(wardNotes[n].id) === String(data.id)) {
+                                wardNotes[n].title = data.title;
+                                wardNotes[n].content = data.content;
+                                wardNotes[n].author = data.author || uName;
+                                wardNotes[n].date = data.date;
+                                foundNote = true;
+                                break;
+                            }
+                        }
+                        // 存在しなければ新規追加
+                        if (!foundNote) {
+                            wardNotes.unshift({
+                                id: data.id,
+                                title: data.title,
+                                content: data.content,
+                                author: data.author || uName,
+                                date: data.date
+                            });
+                        }
+                        break;
+                    case "HARD_DELETE_TODO":
+                        if (appData.todos) {
+                            for(var k=0; k<appData.todos.length; k++) {
+                                if (String(appData.todos[k].id) === String(data.id)) {
+                                    appData.todos[k].hardDeleted = true;
+                                    break;
+                                }
+                            }
+                        }
+                        break;
                 }
             } catch(e) {}
         },
