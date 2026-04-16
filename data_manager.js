@@ -263,6 +263,12 @@ var DataManager = (function() {
             return updatedCount > 0;
         },
 
+        // -------------------------------------------------------
+        // トランザクション処理 (伝票方式による差分同期)
+        // -------------------------------------------------------
+        
+        // （getTxDir, appendTransaction, replayTransactions は既存のままでOK）
+
         // 各オペレーションの具体的反映
         _applyDelta: function(appData, op, data, uName) {
             try {
@@ -273,10 +279,7 @@ var DataManager = (function() {
 
                 switch (op) {
                     case "UPDATE_PATIENT_MEMO":
-                        if (p) {
-                            p.memo = data.value;
-                            this._updateMemoAuthors(p, uName);
-                        }
+                        if (p) { p.memo = data.value; this._updateMemoAuthors(p, uName); }
                         break;
                     case "TOGGLE_STATUS":
                         if (p) p.status = data.value;
@@ -295,14 +298,24 @@ var DataManager = (function() {
                         break;
                     case "ADD_TODO":
                         if (!appData.todos) appData.todos = [];
-                        appData.todos.push(data);
+                        var exists = false;
+                        for (var k = 0; k < appData.todos.length; k++) {
+                            if (String(appData.todos[k].id) === String(data.id)) {
+                                exists = true;
+                                // 既に存在する場合は重複追加を防ぎ、上書き更新する
+                                for (var key in data) {
+                                    if (data.hasOwnProperty(key)) appData.todos[k][key] = data[key];
+                                }
+                                break;
+                            }
+                        }
+                        if (!exists) appData.todos.push(data);
                         break;
                     case "TOGGLE_TODO":
                         if (appData.todos) {
                             for(var k=0; k<appData.todos.length; k++) {
                                 if (String(appData.todos[k].id) === String(data.id)) {
-                                    appData.todos[k].done = data.done;
-                                    break;
+                                    appData.todos[k].done = data.done; break;
                                 }
                             }
                         }
@@ -311,8 +324,16 @@ var DataManager = (function() {
                         if (appData.todos) {
                             for(var k=0; k<appData.todos.length; k++) {
                                 if (String(appData.todos[k].id) === String(data.id)) {
-                                    appData.todos[k].deleted = data.deleted;
-                                    break;
+                                    appData.todos[k].deleted = data.deleted; break;
+                                }
+                            }
+                        }
+                        break;
+                    case "HARD_DELETE_TODO":
+                        if (appData.todos) {
+                            for(var k=0; k<appData.todos.length; k++) {
+                                if (String(appData.todos[k].id) === String(data.id)) {
+                                    appData.todos[k].hardDeleted = true; break;
                                 }
                             }
                         }
@@ -337,29 +358,15 @@ var DataManager = (function() {
                         // 存在しなければ新規追加
                         if (!foundNote) {
                             wardNotes.unshift({
-                                id: data.id,
-                                title: data.title,
-                                content: data.content,
-                                author: data.author || uName,
-                                date: data.date
+                                id: data.id, title: data.title, content: data.content,
+                                author: data.author || uName, date: data.date
                             });
-                        }
-                        break;
-                    case "HARD_DELETE_TODO":
-                        if (appData.todos) {
-                            for(var k=0; k<appData.todos.length; k++) {
-                                if (String(appData.todos[k].id) === String(data.id)) {
-                                    appData.todos[k].hardDeleted = true;
-                                    break;
-                                }
-                            }
                         }
                         break;
                 }
             } catch(e) {}
         },
 
-        // メモ履歴の統合
         _updateMemoAuthors: function(p, uName) {
             var now = new Date();
             var tsDisplay = (now.getMonth() + 1) + "/" + now.getDate() + " " + now.getHours() + ":" + (now.getMinutes() < 10 ? "0" : "") + now.getMinutes();
@@ -376,8 +383,8 @@ var DataManager = (function() {
         },
 
         _findPatientInAppData: function(appData, pid, wardCode) {
-            var wk = "patientsWard" + wardCode;
-            var list = appData[wk];
+            // 【バグ修正】古いpatientsWardキーではなく、マップ形式のpatientsキーを参照する
+            var list = appData.patients ? appData.patients[wardCode] : null;
             if (!list) return null;
             for (var i = 0; i < list.length; i++) {
                 if (String(list[i].id) === String(pid)) return list[i];
@@ -385,7 +392,6 @@ var DataManager = (function() {
             return null;
         },
 
-        // 蓄積した伝票のアーカイブ (Lazy Archive)
         _lazyArchive: function() {
             var txDir = this.getTxDir();
             if (!txDir) return;
@@ -403,41 +409,61 @@ var DataManager = (function() {
                             if (now - new Date(file.DateLastModified).getTime() > threshold) {
                                 fso.MoveFile(file.Path, fso.BuildPath(archiveDir, file.Name));
                             }
-                        } catch(e) { /* 使用中のファイル等はスキップ */ }
+                        } catch(e) {}
                     }
                 }
             } catch(e) {}
         },
 
-        // 内部メループ＆保存共通処理（二重ロードを防ぐため分離）
+        // メモリ上のデータとサーバーデータを安全に結合して保存する（チェックポイント）
+        saveAll: function(myData) {
+            if (!initFSO()) return myData;
+            
+            var diskData = this.loadAll(); // 保存直前に最新のサーバー状態を取得
+
+            // 【最重要修正】マスターファイル上書き前に必ず最新伝票を取り込む
+            this.replayTransactions(myData);
+
+            var merged = this._mergeAndSave(myData, diskData);
+
+            this._lazyArchive(); // 1時間以上経過した伝票を整理
+
+            return merged;
+        },
+
         _mergeAndSave: function(myData, diskData) {
             var merged = {};
 
-            // 1. 患者データの結合
-            merged.patients = {};
-            var allWards = {};
-            if (diskData.patients) for (var w in diskData.patients) allWards[w] = true;
-            if (myData.patients)   for (var w in myData.patients)   allWards[w] = true;
-            for (var w in allWards) {
-                merged.patients[w] = mergeArrayById((diskData.patients||{})[w], (myData.patients||{})[w], mergeObj);
-            }
-            merged.admissionSchedule = mergeArrayById(diskData.admissionSchedule, myData.admissionSchedule, mergeObj);
-            merged.dischargedArchive = mergeArrayById(diskData.dischargedArchive, myData.dischargedArchive, mergeObj);
+            // ▼ トランザクション管理対象データ（最新のmyDataをそのまま正として採用） ▼
+            merged.patients = myData.patients || {};
+            merged.admissionSchedule = myData.admissionSchedule || [];
+            merged.dischargedArchive = myData.dischargedArchive || {};
+            merged.todos = myData.todos || [];
+            merged.wardNotes = myData.wardNotes || {};
 
-            // 2. ToDo、ノート、履歴の結合
-            merged.todos = mergeArrayById(diskData.todos, myData.todos, mergeObj);
-            
-            merged.wardNotes = {};
-            var allNWards = {};
-            if (diskData.wardNotes) for (var nw in diskData.wardNotes) allNWards[nw] = true;
-            if (myData.wardNotes)   for (var nw in myData.wardNotes)   allNWards[nw] = true;
-            for (var nw in allNWards) {
-                merged.wardNotes[nw] = mergeArrayById((diskData.wardNotes||{})[nw], (myData.wardNotes||{})[nw], mergeObj);
-            }
+            // 【最重要修正】適用済みトランザクションIDの確実な結合（履歴の忘却防止）
+            var txIdMap = {};
+            var mergedTxIds = [];
+            var myTxIds = myData.appliedTxIds || [];
+            var diskTxIds = diskData.appliedTxIds || [];
 
+            for (var i = 0; i < myTxIds.length; i++) { 
+                txIdMap[myTxIds[i]] = true; 
+                mergedTxIds.push(myTxIds[i]); 
+            }
+            for (var j = 0; j < diskTxIds.length; j++) {
+                if (!txIdMap[diskTxIds[j]]) { 
+                    txIdMap[diskTxIds[j]] = true; 
+                    mergedTxIds.push(diskTxIds[j]); 
+                }
+            }
+            // 肥大化を防ぐため最新1000件に保つ
+            if (mergedTxIds.length > 1000) mergedTxIds = mergedTxIds.slice(-1000);
+            merged.appliedTxIds = mergedTxIds;
+
+            // ▼ トランザクション管理外データ（設定・履歴等）の結合 ▼
             var myHist = (myData.history instanceof Array) ? myData.history : [];
             var dHist = (diskData.history instanceof Array) ? diskData.history : [];
-            // IDベースで重複排除（myData優先 - 自分の変更を優先するため先に追加）
             var histSeen = {};
             var histResult = [];
             var histCombo = myHist.concat(dHist);
@@ -448,12 +474,11 @@ var DataManager = (function() {
                 if (hKey) {
                     if (!histSeen[hKey]) { histSeen[hKey] = true; histResult.push(hItem); }
                 } else {
-                    histResult.push(hItem); // IDなし履歴はそのまま追加
+                    histResult.push(hItem); 
                 }
             }
             merged.history = histResult;
 
-            // 3. 設定の深いマージ（他人の病棟設定を消さない超重要処理）
             merged.settings = diskData.settings || {};
             if (myData.settings) {
                 for (var sk in myData.settings) {
@@ -472,23 +497,21 @@ var DataManager = (function() {
                     }
                 }
             }
-            
-            // ユーザーリストの同期
             merged.users = merged.settings.users || {};
             
-            // お知らせの同期
-            merged.announcement = (myData.announcement !== undefined) ? myData.announcement : (diskData.announcement || "");
+            var bAnn = diskData.announcement || "";
+            var mAnn = (myData.announcement !== undefined) ? myData.announcement : "";
+            merged.announcement = (mAnn !== bAnn && mAnn !== "") ? mAnn : bAnn;
             merged.settings.announcement = merged.announcement;
 
-            // ★重要：yrSettings は myStorage (HTA側) が直接操作するため、ここでは一切触れない（上書き破壊を防ぐ）
             if (merged.settings.yrSettings) delete merged.settings.yrSettings;
 
-            // 4. ファイルへの書き込み―データが空の場合は書き込みをスキップしてファイル破椁を防ぐ
+            // ▼ ファイルへの書き込み ▼
             var patObj = { 
                 patients: merged.patients, 
                 admissionSchedule: merged.admissionSchedule, 
                 dischargedArchive: merged.dischargedArchive,
-                appliedTxIds: merged.appliedTxIds // 適用済みIDも永続化
+                appliedTxIds: merged.appliedTxIds 
             };
             var patStr = stringifyData(patObj);
             if (patStr && patStr.length > 2) saveFile(getJsonPath("patients"), patStr);
@@ -505,7 +528,7 @@ var DataManager = (function() {
             var histStr = stringifyData(merged.history);
             if (histStr && histStr.length > 1) saveFile(getJsonPath("history"), histStr);
 
-            return merged; // HTA側に最新の結合済みデータを返す
+            return merged; 
         }
     };
 })();
