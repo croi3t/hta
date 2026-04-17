@@ -2262,27 +2262,30 @@ function loadData(manual) {
         if (typeof DataManager !== "undefined") DataManager.init();
         return;
     }
+    
+    // ★追加: データ読み込みで上書きされる前に、現在の画面の「病棟タブ状態」を記憶して保護する
+    var currentActiveCodes = [];
+    if (appData && appData.settings && appData.settings.activeWardCodes) {
+        currentActiveCodes = [].concat(appData.settings.activeWardCodes);
+    }
 
     if (typeof DataManager !== "undefined") {
         appData = DataManager.loadAll();
-        // ★修正: マスターファイル読み込み直後に最新の差分伝票を上乗せする
+        // マスターファイル読み込み直後に最新の差分伝票を上乗せする
         DataManager.replayTransactions(appData);
         DataManager.appData = appData;
         window.baseAppDataStr = stringifyData(appData);
     }
     
     cachedUniqueUsers = null;
-    // 自分の病棟設定を復元（他人の設定を見ていた場合、自分の設定に戻す）
-    if (currentSystemId && appData.settings && appData.settings.userWards && appData.settings.userWards[currentSystemId]) {
-        var myCodes = appData.settings.userWards[currentSystemId];
-        if (myCodes.length > 0) {
-            appData.settings.activeWardCodes = [].concat(myCodes);
-            var hasCurrent = false;
-            for (var i = 0; i < myCodes.length; i++) {
-                if (myCodes[i] === currentWard) hasCurrent = true;
-            }
-            if (!hasCurrent) currentWard = myCodes[0];
-        }
+    
+    // ★修正: サーバーのデータでタブを上書きせず、記憶しておいたタブ状態を復元する
+    if (!appData.settings) appData.settings = {};
+    if (currentActiveCodes.length > 0) {
+        appData.settings.activeWardCodes = currentActiveCodes;
+    } else if (currentSystemId && appData.settings.userWards && appData.settings.userWards[currentSystemId]) {
+        // 万が一空の場合はユーザーの基本設定を使う
+        appData.settings.activeWardCodes = [].concat(appData.settings.userWards[currentSystemId]);
     }
     
     renderWardTabs(); 
