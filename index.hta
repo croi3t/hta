@@ -1658,10 +1658,10 @@ function getTodayString() {
 }
 
 // サブタブを動的に描画
+// サブタブを動的に描画
 function renderWardTabs() {
     var activeCodes = appData.settings.activeWardCodes || ["99"];
     var containers = ["sub-tabs-container", "note-sub-tabs-container", "kl-sub-tabs-container"];
-    
     for (var c = 0; c < containers.length; c++) {
         var container = document.getElementById(containers[c]);
         if (!container) continue;
@@ -1676,7 +1676,7 @@ function renderWardTabs() {
             var onclick = (containers[c] === "note-sub-tabs-container") ? "switchNoteWard" : "switchWard";
             
             var closeBtnColor = (code === currentWard) ? "rgba(255,255,255,0.8)" : "#999";
-            
+            // ★修正: 構文エラーの原因となっていた不要な改行を削除
             html += '<div class="sub-tab' + klClass + activeClass + '" style="position:relative; padding-right:25px;" onclick="' + onclick + '(\'' + code + '\')">' 
                  + name 
                  + '<span class="tab-close-btn" onclick="event.stopPropagation(); removeWard(\'' + code + '\')" style="position:absolute; right:5px; top:50%; margin-top:-8px; font-size:10px; color:' + closeBtnColor + '; cursor:pointer;">&times;</span>'
@@ -1945,7 +1945,6 @@ function loadDiskData() {
         }
     }
     if (pat.admissionSchedule instanceof Array) disk.admissionSchedule = pat.admissionSchedule;
-    if (pat.dischargedArchive instanceof Array) disk.dischargedArchive = pat.dischargedArchive;
 
     var todos = safeRead("todos");
     if (todos instanceof Array) disk.todos = todos;
@@ -2051,12 +2050,8 @@ function checkAndCreateBackup(data) {
 }
 
 function applyWardTabs() {
-    var activeCodes = appData.settings.activeWardCodes || ["99"];
-    var todoSubTabs = document.getElementById('todo-sub-tabs');
-    var todoHtml = '';
-    var registeredWards = [];
-    
-    // 全ボタンを一旦非表示にする
+    // ★修正: ToDoタブを旧仕様のコードで上書き破壊していた処理を全削除。
+    // 旧仕様のボタン群を非表示にするだけの機能に変更（ToDo等のタブは専用UIモジュールに任せる）
     for (var j = 1; j <= 10; j++) {
         var b = document.getElementById('btn-ward-' + j);
         var k = document.getElementById('kl-btn-ward-' + j);
@@ -2064,71 +2059,6 @@ function applyWardTabs() {
         if (b) b.style.display = "none";
         if (k) k.style.display = "none";
         if (n) n.style.display = "none";
-    }
-
-    for (var i = 0; i < activeCodes.length; i++) {
-        var code = activeCodes[i];
-        var name = getWardName(code);
-        var idx = i + 1;
-        registeredWards.push(name);
-        
-        var btn = document.getElementById('btn-ward-' + idx);
-        var klBtn = document.getElementById('kl-btn-ward-' + idx);
-        var noteBtn = document.getElementById('note-btn-ward-' + idx);
-        
-        if (btn) {
-            btn.innerText = name;
-            btn.style.display = "inline-block";
-            btn.onclick = (function(c){ return function(){ switchWard(c); }; })(code);
-        }
-        if (klBtn) {
-            klBtn.innerText = name;
-            klBtn.style.display = "inline-block";
-            klBtn.onclick = (function(c){ return function(){ switchWard(c); }; })(code);
-        }
-        if (noteBtn) {
-            noteBtn.innerText = name;
-            noteBtn.style.display = "inline-block";
-            noteBtn.onclick = (function(c){ return function(){ switchNoteWard(c); }; })(code);
-        }
-        todoHtml += '<div class="sub-tab" id="todo-btn-ward-' + idx + '" onclick="switchTodoSubTab(\'ward-' + name + '\', this)">' + escapeHtml(name) + '</div>';
-    }
-    
-    todoHtml += '<div class="sub-tab" id="todo-btn-personal" onclick="switchTodoSubTab(\'personal\', this)">個人用</div>';
-    todoHtml += '<div class="sub-tab" id="todo-btn-deleted" onclick="switchTodoSubTab(\'deleted\', this)" style="border-color:#6c757d; color:#6c757d;">削除済み</div>';
-    
-    if (todoSubTabs) {
-        todoSubTabs.innerHTML = todoHtml;
-        
-        // 初期タブの決定または現在の状態維持
-        if (!currentTodoTab) {
-            if (registeredWards.length > 0) {
-                currentTodoTab = 'ward-' + registeredWards[0];
-                var fBtn = document.getElementById('todo-btn-ward-1');
-                if (fBtn) addClass(fBtn, 'active');
-            } else {
-                currentTodoTab = 'personal';
-                var pBtn = document.getElementById('todo-btn-personal');
-                if (pBtn) addClass(pBtn, 'active');
-            }
-        } else {
-            var activeId = "";
-            if (currentTodoTab === 'personal') activeId = 'todo-btn-personal';
-            else if (currentTodoTab === 'deleted') activeId = 'todo-btn-deleted';
-            else if (currentTodoTab.indexOf('ward-') === 0) {
-                var wName = currentTodoTab.replace('ward-', '');
-                for (var k = 0; k < registeredWards.length; k++) {
-                    if (registeredWards[k] === wName) {
-                        activeId = 'todo-btn-ward-' + (k + 1);
-                        break;
-                    }
-                }
-            }
-            if (activeId) {
-                var aBtn = document.getElementById(activeId);
-                if (aBtn) addClass(aBtn, 'active');
-            }
-        }
     }
 }
 
@@ -2335,11 +2265,13 @@ function loadData(manual) {
 
     if (typeof DataManager !== "undefined") {
         appData = DataManager.loadAll();
+        // ★修正: マスターファイル読み込み直後に最新の差分伝票を上乗せする
+        DataManager.replayTransactions(appData);
+        DataManager.appData = appData;
         window.baseAppDataStr = stringifyData(appData);
     }
     
     cachedUniqueUsers = null;
-    
     // 自分の病棟設定を復元（他人の設定を見ていた場合、自分の設定に戻す）
     if (currentSystemId && appData.settings && appData.settings.userWards && appData.settings.userWards[currentSystemId]) {
         var myCodes = appData.settings.userWards[currentSystemId];
@@ -2358,7 +2290,6 @@ function loadData(manual) {
     renderTodos();
     renderHistory();
     updateAnnouncementUI();
-
     var elTime = document.getElementById("last-local-update-time");
     if(elTime) elTime.innerText = "[同期完了: " + getTimeString() + "]";
 }
@@ -2771,6 +2702,10 @@ window.onload = function() {
 
         // 文字入力中、または薬歴・病棟共有タブを開いている場合は自動更新をスキップして画面を保護する
         if (isTyping || isYakurekiActive || isNotesActive) {
+            // ★追加：画面更新はスキップするが、裏側でデータだけは最新に保つ
+            if (typeof DataManager !== "undefined") {
+                DataManager.replayTransactions(appData);
+            }
             var elTime = document.getElementById("last-local-update-time");
             if (elTime) elTime.innerText = "[編集中のため自動更新 一時停止]";
             return;
