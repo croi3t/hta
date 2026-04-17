@@ -97,7 +97,8 @@ var TodoUI = {
             return t.assignee === currentSystemId || t.assignee === currentUserName;
         }
         if (this.currentTodoTab === "common") {
-            return !t.wardId || t.wardId === "0" || t.wardId === "common";
+            // ★追加: 旧仕様(ward-xxx)で保存されて迷子になったタスクも「共通」タブで救済して表示する
+            return !t.wardId || t.wardId === "0" || t.wardId === "common" || t.wardId.indexOf("ward-") === 0;
         }
         // 病棟タブ
         return t.wardId === this.currentTodoTab;
