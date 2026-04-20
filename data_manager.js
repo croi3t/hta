@@ -32,9 +32,6 @@ var DataManager = (function() {
     }
 
     function saveFile(path, text) {
-        if (typeof DataManager.saveTextUtf8 === "function") {
-            return DataManager.saveTextUtf8(path, text);
-        }
         var maxRetries = 10;
         for (var i = 0; i < maxRetries; i++) {
             try {
@@ -71,15 +68,21 @@ var DataManager = (function() {
     }
 
     return {
+        appData: {},
+
         init: function() {
             initFSO();
         },
 
         loadAll: function() {
             if (!initFSO()) return {};
+            
+            var adminList = ["16622", "17049", "17494", "17701", "17702"];
+            adminList.push("3107", "17397", "17050", "16623", "17496", "3429", "17626");
+
             var disk = {
                 patients: {}, wardNotes: {}, todos: [], history: [],
-                settings: { adminIds: ["16622", "17049", "17494", "17701", "17702", "3107", "17397", "17050", "16623", "17496", "3429", "17626"], activeWardCodes: ["99"] },
+                settings: { adminIds: adminList, activeWardCodes: ["99"] },
                 users: {}, announcement: "", admissionSchedule: [], dischargedArchive: {}
             };
 
@@ -146,7 +149,6 @@ var DataManager = (function() {
             var txDir = this.getTxDir();
             if (!txDir || !appData) return false;
 
-            // 【超高速化】適用済みIDのハッシュマップ化で計算時間を大幅カット
             var appliedMap = {};
             var appliedIds = appData.appliedTxIds || [];
             var maxAppliedTs = 0;
@@ -157,7 +159,6 @@ var DataManager = (function() {
                 if (!isNaN(tsVal) && tsVal > maxAppliedTs) maxAppliedTs = tsVal;
             }
 
-            // 起動時の無駄な全ファイルスキャンを回避
             if (lastReplayTs === 0 && maxAppliedTs > 60000) {
                 lastReplayTs = maxAppliedTs - 60000;
             }
@@ -168,7 +169,7 @@ var DataManager = (function() {
 
             for (; !fc.atEnd(); fc.moveNext()) {
                 var file = fc.item();
-                var fname = file.Name; // プロパティへの通信アクセスを1回にまとめる
+                var fname = file.Name;
                 
                 if (fname.indexOf("tx_") === 0 && fname.indexOf(".json") !== -1) {
                     var parts = fname.split("_");
@@ -207,7 +208,6 @@ var DataManager = (function() {
             
             lastReplayTs = maxTs;
             
-            // データ肥大化を防ぐため履歴を500件に絞る（1000→500）
             if (appData.appliedTxIds.length > 500) {
                 appData.appliedTxIds = appData.appliedTxIds.slice(-500);
             }
@@ -312,7 +312,8 @@ var DataManager = (function() {
 
         _updateMemoAuthors: function(p, uName) {
             var now = new Date();
-            var tsDisplay = (now.getMonth() + 1) + "/" + now.getDate() + " " + now.getHours() + ":" + (now.getMinutes() < 10 ? "0" : "") + now.getMinutes();
+            var minStr = (now.getMinutes() < 10 ? "0" : "") + now.getMinutes();
+            var tsDisplay = (now.getMonth() + 1) + "/" + now.getDate() + " " + now.getHours() + ":" + minStr;
             var authorStr = uName + " (" + tsDisplay + ")";
             
             if (!p.memoAuthors) p.memoAuthors = [];
@@ -348,10 +349,9 @@ var DataManager = (function() {
                 var fc = new Enumerator(folder.Files);
                 for (; !fc.atEnd(); fc.moveNext()) {
                     var file = fc.item();
-                    var fname = file.Name; // 通信アクセスを1回に削減
+                    var fname = file.Name;
                     if (fname.indexOf("tx_") === 0) {
                         try {
-                            // 【超高速化】ファイル名から時刻を割り出し、重いファイル属性読み取りを回避
                             var parts = fname.split("_");
                             var fileTs = parseInt(parts[1], 10);
                             
@@ -402,7 +402,6 @@ var DataManager = (function() {
                     mergedTxIds.push(diskTxIds[j]); 
                 }
             }
-            // IDリストを500件に絞る（マージ時のループ計算量を削減）
             if (mergedTxIds.length > 500) mergedTxIds = mergedTxIds.slice(-500);
             merged.appliedTxIds = mergedTxIds;
 

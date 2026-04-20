@@ -4,11 +4,12 @@
  */
 
 var TodoUI = {
-    currentTodoTab: "common", // "common", ward code (e.g. "31"), or "personal"
+    currentTodoTab: "common",
     pendingDeadline: "",
     editingTodoId: null,
 
     render: function() {
+        if (typeof DataManager === "undefined") return;
         this.renderSubTabs();
         var tbody = document.getElementById("tbody-todo");
         var tbodyDeleted = document.getElementById("tbody-todo-deleted");
@@ -21,9 +22,8 @@ var TodoUI = {
         for (var i = 0; i < todos.length; i++) {
             var t = todos[i];
             if (t.archived) continue;
-            if (t.hardDeleted) continue; // 完全削除済みは表示しない
+            if (t.hardDeleted) continue;
 
-            // フィルタリングロジック
             if (!this.isMatchCurrentTab(t)) continue;
 
             if (t.deleted) {
@@ -33,11 +33,16 @@ var TodoUI = {
             }
         }
 
-        tbody.innerHTML = activeHtml || '<tr><td colspan="4" align="center" style="padding:20px; color:#999;">このカテゴリのタスクはありません。</td></tr>';
+        var emptyMsg = '<tr><td colspan="4" align="center" style="padding:20px; color:#999;">';
+        emptyMsg += 'このカテゴリのタスクはありません。</td></tr>';
+        tbody.innerHTML = activeHtml || emptyMsg;
+        
         if (tbodyDeleted) {
             if (deletedHtml) {
-                var headerHtml = '<tr style="background:#eee; font-weight:bold;"><td colspan="4" style="padding:5px 10px; font-size:11px; color:#666;">▼ 削除済みのタスク (保存・同期後に完全に消去されます)</td></tr>';
-                tbodyDeleted.innerHTML = headerHtml + deletedHtml;
+                var hHtml = '<tr style="background:#eee; font-weight:bold;">';
+                hHtml += '<td colspan="4" style="padding:5px 10px; font-size:11px; color:#666;">';
+                hHtml += '▼ 削除済みのタスク (保存・同期後に完全に消去されます)</td></tr>';
+                tbodyDeleted.innerHTML = hHtml + deletedHtml;
             } else {
                 tbodyDeleted.innerHTML = "";
             }
@@ -48,18 +53,17 @@ var TodoUI = {
         var container = document.getElementById("todo-sub-tabs");
         if (!container) return;
 
-        // グローバルな appData.settings.activeWardCodes を参照する
-        var activeCodes = (typeof appData !== "undefined" && appData.settings && appData.settings.activeWardCodes) || 
-                          (DataManager.appData.settings && DataManager.appData.settings.activeWardCodes) || 
-                          ["99", "32", "33"];
+        var actCodes = ["99", "32", "33"];
+        if (typeof appData !== "undefined" && appData.settings && appData.settings.activeWardCodes) {
+            actCodes = appData.settings.activeWardCodes;
+        } else if (DataManager.appData.settings && DataManager.appData.settings.activeWardCodes) {
+            actCodes = DataManager.appData.settings.activeWardCodes;
+        }
         
-        var tabs = [
-            { id: "common", name: "🏠 共通" }
-        ];
+        var tabs = [ { id: "common", name: "🏠 共通" } ];
 
-        // 設定されている病棟のみを表示
-        for (var i = 0; i < activeCodes.length; i++) {
-            var code = activeCodes[i];
+        for (var i = 0; i < actCodes.length; i++) {
+            var code = actCodes[i];
             var name = typeof getWardName === "function" ? getWardName(code) : code;
             tabs.push({ id: code, name: name });
         }
@@ -69,12 +73,13 @@ var TodoUI = {
         var h = "";
         for (var j = 0; j < tabs.length; j++) {
             var tab = tabs[j];
-            var activeClass = (this.currentTodoTab === tab.id) ? "active" : "";
-            h += '<div class="sub-tab ' + activeClass + '" onclick="TodoUI.switchSubTab(\'' + tab.id + '\')">' + tab.name + '</div>';
+            var actCls = (this.currentTodoTab === tab.id) ? "active" : "";
+            h += '<div class="sub-tab ' + actCls + '" onclick="TodoUI.switchSubTab(\'' + tab.id + '\')">';
+            h += tab.name + '</div>';
         }
         
-        // 患者タブと同様の +ボタン
-        h += '<div class="sub-tab tab-plus" onclick="showAddWardModal()" style="font-weight:bold; color:#2980b9;">+</div>';
+        h += '<div class="sub-tab tab-plus" onclick="showAddWardModal()" ';
+        h += 'style="font-weight:bold; color:#2980b9;">+</div>';
 
         container.innerHTML = h;
     },
@@ -82,7 +87,6 @@ var TodoUI = {
     switchSubTab: function(tabId) {
         this.currentTodoTab = tabId;
         this.render();
-        // 入力欄の活性化状態を更新
         var ipt = document.getElementById("ipt-new-todo");
         var btn = document.getElementById("btn-add-todo");
         if (ipt && btn) {
@@ -93,14 +97,11 @@ var TodoUI = {
 
     isMatchCurrentTab: function(t) {
         if (this.currentTodoTab === "personal") {
-            // ID または 名前のいずれかが一致すれば表示（過去データとの互換性確保）
             return t.assignee === currentSystemId || t.assignee === currentUserName;
         }
         if (this.currentTodoTab === "common") {
-            // ★修正: 旧仕様 (ward-xxx) で保存された迷子タスクも「共通」で表示して救済する
             return !t.wardId || t.wardId === "0" || t.wardId === "common" || (typeof t.wardId === "string" && t.wardId.indexOf("ward-") === 0);
         }
-        // 病棟タブ
         return t.wardId === this.currentTodoTab;
     },
 
@@ -112,41 +113,48 @@ var TodoUI = {
         if (t.deadline) {
             var dState = this.parseDate(t.deadline);
             var dlStyle = dState.isOverdue ? "color:#e74c3c; font-weight:bold;" : "color:#666;";
-            deadlineInfo = '<div style="font-size:10px; margin-top:2px; ' + dlStyle + '">期限: ' + escapeHtml(t.deadline) + '</div>';
+            deadlineInfo = '<div style="font-size:10px; margin-top:2px; ' + dlStyle + '">';
+            deadlineInfo += '期限: ' + escapeHtml(t.deadline) + '</div>';
             
             if (dState.isOverdue) rowStyle = "background-color: #fff3cd;";
             else if (dState.isToday) rowStyle = "background-color: #ffebee;";
         }
         
-        if (t.done) rowStyle = "text-decoration: line-through; color: #999; background-color: #f9f9f9;";
+        if (t.done) {
+            rowStyle = "text-decoration: line-through; color: #999; background-color: #f9f9f9;";
+        }
         
-        var assigneeStr = t.assignee ? '<span style="color:#2980b9; font-size:10px; margin-left:5px; font-weight:bold;">@' + escapeHtml(t.assignee) + '</span>' : '';
+        var assigneeStr = "";
+        if (t.assignee) {
+            assigneeStr = '<span style="color:#2980b9; font-size:10px; margin-left:5px; font-weight:bold;">';
+            assigneeStr += '@' + escapeHtml(t.assignee) + '</span>';
+        }
         
-        // 全て t.id ベースの操作に書き換え
-        var h = '<tr style="' + rowStyle + '">';
-        h += '<td align="center"><input type="checkbox" ' + checked + ' onclick="TodoUI.toggleDone(\'' + t.id + '\')"></td>';
-        h += '<td style="cursor:pointer;" onclick="TodoUI.editTodo(\'' + t.id + '\')">' + escapeHtml(t.text) + assigneeStr + deadlineInfo + '</td>';
-        h += '<td style="font-size:11px; color:#666;">' + escapeHtml(t.author || "不明") + '<br>' + escapeHtml(t.date || "") + '</td>';
-        h += '<td align="center" style="white-space:nowrap;">';
-        h += '<button class="btn" onclick="TodoUI.editTodo(\'' + t.id + '\')" style="background:#3498db; padding:2px 6px; color:white; margin-right:3px;" title="編集">✎</button>';
-        h += '<button class="btn" onclick="TodoUI.deleteTodo(\'' + t.id + '\')" style="background:#e74c3c; padding:2px 6px; color:white;" title="削除">✕</button>';
-        h += '</td>';
-        h += '</tr>';
-        return h;
+        var h = [];
+        h.push('<tr style="' + rowStyle + '">');
+        h.push('<td align="center"><input type="checkbox" ' + checked + ' onclick="TodoUI.toggleDone(\'' + t.id + '\')"></td>');
+        h.push('<td style="cursor:pointer;" onclick="TodoUI.editTodo(\'' + t.id + '\')">');
+        h.push(escapeHtml(t.text) + assigneeStr + deadlineInfo + '</td>');
+        h.push('<td style="font-size:11px; color:#666;">' + escapeHtml(t.author || "不明") + '<br>' + escapeHtml(t.date || "") + '</td>');
+        h.push('<td align="center" style="white-space:nowrap;">');
+        h.push('<button class="btn" onclick="TodoUI.editTodo(\'' + t.id + '\')" style="background:#3498db; padding:2px 6px; color:white; margin-right:3px;" title="編集">✎</button>');
+        h.push('<button class="btn" onclick="TodoUI.deleteTodo(\'' + t.id + '\')" style="background:#e74c3c; padding:2px 6px; color:white;" title="削除">✕</button>');
+        h.push('</td></tr>');
+        return h.join('');
     },
 
     generateDeletedRowHtml: function(t) {
         var statusLabel = t.done ? '<span style="color:#27ae60;font-size:10px;">[完了済]</span>' : '<span style="color:#c0392b;font-size:10px;">[未完了]</span>';
-        var h = '<tr style="background-color:#f9f9f9; color:#999; text-decoration:line-through;">';
-        h += '<td align="center">-</td>';
-        h += '<td>' + statusLabel + ' ' + escapeHtml(t.text) + '</td>';
-        h += '<td style="font-size:11px;">' + escapeHtml(t.author || "") + '</td>';
-        h += '<td align="center" style="white-space:nowrap;">';
-        h += '<button class="btn" onclick="TodoUI.restoreTodo(\'' + t.id + '\')" style="background:#2ecc71; padding:2px 6px; color:white; margin-right:3px; font-size:10px;" title="元に戻す">↺</button>';
-        h += '<button class="btn" onclick="TodoUI.permanentlyDeleteTodo(\'' + t.id + '\')" style="background:#95a5a6; padding:2px 6px; color:white; font-size:10px;" title="完全に削除">🗑</button>';
-        h += '</td>';
-        h += '</tr>';
-        return h;
+        var h = [];
+        h.push('<tr style="background-color:#f9f9f9; color:#999; text-decoration:line-through;">');
+        h.push('<td align="center">-</td>');
+        h.push('<td>' + statusLabel + ' ' + escapeHtml(t.text) + '</td>');
+        h.push('<td style="font-size:11px;">' + escapeHtml(t.author || "") + '</td>');
+        h.push('<td align="center" style="white-space:nowrap;">');
+        h.push('<button class="btn" onclick="TodoUI.restoreTodo(\'' + t.id + '\')" style="background:#2ecc71; padding:2px 6px; color:white; margin-right:3px; font-size:10px;" title="元に戻す">↺</button>');
+        h.push('<button class="btn" onclick="TodoUI.permanentlyDeleteTodo(\'' + t.id + '\')" style="background:#95a5a6; padding:2px 6px; color:white; font-size:10px;" title="完全に削除">🗑</button>');
+        h.push('</td></tr>');
+        return h.join('');
     },
 
     parseDate: function(deadlineStr) {
@@ -180,7 +188,6 @@ var TodoUI = {
                     showGhostNotification("ToDo完了: " + todos[i].text);
                 }
                 
-                // 伝票発行 (REQ.3)
                 DataManager.appendTransaction("TOGGLE_TODO", {
                     id: todos[i].id,
                     done: todos[i].done
@@ -203,7 +210,6 @@ var TodoUI = {
                     wasDone: !!todos[i].done
                 };
 
-                // 伝票発行 (REQ.3)
                 DataManager.appendTransaction("DELETE_TODO", {
                     id: todos[i].id,
                     deleted: todos[i].deleted
@@ -235,10 +241,7 @@ var TodoUI = {
             for (var i = 0; i < todos.length; i++) {
                 if (String(todos[i].id) === String(id)) {
                     todos[i].hardDeleted = true;
-
-                    // ★追加: 完全削除の伝票発行
                     DataManager.appendTransaction("HARD_DELETE_TODO", { id: id });
-
                     break;
                 }
             }
@@ -309,7 +312,6 @@ var TodoUI = {
         if(!DataManager.appData.todos) DataManager.appData.todos = [];
         
         if (this.editingTodoId !== null) {
-            // IDベースでの更新処理
             var todos = DataManager.appData.todos || [];
             for (var i = 0; i < todos.length; i++) {
                 if (String(todos[i].id) === String(this.editingTodoId)) {
@@ -322,7 +324,6 @@ var TodoUI = {
             }
             this.cancelEditTodo();
         } else {
-            // 新規追加
             var now = new Date();
             var dateStr = (now.getMonth() + 1) + "/" + now.getDate();
             var wardId = this.currentTodoTab;
@@ -335,7 +336,6 @@ var TodoUI = {
             var chkNotify = document.getElementById("chk-todo-notify-done");
             var notifyOnDone = chkNotify ? chkNotify.checked : false;
 
-            // ★修正：newTodo のオブジェクト定義を正しく記述
             var newTodo = {
                 id: new Date().getTime(),
                 text: val,
@@ -350,7 +350,6 @@ var TodoUI = {
                 notifyOnDone: notifyOnDone
             };
             DataManager.appData.todos.push(newTodo);
-            
             DataManager.appendTransaction("ADD_TODO", newTodo);
         }
 
