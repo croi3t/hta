@@ -1508,14 +1508,27 @@ function debounce(func, wait) {
 
 function findPatientById(id) {
     if (!id) return null;
-    var list = getCurrentPatientsList();
-    for (var i = 0; i < list.length; i++) {
-        if (String(list[i].id) === String(id)) return list[i];
+    var strId = String(id);
+    
+    // 1. まず、すべての病棟の現入院患者から探す (病棟移動した患者の対応)
+    if (appData.patients) {
+        for (var wardCode in appData.patients) {
+            if (appData.patients.hasOwnProperty(wardCode)) {
+                var list = appData.patients[wardCode];
+                if (list && list.length > 0) {
+                    for (var i = 0; i < list.length; i++) {
+                        if (String(list[i].id) === strId) return list[i];
+                    }
+                }
+            }
+        }
     }
-    // 退院アーカイブからも探す (個人メモ編集等で使用)
-    if (appData.dischargedArchive && appData.dischargedArchive[id]) {
-        return appData.dischargedArchive[id];
+    
+    // 2. どこにもいなければ、退院患者アーカイブから探す
+    if (appData.dischargedArchive && appData.dischargedArchive[strId]) {
+        return appData.dischargedArchive[strId];
     }
+    
     return null;
 }
 
@@ -4792,13 +4805,7 @@ function parseBloodDateFromDoc(doc, patientId) {
     autoSave();
 }
 
-function findPatientById(id) {
-    var list = getCurrentPatientsList();
-    for (var i = 0; i < list.length; i++) {
-        if (list[i].id === id) return list[i];
-    }
-    return null;
-}
+
 
 function saveDataQuietly() {
     try {
