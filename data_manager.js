@@ -227,7 +227,11 @@ var DataManager = (function() {
                         if (p) { p.memo = data.value; this._updateMemoAuthors(p, uName); }
                         break;
                     case "TOGGLE_STATUS":
-                        if (p) p.status = data.value;
+                        // ★修正: 作業者名(author)も一緒に更新する
+                        if (p) {
+                            p.status = data.value;
+                            p.statusAuthor = data.author || uName;
+                        }
                         break;
                     case "TOGGLE_PRESCRIPTION":
                         if (p) p.chkPrescription = data.value;
@@ -383,9 +387,20 @@ var DataManager = (function() {
 
             merged.patients = myData.patients || {};
             merged.admissionSchedule = myData.admissionSchedule || [];
-            merged.dischargedArchive = myData.dischargedArchive || {};
             merged.todos = myData.todos || [];
             merged.wardNotes = myData.wardNotes || {};
+
+            // ★修正: 退障アーカイブをオブジェクトとして安全に結合・保存する
+            merged.dischargedArchive = {};
+            var allArcIds = {};
+            var mArc = myData.dischargedArchive || {};
+            var dArc = diskData.dischargedArchive || {};
+            for (var id in mArc) allArcIds[id] = true;
+            for (var id in dArc) allArcIds[id] = true;
+            for (var id in allArcIds) {
+                if (mArc[id]) merged.dischargedArchive[id] = mArc[id];
+                else merged.dischargedArchive[id] = dArc[id];
+            }
 
             var txIdMap = {};
             var mergedTxIds = [];

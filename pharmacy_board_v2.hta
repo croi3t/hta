@@ -2240,7 +2240,23 @@ function perform3WayMerge(baseData, diskData, myData) {
 
 
         result.admissionSchedule = mergeArrayById(baseData.admissionSchedule, diskData.admissionSchedule, myData.admissionSchedule, mergePatients);
-        result.dischargedArchive = mergeArrayById(baseData.dischargedArchive, diskData.dischargedArchive, myData.dischargedArchive, mergePatients);
+
+        // ★修正: 退院アーカイブをオブジェクト(辞書型)として安全にマージする
+        result.dischargedArchive = {};
+        var allArcIds = {};
+        if (diskData.dischargedArchive) for (var id in diskData.dischargedArchive) allArcIds[id] = true;
+        if (myData.dischargedArchive)   for (var id in myData.dischargedArchive)   allArcIds[id] = true;
+        if (baseData.dischargedArchive) for (var id in baseData.dischargedArchive) allArcIds[id] = true;
+        for (var id in allArcIds) {
+            var b = (baseData.dischargedArchive || {})[id];
+            var d = (diskData.dischargedArchive || {})[id];
+            var m = (myData.dischargedArchive || {})[id];
+            var mergedArc = mergePatients(b, d, m);
+            if (mergedArc) {
+                mergedArc.id = id;
+                result.dischargedArchive[id] = mergedArc;
+            }
+        }
 
     } catch(err) { return myData || diskData || {}; }
     return result;
@@ -3462,8 +3478,9 @@ function renderPatients() {
         var st2 = 'onmousedown="startDragStatus(event, \'' + escapeHtml(p.id) + '\')" ' + clickEvent + '>';
         tr.push(st1 + st2 + statText + authorHtml + '</td>');
         
-        tr.push('<td style="text-align:center; font-size:20px; ' + chkBg + '" class="chk-toggle ' + chkClass + '" ' + chkEvent + '>' + chkText + '</td>');
-        tr.push('<td style="text-align:center; font-size:14px; font-weight:bold;" class="alert-toggle ' + aClass + '" ' + alertEvent + '>' + escapeHtml(aText) + '</td>');
+        // ★修正: 処方列の色(#fd7e14)と強調列の色(#e74c3c)、サイズ(20px)を復元
+        tr.push('<td style="text-align:center; font-size:20px; color:#fd7e14; ' + chkBg + '" class="chk-toggle ' + chkClass + '" ' + chkEvent + '>' + chkText + '</td>');
+        tr.push('<td style="text-align:center; font-size:20px; font-weight:bold; color:#e74c3c;" class="alert-toggle ' + aClass + '" ' + alertEvent + '>' + escapeHtml(aText) + '</td>');
         
         tr.push('<td class="' + hlClass + '" style="padding:4px;">');
         var ta1 = '<textarea rows="1" ' + memoDisabled + ' ' + memoChangeShared;
@@ -3543,10 +3560,10 @@ function toggleStatus(id) {
             td.innerHTML = statText + authorHtml;
         }
     }
-    // ★追加: トランザクションの発行
+    // ★修正: トランザクションに author(作業者名) を追加
     if (typeof DataManager !== "undefined") {
         DataManager.appendTransaction("TOGGLE_STATUS", {
-            patientId: id, wardCode: currentWard, value: p.status
+            patientId: id, wardCode: currentWard, value: p.status, author: p.statusAuthor
         });
     }
     autoSave();
@@ -4439,6 +4456,7 @@ function processFetchedPatients(newPatients, wardName) {
                 
                 // 退室時にメモや介入フラグ情報をアーカイブへ保存
                 appData.dischargedArchive[oldP.id] = {
+                    id: oldP.id, // ★追加: アーカイブデータ内にもIDを保持させる
                     status: oldP.status,
                     statusAuthor: oldP.statusAuthor,
                     memo: oldP.memo,
@@ -5373,6 +5391,26 @@ function renderHistory() {
         tbody.innerHTML = '<tr><td colspan="4" align="center">まだ履歴はありません。</td></tr>';
         return;
     }
+
+    // ★追加: 履歴にある病棟を抽出してプルダウンメニューを動的に生成する
+    var selWard = document.getElementById("sel-history-ward");
+    if (selWard) {
+        var curVal = selWard.value;
+        var wards = {};
+        for(var w = 0; w < appData.history.length; w++) {
+            if(appData.history[w].ward) wards[appData.history[w].ward] = true;
+        }
+        var selHtml = '<option value="">全病棟</option>';
+        var sortedWards = [];
+        for(var wKey in wards) { if(wards.hasOwnProperty(wKey)) sortedWards.push(wKey); }
+        sortedWards.sort();
+        for(var sw = 0; sw < sortedWards.length; sw++) {
+            var selected = (sortedWards[sw] === curVal) ? " selected" : "";
+            selHtml += '<option value="' + escapeHtml(sortedWards[sw]) + '"' + selected + '>' + escapeHtml(sortedWards[sw]) + '</option>';
+        }
+        selWard.innerHTML = selHtml;
+    }
+
     var html = "";
     for(var i=0; i<appData.history.length; i++) {
         var h = appData.history[i];
@@ -5385,11 +5423,11 @@ function renderHistory() {
 
         var isArrival = h.type.indexOf("退室") === -1 && h.type.indexOf("退避") === -1;
         var typeStyle = isArrival ? "color: #155724; background-color: #d4edda; font-weight:bold;" : "color: #721c24; background-color: #f8d7da;";
-        
+
         var clickAction = '';
         var titleText = '';
         var linkStyle = 'color: #0d6efd; text-decoration: underline; cursor: pointer;';
-        
+
         if (isArrival) {
             clickAction = 'onclick="jumpToPatient(\'' + escapeHtml(pId) + '\', \'' + escapeHtml(pName) + '\')"';
             titleText = 'クリックして患者一覧の現在の行へジャンプ';
@@ -5409,11 +5447,10 @@ function renderHistory() {
         html += '<td style="font-size:11px;">' + escapeHtml(h.doctor || "-") + '</td>';
         html += '<td style="font-size:11px;">' + escapeHtml(h.disease || "-") + '</td>';
         html += '</tr>';
-        // 詳細展開用のダミー行
         html += '<tr id="tr-history-detail-' + i + '" style="display:none; background:#fffaf0;"><td colspan="8" id="td-history-detail-' + i + '" style="padding:10px; border:1px solid #ffd54f;"></td></tr>';
     }
     tbody.innerHTML = html;
-    filterHistoryTable(); // 現在のフィルタを適用
+    filterHistoryTable();
 }
 
 function filterHistoryTable() {
