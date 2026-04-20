@@ -94,7 +94,23 @@ var DataManager = (function() {
             var pat = safeRead("patients") || {};
             if (pat.patients) disk.patients = pat.patients;
             if (pat.admissionSchedule) disk.admissionSchedule = pat.admissionSchedule;
-            if (pat.dischargedArchive) disk.dischargedArchive = pat.dischargedArchive;
+            
+            // ★修正: 過去のバグで配列として保存されている場合、辞書型(オブジェクト)に自動変換する
+            if (pat.dischargedArchive) {
+                if (pat.dischargedArchive instanceof Array) {
+                    var arcObj = {};
+                    for (var i = 0; i < pat.dischargedArchive.length; i++) {
+                        if (pat.dischargedArchive[i] && pat.dischargedArchive[i].id) {
+                            arcObj[pat.dischargedArchive[i].id] = pat.dischargedArchive[i];
+                        }
+                    }
+                    disk.dischargedArchive = arcObj;
+                } else {
+                    disk.dischargedArchive = pat.dischargedArchive;
+                }
+            } else {
+                disk.dischargedArchive = {};
+            }
 
             disk.todos = safeRead("todos") || [];
             var notes = safeRead("notes") || {};
@@ -387,20 +403,33 @@ var DataManager = (function() {
 
             merged.patients = myData.patients || {};
             merged.admissionSchedule = myData.admissionSchedule || [];
-            merged.todos = myData.todos || [];
-            merged.wardNotes = myData.wardNotes || {};
-
-            // ★修正: 退障アーカイブをオブジェクトとして安全に結合・保存する
+            
+            // ★修正: 退院アーカイブをオブジェクトとして安全に結合し、配列の混入を完全に防ぐ
             merged.dischargedArchive = {};
             var allArcIds = {};
             var mArc = myData.dischargedArchive || {};
             var dArc = diskData.dischargedArchive || {};
-            for (var id in mArc) allArcIds[id] = true;
-            for (var id in dArc) allArcIds[id] = true;
-            for (var id in allArcIds) {
-                if (mArc[id]) merged.dischargedArchive[id] = mArc[id];
-                else merged.dischargedArchive[id] = dArc[id];
+            
+            if (mArc instanceof Array) {
+                var tempM = {};
+                for (var i = 0; i < mArc.length; i++) if (mArc[i] && mArc[i].id) tempM[mArc[i].id] = mArc[i];
+                mArc = tempM;
             }
+            if (dArc instanceof Array) {
+                var tempD = {};
+                for (var j = 0; j < dArc.length; j++) if (dArc[j] && dArc[j].id) tempD[dArc[j].id] = dArc[j];
+                dArc = tempD;
+            }
+            
+            for (var idM in mArc) allArcIds[idM] = true;
+            for (var idD in dArc) allArcIds[idD] = true;
+            for (var arcId in allArcIds) {
+                if (mArc[arcId]) merged.dischargedArchive[arcId] = mArc[arcId];
+                else merged.dischargedArchive[arcId] = dArc[arcId];
+            }
+
+            merged.todos = myData.todos || [];
+            merged.wardNotes = myData.wardNotes || {};
 
             var txIdMap = {};
             var mergedTxIds = [];

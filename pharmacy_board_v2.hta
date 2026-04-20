@@ -1525,8 +1525,17 @@ function findPatientById(id) {
     }
     
     // 2. どこにもいなければ、退院患者アーカイブから探す
-    if (appData.dischargedArchive && appData.dischargedArchive[strId]) {
-        return appData.dischargedArchive[strId];
+    // ★修正: 過去のバグでアーカイブが配列のままになっていても探し出せるようにする
+    if (appData.dischargedArchive) {
+        if (appData.dischargedArchive instanceof Array) {
+            for (var i = 0; i < appData.dischargedArchive.length; i++) {
+                if (appData.dischargedArchive[i] && String(appData.dischargedArchive[i].id) === strId) {
+                    return appData.dischargedArchive[i];
+                }
+            }
+        } else if (appData.dischargedArchive[strId]) {
+            return appData.dischargedArchive[strId];
+        }
     }
     
     return null;
