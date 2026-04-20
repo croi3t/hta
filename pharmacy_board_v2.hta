@@ -1662,13 +1662,13 @@ function getTodayString() {
 
 // サブタブを動的に描画
 // サブタブを動的に描画
+// サブタブを動的に描画
 function renderWardTabs() {
     var activeCodes = (appData.settings && appData.settings.activeWardCodes) || ["99"];
     var containers = ["sub-tabs-container", "note-sub-tabs-container", "kl-sub-tabs-container"];
     for (var c = 0; c < containers.length; c++) {
         var container = document.getElementById(containers[c]);
         if (!container) continue;
-        
         var html = "";
         for (var i = 0; i < activeCodes.length; i++) {
             var code = activeCodes[i];
@@ -1677,9 +1677,17 @@ function renderWardTabs() {
             var isKL = (containers[c] === "kl-sub-tabs-container");
             var klClass = isKL ? " kl-ward-btn" : "";
             var onclick = (containers[c] === "note-sub-tabs-container") ? "switchNoteWard" : "switchWard";
-            
             var closeBtnColor = (code === currentWard) ? "rgba(255,255,255,0.8)" : "#999";
-            html += '<div class="sub-tab' + klClass + activeClass + '" style="position:relative; padding-right:25px;" onclick="' + onclick + '(\'' + code + '\')">' + name + '<span class="tab-close-btn" onclick="event.stopPropagation(); removeWard(\'' + code + '\')" style="position:absolute; right:5px; top:50%; margin-top:-8px; font-size:10px; color:' + closeBtnColor + '; cursor:pointer;">&times;</span>' + '</div>';
+            
+            // ★修正: エディタの自動改行でエラーが起きないよう、細かく文字列を繋ぐ安全な書き方に変更
+            html += '<div class="sub-tab' + klClass + activeClass + '" ';
+            html += 'style="position:relative; padding-right:25px;" ';
+            html += 'onclick="' + onclick + '(\'' + code + '\')">';
+            html += name;
+            html += '<span class="tab-close-btn" ';
+            html += 'onclick="event.stopPropagation(); removeWard(\'' + code + '\')" ';
+            html += 'style="position:absolute; right:5px; top:50%; margin-top:-8px; font-size:10px; color:' + closeBtnColor + '; cursor:pointer;">&times;</span>';
+            html += '</div>';
         }
         container.innerHTML = html;
     }
