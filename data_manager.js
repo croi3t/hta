@@ -1,10 +1,7 @@
-// =========================================================
-// data_manager.js
-// 共有フォルダへの安全なデータI/Oと、競合を防ぐ3-wayマージを管理
-// =========================================================
-
 var DataManager = (function() {
     var fso = null;
+    var lastReplayTs = 0;
+    var lastArchiveTs = 0;
 
     function initFSO() {
         if (fso) return true;
@@ -16,19 +13,14 @@ var DataManager = (function() {
         }
     }
 
-    // パフォーマンス管理用タイムスタンプ
-    var lastReplayTs = 0;
-    var lastArchiveTs = 0;
-
     function getJsonPath(cat) {
-        // HTA側で定義されている SHARED_DATA_PATH を使用
         if (typeof SHARED_DATA_PATH === "undefined") return "";
         return fso.BuildPath(SHARED_DATA_PATH, cat + ".json");
     }
 
     function stringifyData(obj) {
         if (typeof JSON !== 'undefined' && JSON.stringify) return JSON.stringify(obj);
-        return ""; // IE11環境では基本的にJSONオブジェクトが存在するため簡略化
+        return ""; 
     }
 
     function parseData(str) {
@@ -39,7 +31,6 @@ var DataManager = (function() {
         } catch (e) { return null; }
     }
 
-    // HTA側から注入されるリトライ付き保存関数を利用、無ければ自前でフォールバック
     function saveFile(path, text) {
         if (typeof DataManager.saveTextUtf8 === "function") {
             return DataManager.saveTextUtf8(path, text);
@@ -79,47 +70,11 @@ var DataManager = (function() {
         return null;
     }
 
-    // --- マージ用ヘルパー関数群 ---
-    function mergeArrayById(diskList, myList, mergeFunc) {
-        var diskMap = {}, myMap = {};
-        function popMap(arr, map) {
-            for (var i = 0; i < arr.length; i++) {
-                if (arr[i] && arr[i].id) map[arr[i].id] = arr[i];
-            }
-        }
-        popMap(diskList || [], diskMap);
-        popMap(myList || [], myMap);
-
-        var allIds = {};
-        for (var id in diskMap) allIds[id] = true;
-        for (var id in myMap)   allIds[id] = true;
-
-        var mergedList = [];
-        for (var id in allIds) {
-            var d = diskMap[id], m = myMap[id];
-            var t = mergeFunc(d, m);
-            if (t) mergedList.push(t);
-        }
-        return mergedList;
-    }
-
-    function mergeObj(d, m) {
-        if (m && !d) return m;
-        if (!m && !d) return d;
-        // 簡易的なプロパティ上書き（自分が編集したものを優先）
-        for (var key in m) {
-            if (m.hasOwnProperty(key)) d[key] = m[key];
-        }
-        return d;
-    }
-
-    // --- メイン機能 ---
     return {
         init: function() {
             initFSO();
         },
 
-        // サーバーから全データを読み込む
         loadAll: function() {
             if (!initFSO()) return {};
             var disk = {
@@ -150,31 +105,11 @@ var DataManager = (function() {
             if (settings.announcement !== undefined) disk.announcement = settings.announcement;
 
             disk.history = safeRead("history") || [];
-            
-            // 冪等性確保用の適用済みIDリスト
             disk.appliedTxIds = pat.appliedTxIds || []; 
             
             return disk;
         },
 
-        // メモリ上のデータとサーバーデータを安全に結合して保存する（チェックポイント）
-        saveAll: function(myData) {
-            if (!initFSO()) return myData;
-            
-            var diskData = this.loadAll(); // 保存直前に最新のサーバー状態を取得
-            var merged = this._mergeAndSave(myData, diskData);
-
-            // 1時間以上経過した伝票を整理
-            this._lazyArchive();
-
-            return merged;
-        },
-
-        // -------------------------------------------------------
-        // トランザクション処理 (伝票方式による差分同期)
-        // -------------------------------------------------------
-
-        // トランザクションディレクトリの取得・作成
         getTxDir: function() {
             if (!initFSO()) return "";
             var txDir = fso.BuildPath(SHARED_DATA_PATH, "tx");
@@ -186,14 +121,12 @@ var DataManager = (function() {
             return txDir;
         },
 
-        // 変更を伝票として発行
         appendTransaction: function(op, payload) {
             var txDir = this.getTxDir();
             if (!txDir) return false;
 
             var ts = new Date().getTime();
             var rand = Math.floor(Math.random() * 0x10000).toString(16);
-            // ID形式: [ts]_[uid]_[rand]
             var txId = ts + "_" + (window.currentSystemId || "unknown") + "_" + rand;
             
             var txData = {
@@ -209,10 +142,25 @@ var DataManager = (function() {
             return saveFile(filePath, stringifyData(txData));
         },
 
-        // 他端末の伝票を読み込んでリプレイする (超高速化版)
         replayTransactions: function(appData) {
             var txDir = this.getTxDir();
             if (!txDir || !appData) return false;
+
+            // 【超高速化】適用済みIDのハッシュマップ化で計算時間を大幅カット
+            var appliedMap = {};
+            var appliedIds = appData.appliedTxIds || [];
+            var maxAppliedTs = 0;
+            for (var j = 0; j < appliedIds.length; j++) {
+                appliedMap[appliedIds[j]] = true;
+                var tsParts = appliedIds[j].split("_");
+                var tsVal = parseInt(tsParts[0], 10);
+                if (!isNaN(tsVal) && tsVal > maxAppliedTs) maxAppliedTs = tsVal;
+            }
+
+            // 起動時の無駄な全ファイルスキャンを回避
+            if (lastReplayTs === 0 && maxAppliedTs > 60000) {
+                lastReplayTs = maxAppliedTs - 60000;
+            }
 
             var folder = fso.GetFolder(txDir);
             var fc = new Enumerator(folder.Files);
@@ -220,23 +168,17 @@ var DataManager = (function() {
 
             for (; !fc.atEnd(); fc.moveNext()) {
                 var file = fc.item();
-                if (file.Name.indexOf("tx_") === 0 && file.Name.indexOf(".json") !== -1) {
-                    var parts = file.Name.split("_");
+                var fname = file.Name; // プロパティへの通信アクセスを1回にまとめる
+                
+                if (fname.indexOf("tx_") === 0 && fname.indexOf(".json") !== -1) {
+                    var parts = fname.split("_");
                     var ts = parseInt(parts[1], 10);
                     
-                    // 【高速化1】前回処理した時間(lastReplayTs)より古いファイルは、開く前に無視する
                     if (ts <= lastReplayTs) continue;
 
-                    var txId = file.Name.replace("tx_", "").replace(".json", "");
-                    
-                    // 適用済みチェック
-                    var alreadyApplied = false;
-                    var appliedIds = appData.appliedTxIds || [];
-                    for(var j=0; j<appliedIds.length; j++) {
-                        if(appliedIds[j] === txId) { alreadyApplied = true; break; }
-                    }
+                    var txId = fname.replace("tx_", "").replace(".json", "");
 
-                    if (!alreadyApplied) {
+                    if (!appliedMap[txId]) {
                         targets.push({ id: txId, ts: ts, path: file.Path });
                     }
                 }
@@ -244,7 +186,6 @@ var DataManager = (function() {
 
             if (targets.length === 0) return false;
 
-            // タイムスタンプ順に適用
             targets.sort(function(a, b) { return a.ts - b.ts; });
 
             var updatedCount = 0;
@@ -252,7 +193,6 @@ var DataManager = (function() {
             var maxTs = lastReplayTs;
 
             for (var i = 0; i < targets.length; i++) {
-                // 【高速化2】必要なファイルだけを開いてパースする
                 var raw = loadFile(targets[i].path);
                 var tx = parseData(raw);
                 if (tx) {
@@ -265,23 +205,16 @@ var DataManager = (function() {
                 if (targets[i].ts > maxTs) maxTs = targets[i].ts;
             }
             
-            // 処理済みタイムスタンプを更新
             lastReplayTs = maxTs;
             
-            if (appData.appliedTxIds.length > 1000) {
-                appData.appliedTxIds = appData.appliedTxIds.slice(-1000);
+            // データ肥大化を防ぐため履歴を500件に絞る（1000→500）
+            if (appData.appliedTxIds.length > 500) {
+                appData.appliedTxIds = appData.appliedTxIds.slice(-500);
             }
 
             return updatedCount > 0;
         },
 
-        // -------------------------------------------------------
-        // トランザクション処理 (伝票方式による差分同期)
-        // -------------------------------------------------------
-        
-        // （getTxDir, appendTransaction, replayTransactions は既存のままでOK）
-
-        // 各オペレーションの具体的反映
         _applyDelta: function(appData, op, data, uName) {
             try {
                 var p = null;
@@ -314,7 +247,6 @@ var DataManager = (function() {
                         for (var k = 0; k < appData.todos.length; k++) {
                             if (String(appData.todos[k].id) === String(data.id)) {
                                 exists = true;
-                                // 既に存在する場合は重複追加を防ぎ、上書き更新する
                                 for (var key in data) {
                                     if (data.hasOwnProperty(key)) appData.todos[k][key] = data[key];
                                 }
@@ -367,7 +299,6 @@ var DataManager = (function() {
                                 break;
                             }
                         }
-                        // 存在しなければ新規追加
                         if (!foundNote) {
                             wardNotes.unshift({
                                 id: data.id, title: data.title, content: data.content,
@@ -395,7 +326,6 @@ var DataManager = (function() {
         },
 
         _findPatientInAppData: function(appData, pid, wardCode) {
-            // 【バグ修正】古いpatientsWardキーではなく、マップ形式のpatientsキーを参照する
             var list = appData.patients ? appData.patients[wardCode] : null;
             if (!list) return null;
             for (var i = 0; i < list.length; i++) {
@@ -406,44 +336,44 @@ var DataManager = (function() {
 
         _lazyArchive: function() {
             var now = new Date().getTime();
-            // 【高速化3】お掃除処理は、前回の実行から「10分」以上経過している時だけ実行する
             if (now - lastArchiveTs < 600000) return; 
             
             var txDir = this.getTxDir();
             if (!txDir) return;
             var archiveDir = fso.BuildPath(txDir, "archive");
-            var threshold = 3600000; // 1時間
+            var threshold = 3600000; 
 
             try {
                 var folder = fso.GetFolder(txDir);
                 var fc = new Enumerator(folder.Files);
                 for (; !fc.atEnd(); fc.moveNext()) {
                     var file = fc.item();
-                    if (file.Name.indexOf("tx_") === 0) {
+                    var fname = file.Name; // 通信アクセスを1回に削減
+                    if (fname.indexOf("tx_") === 0) {
                         try {
-                            if (now - new Date(file.DateLastModified).getTime() > threshold) {
-                                fso.MoveFile(file.Path, fso.BuildPath(archiveDir, file.Name));
+                            // 【超高速化】ファイル名から時刻を割り出し、重いファイル属性読み取りを回避
+                            var parts = fname.split("_");
+                            var fileTs = parseInt(parts[1], 10);
+                            
+                            if (!isNaN(fileTs)) {
+                                if (now - fileTs > threshold) {
+                                    fso.MoveFile(file.Path, fso.BuildPath(archiveDir, fname));
+                                }
                             }
                         } catch(e) {}
                     }
                 }
-                // 実行時間を記録
                 lastArchiveTs = now;
             } catch(e) {}
         },
 
-        // メモリ上のデータとサーバーデータを安全に結合して保存する（チェックポイント）
         saveAll: function(myData) {
             if (!initFSO()) return myData;
             
-            var diskData = this.loadAll(); // 保存直前に最新のサーバー状態を取得
-
-            // 【最重要修正】マスターファイル上書き前に必ず最新伝票を取り込む
+            var diskData = this.loadAll(); 
             this.replayTransactions(myData);
-
             var merged = this._mergeAndSave(myData, diskData);
-
-            this._lazyArchive(); // 1時間以上経過した伝票を整理
+            this._lazyArchive(); 
 
             return merged;
         },
@@ -451,14 +381,12 @@ var DataManager = (function() {
         _mergeAndSave: function(myData, diskData) {
             var merged = {};
 
-            // ▼ トランザクション管理対象データ（最新のmyDataをそのまま正として採用） ▼
             merged.patients = myData.patients || {};
             merged.admissionSchedule = myData.admissionSchedule || [];
             merged.dischargedArchive = myData.dischargedArchive || {};
             merged.todos = myData.todos || [];
             merged.wardNotes = myData.wardNotes || {};
 
-            // 【最重要修正】適用済みトランザクションIDの確実な結合（履歴の忘却防止）
             var txIdMap = {};
             var mergedTxIds = [];
             var myTxIds = myData.appliedTxIds || [];
@@ -474,11 +402,10 @@ var DataManager = (function() {
                     mergedTxIds.push(diskTxIds[j]); 
                 }
             }
-            // 肥大化を防ぐため最新1000件に保つ
-            if (mergedTxIds.length > 1000) mergedTxIds = mergedTxIds.slice(-1000);
+            // IDリストを500件に絞る（マージ時のループ計算量を削減）
+            if (mergedTxIds.length > 500) mergedTxIds = mergedTxIds.slice(-500);
             merged.appliedTxIds = mergedTxIds;
 
-            // ▼ トランザクション管理外データ（設定・履歴等）の結合 ▼
             var myHist = (myData.history instanceof Array) ? myData.history : [];
             var dHist = (diskData.history instanceof Array) ? diskData.history : [];
             var histSeen = {};
@@ -523,7 +450,6 @@ var DataManager = (function() {
 
             if (merged.settings.yrSettings) delete merged.settings.yrSettings;
 
-            // ▼ ファイルへの書き込み ▼
             var patObj = { 
                 patients: merged.patients, 
                 admissionSchedule: merged.admissionSchedule, 

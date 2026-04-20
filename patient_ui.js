@@ -144,8 +144,8 @@ var PatientUI = {
         var pMemos = (p && typeof p === 'object' && p.personalMemos) ? p.personalMemos : {};
         var myMemo = (pMemos && currentSystemId) ? (pMemos[currentSystemId] || "") : "";
 
-        // 採血日
-        var bDate  = p.bloodDate || "-";
+        // 採血日 (初期状態は「-」に戻す)
+        var bDate  = p.bloodDate || "-"; 
         var bdTitle = p.bloodDetail
             ? 'title="採血詳細: ' + escapeHtml(p.bloodDetail) + ' (クリックで手動修正)"'
             : 'title="クリックで採血日を修正"';
@@ -195,8 +195,14 @@ var PatientUI = {
         // 6. 在院
         h += '<td style="text-align:center; font-size:12px;">' + escapeHtml(p.daysInHosp || '-') + '</td>';
         
-        // 7. 採血日
-        h += '<td ' + editOnlyBlood + ' style="text-align:center; font-size:11px; cursor:pointer;" ' + bdTitle + '>' + escapeHtml(bDate) + '</td>';
+        // 7. 採血日 (上下分割UI)
+        var fetchBtnHtml = isEditMode 
+            ? '<div class="hide-on-print blood-fetch-btn" onclick="event.stopPropagation(); fetchBloodDateForPatient(\'' + pid + '\')" style="background:#e3f2fd; color:#0d6efd; font-size:10px; font-weight:bold; text-align:center; padding:4px 0; border-bottom:1px dotted #ccc; cursor:pointer; line-height:1;" title="カルテから採血日を取得">取得</div>'
+            : '<div class="hide-on-print" style="padding:4px 0; border-bottom:1px dotted #ccc; line-height:1;">&nbsp;</div>';
+
+        var dateTextHtml = '<div class="blood-date-text" ' + editOnlyBlood + ' style="text-align:center; padding:4px 0; font-size:11px; cursor:pointer; line-height:1;" ' + bdTitle + '>' + escapeHtml(bDate) + '</div>';
+
+        h += '<td class="blood-date-cell" style="padding:0; vertical-align:middle; width:65px;">' + fetchBtnHtml + dateTextHtml + '</td>';
         
         // 8. 介入
         h += '<td class="status-cell ' + statClass + '" style="' + statUnderline + '" ' + editOnlyStatus + ' title="クリックで状態変更">' + statText + authorHtml + '</td>';
