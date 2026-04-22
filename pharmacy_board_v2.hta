@@ -1137,7 +1137,7 @@ function generateAbbreviation() {}
                                     <span style="font-size:12px; font-weight:bold;">入 院 前 (持参薬)</span>
                                     <button class="yr-btn yr-btn-outline-secondary" style="font-size:11px; padding:2px 5px;" onclick="document.getElementById('med-adj-in').value='';">クリア</button>
                                 </div>
-                                <textarea id="med-adj-in" class="yr-form-control" style="width:100%; height:150px; box-sizing:border-box; font-family:monospace; font-size:12px; white-space:pre; resize:vertical;" placeholder="電子カルテ等から処方を貼り付けてください。上の✨ボタンで自動整理されます。"></textarea>
+                                <textarea id="med-adj-in" class="yr-form-control" style="width:100%; height:150px; box-sizing:border-box; font-family:monospace; font-size:12px; white-space:pre; resize:vertical;" placeholder="電子カルテ等から処方を貼り付けてください。"></textarea>
                             </div>
                             <div style="width:14%; display:flex; flex-direction:column; justify-content:center; padding:0 10px; box-sizing:border-box;">
                                 <button id="btn-med-adj-compare" class="yr-btn yr-btn-primary" style="font-weight:bold; padding:8px 0; width:100%; margin-bottom:15px; font-size:13px;" onclick="calcMedAdj()">▶ 比較・判定 ▶<br><span style="font-size:10px; font-weight:normal;">(自動整理あり)</span></button>
@@ -8699,7 +8699,7 @@ function renderMedAdjResult2026() {
             outHtml = escapeHtml(outD[inD[i].outRef].raw);
             if (inD[i].status === "院内採用等へ変更") {
                 var btn1 = ' <button class="yr-btn-danger-sm" style="margin-left:10px;" ';
-                var btn2 = 'onclick="unlinkMedAdjDrug2026(\'' + escapeHtml(outD[outD[i].outRef].raw).replace(/'/g, "\\'") + '\')">解除</button>';
+                var btn2 = 'onclick="unlinkMedAdjDrug2026(\'' + escapeHtml(outD[inD[i].outRef].raw).replace(/'/g, "\\'") + '\')">解除</button>';
                 outHtml += btn1 + btn2;
             }
         } else if(inD[i].status === "中止") {
