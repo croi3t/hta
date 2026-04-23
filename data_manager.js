@@ -387,15 +387,44 @@ var DataManager = (function() {
             } catch(e) {}
         },
 
+        _checkAndCreateBackup: function(data) {
+            try {
+                var now = new Date();
+                var today = now.getFullYear() + ("0" + (now.getMonth() + 1)).slice(-2) + ("0" + now.getDate()).slice(-2);
+                
+                if (!data.settings) data.settings = {};
+                if (data.settings.lastBackupDate === today) return; // 今日実行済みならスキップ
+
+                var backupDirRoot = fso.BuildPath(SHARED_DATA_PATH, "backup");
+                if (!fso.FolderExists(backupDirRoot)) fso.CreateFolder(backupDirRoot);
+                
+                var targetDir = fso.BuildPath(backupDirRoot, today);
+                if (!fso.FolderExists(targetDir)) fso.CreateFolder(targetDir);
+
+                var files = ["patients.json", "settings.json", "todos.json", "notes.json", "history.json"];
+                for (var i = 0; i < files.length; i++) {
+                    var src = getJsonPath(files[i].replace(".json", ""));
+                    if (fso.FileExists(src)) {
+                        fso.CopyFile(src, fso.BuildPath(targetDir, files[i]), true);
+                    }
+                }
+                data.settings.lastBackupDate = today;
+            } catch(e) {}
+        },
+
         saveAll: function(myData) {
             if (!initFSO()) return myData;
             
             var diskData = this.loadAll(); 
             this.replayTransactions(myData);
             var merged = this._mergeAndSave(myData, diskData);
+            
+            // ★追加: 保存のタイミングでバックアップを確認・実行
+            this._checkAndCreateBackup(merged);
+            
             this._lazyArchive(); 
 
-            return merged;
+            return merged; 
         },
 
         _mergeAndSave: function(myData, diskData) {
