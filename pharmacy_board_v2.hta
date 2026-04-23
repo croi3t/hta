@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html>
 <head>
 <meta charset="UTF-8">
@@ -1509,8 +1509,6 @@ function debounce(func, wait) {
 function findPatientById(id) {
     if (!id) return null;
     var strId = String(id);
-    
-    // 1. まず、すべての病棟の現入院患者から探す (病棟移動した患者の対応)
     if (appData.patients) {
         for (var wardCode in appData.patients) {
             if (appData.patients.hasOwnProperty(wardCode)) {
@@ -1523,9 +1521,6 @@ function findPatientById(id) {
             }
         }
     }
-    
-    // 2. どこにもいなければ、退院患者アーカイブから探す
-    // ★修正: 過去のバグでアーカイブが配列のままになっていても探し出せるようにする
     if (appData.dischargedArchive) {
         if (appData.dischargedArchive instanceof Array) {
             for (var i = 0; i < appData.dischargedArchive.length; i++) {
@@ -1537,7 +1532,6 @@ function findPatientById(id) {
             return appData.dischargedArchive[strId];
         }
     }
-    
     return null;
 }
 
@@ -1556,6 +1550,11 @@ var updatePersonalMemoDebounced = debounce(function(id, val, element) {
     if(!p) return;
     if(!p.personalMemos) p.personalMemos = {};
     p.personalMemos[currentSystemId] = val;
+    if (typeof DataManager !== "undefined") {
+        DataManager.appendTransaction("UPDATE_PERSONAL_MEMO", {
+            patientId: id, wardCode: currentWard, userId: currentSystemId, value: val
+        });
+    }
     autoSave();
 }, 500);
 
@@ -2382,8 +2381,22 @@ function renderKarteLinks() {
 	var list = getCurrentPatientsList();
 	if (!list || list.length === 0) {
     	tbody.innerHTML = '<tr><td colspan="14" align="center">患者データがありません。</td></tr>';
-
     	return;
+	}
+	
+	if (klSortKey !== '') {
+	    var colIdxStr = klSortKey;
+	    list.sort(function(a, b) {
+	        var va = a[colIdxStr] || '';
+	        var vb = b[colIdxStr] || '';
+	        if (colIdxStr === 'id') {
+	            va = parseInt(va, 10) || 0;
+	            vb = parseInt(vb, 10) || 0;
+	        }
+	        if (va < vb) return klSortAsc ? -1 : 1;
+	        if (va > vb) return klSortAsc ? 1 : -1;
+	        return 0;
+	    });
 	}
     
 	var bs = 'padding:4px 12px;font-size:11px;margin:1px;border-radius:3px;color:#fff;cursor:pointer;border:none;';
@@ -3008,25 +3021,13 @@ function handleKeyShortcut(e) {
 var klSortKey = '';
 var klSortAsc = true;
 function sortKarteLink(key) {
-    if (klSortKey === key) { klSortAsc = !klSortAsc; } else { klSortKey = key; klSortAsc = true; }
-    var tbody = document.getElementById('tbody-kartelink');
-    if (!tbody) return;
-    var rows = [];
-    for (var i = 0; i < tbody.rows.length; i++) {
-        rows.push(tbody.rows[i]);
+    if (klSortKey === key) {
+        klSortAsc = !klSortAsc;
+    } else {
+        klSortKey = key;
+        klSortAsc = true;
     }
-    var colIdx = (key === 'id') ? 0 : (key === 'name' ? 1 : (key === 'dept' ? 2 : 3));
-    rows.sort(function(a, b) {
-        var va = a.cells[colIdx] ? (a.cells[colIdx].innerText || '') : '';
-        var vb = b.cells[colIdx] ? (b.cells[colIdx].innerText || '') : '';
-        if (key === 'id') { va = parseInt(va, 10) || 0; vb = parseInt(vb, 10) || 0; }
-        if (va < vb) return klSortAsc ? -1 : 1;
-        if (va > vb) return klSortAsc ? 1 : -1;
-        return 0;
-    });
-    for (var j = 0; j < rows.length; j++) {
-        tbody.appendChild(rows[j]);
-    }
+    renderKarteLinks();
 }
 function openKarteLink(type, kanjaId) {
     var userId = currentSystemId || '';
@@ -3575,14 +3576,15 @@ function toggleStatus(id) {
             var statClass = STATUS_CLASSES[statIdx];
             var rawStatText = STATUS_TEXTS[statIdx];
             var statText = rawStatText === "(未設定)" ? "未" : (rawStatText === "介入予定" ? "予定" : (rawStatText === "指導済" ? "指導" : "記録"));
-            var authorHtml = p.statusAuthor ? '<br><span class="status-author">' + p.statusAuthor + '</span>' : '';
+            
+            var authorHtml = p.statusAuthor ? '<br><span class="status-author">' + escapeHtml(p.statusAuthor) + '</span>' : '';
             var statUnderline = (statIdx === 1 || statIdx === 2) ? 'text-decoration:underline;' : '';
+            
             td.className = "status-cell " + statClass;
             td.style.cssText = statUnderline;
             td.innerHTML = statText + authorHtml;
         }
     }
-    // ★修正: トランザクションに author(作業者名) を追加
     if (typeof DataManager !== "undefined") {
         DataManager.appendTransaction("TOGGLE_STATUS", {
             patientId: id, wardCode: currentWard, value: p.status, author: p.statusAuthor
@@ -3791,13 +3793,10 @@ function togglePrescriptionCheck(id) {
 function updateMemo(id, val, element) {
     if(!isEditMode) return;
     var p = findPatientById(id);
-    if(!p) return; // ガード (Vol.15.14)
+    if(!p) return; 
     if(p.memo !== val) {
         p.memo = val;
-        
-        // 入力中にもハイライトを即時反映（表全体の再描画を極力避けるためクラス操作）
         if (element) {
-            // 文字量に合わせて高さを自動拡張
             element.style.height = "auto";
             element.style.height = element.scrollHeight + "px";
             
@@ -3810,16 +3809,20 @@ function updateMemo(id, val, element) {
                     break;
                 }
             }
-            // 親(td)を取得してクラスを付け外し（trへの適用はやめる）
             var tdMemo = element.parentNode;
-            // 親要素が存在するか（画面から消去されていないか）を先に確認する
             if (tdMemo && tdMemo.tagName && tdMemo.tagName.toLowerCase() === 'td') {
-                var tdHistory = tdMemo.nextSibling;
                 if (isHighlight) {
                     addClass(tdMemo, 'highlight-row');
+                } else {
+                    removeClass(tdMemo, 'highlight-row');
                 }
             }
         }
+    }
+    if (typeof DataManager !== "undefined") {
+        DataManager.appendTransaction("UPDATE_PATIENT_MEMO", {
+            patientId: id, wardCode: currentWard, value: val
+        });
     }
 }
 
@@ -4087,26 +4090,7 @@ function fetchPatientData() {
 }
 
 // ---------- 採血日個別取得機能（karte.php連携） ----------
-var bloodFetchQueue = [];
-var isBloodFetching = false;
-
-function updateAllBloodDates() {
-    if (!isEditMode) return;
-    var list = getCurrentPatientsList();
-    if (list.length === 0) { alert("更新対象の患者がいません。"); return; }
-    
-    if (isBloodFetching) { alert("現在更新中です..."); return; }
-    
-    if (!confirm("表示中の全患者(" + list.length + "名)の個別カルテから採血情報を取得しますか？\n(数十秒かかります)")) return;
-    
-    bloodFetchQueue = [].concat(list);
-    isBloodFetching = true;
-    
-    var btn = document.getElementById("btn-blood-fetch");
-    if (btn) { btn.disabled = true; btn.innerText = "🩸 更新中..."; }
-    
-    processNextBloodFetch();
-}
+// Deleted redundant vars & function
 
 /**
  * 患者テーブルを検索フィルターで絞り込む
@@ -4172,38 +4156,55 @@ function fetchBloodDateForPatient(patientId) {
     });
 }
 
-// ★新規追加: 表示中の全患者の採血日を一括取得
 function updateAllBloodDates() {
     if (!isEditMode) { alert("編集モード時のみ実行可能です。"); return; }
     var list = getCurrentPatientsList();
-    if (list.length === 0) return;
+    if (list.length === 0) { alert("更新対象の患者がいません。"); return; }
     
-    if (!confirm("表示中の全患者(" + list.length + "名)の採血日をカルテから一括取得しますか？\n(数分かかる場合があります。途中で他の操作も可能です)")) return;
-    
-    var index = 0;
-    function processNext() {
-        if (index >= list.length) {
-            alert("一括取得が完了しました。");
-            return;
-        }
-        var p = list[index];
-        index++;
-        
-        // UI上でも「取得中」として見せる
-        var tr = document.getElementById("tr-patient-" + p.id);
-        if (tr) {
-            var textEl = tr.querySelector(".blood-date-text");
-            if (textEl) textEl.innerText = "取得中...";
-        }
-        
-        // 1件ずつ順番に取得（サーバー負荷とブラウザの同時接続制限を考慮）
-        fetchSingleBloodDate(p, function() {
-            renderPatients(); 
-            // 次の患者へ (再帰呼び出し)
-            setTimeout(processNext, 200); 
-        });
+    if (!confirm("表示中の全患者(" + list.length + "名)の採血日をカルテから一括取得しますか？\n(並列処理により数秒で高速取得します)")) return;
+
+    var btn = document.querySelector("div[onclick='updateAllBloodDates()']");
+    var originalText = btn ? btn.innerText : "🩸全体取得";
+    if (btn) {
+        btn.style.pointerEvents = "none";
+        btn.innerText = "🩸 取得中...";
     }
-    processNext();
+
+    var completedCount = 0;
+    var totalCount = list.length;
+    
+    for (var i = 0; i < totalCount; i++) {
+        (function(patient, index) {
+            var tr = document.getElementById("tr-patient-" + patient.id);
+            if (tr) {
+                var textEl = tr.querySelector(".blood-date-text");
+                if (textEl) textEl.innerText = "取得中...";
+            }
+            setTimeout(function() {
+                fetchSingleBloodDate(patient, function() {
+                    completedCount++;
+                    var updateTr = document.getElementById("tr-patient-" + patient.id);
+                    if (updateTr) {
+                        var dtEl = updateTr.querySelector(".blood-date-text");
+                        if (dtEl) dtEl.innerText = patient.bloodDate || "-";
+                    }
+                    if (btn) {
+                        btn.innerText = "🩸 残" + (totalCount - completedCount);
+                    }
+                    
+                    if (completedCount >= totalCount) {
+                        if (btn) {
+                            btn.style.pointerEvents = "auto";
+                            btn.innerText = originalText;
+                        }
+                        renderPatients();
+                        autoSave();
+                        alert("一括取得が完了しました。");
+                    }
+                });
+            }, index * 100);
+        })(list[i], i);
+    }
 }
 
 // --- Shift-JIS デコード用ヘルパー ---
@@ -8316,7 +8317,7 @@ function renderMedAdjResult() {
         if (inD[i].status === "中止") {
             dragAttrs += ' ondragover="event.preventDefault(); this.style.backgroundColor=\'#e8f4f8\';" ';
             dragAttrs += 'ondragleave="this.style.backgroundColor=\'\'" ';
-            dragAttrs += 'ondrop="event.preventDefault(); this.style.backgroundColor=\'\'; linkMedAdjDrugs(' + i + ', event.dataTransfer.getData(\'text\'))"';
+            dragAttrs += 'ondrop="event.preventDefault(); this.style.backgroundColor=\'\'; var d=event.dataTransfer.getData(\'text\'); if(d&&d.indexOf(\'medadj_out_\')===0){ linkMedAdjDrugs(' + i + ', d); }"';
         }
         
         html += '<tr class="yr-row-regular" ' + dragAttrs + '>';
@@ -8711,7 +8712,7 @@ function renderMedAdjResult2026() {
         if (inD[i].status === "中止") {
             dragAttrs += ' ondragover="event.preventDefault(); this.style.backgroundColor=\'#fce4ec\';" ';
             dragAttrs += 'ondragleave="this.style.backgroundColor=\'\'" ';
-            dragAttrs += 'ondrop="event.preventDefault(); this.style.backgroundColor=\'\'; linkMedAdjDrugs2026(' + i + ', event.dataTransfer.getData(\'text\'))"';
+            dragAttrs += 'ondrop="event.preventDefault(); this.style.backgroundColor=\'\'; var d=event.dataTransfer.getData(\'text\'); if(d&&d.indexOf(\'medadj_out_\')===0){ linkMedAdjDrugs2026(' + i + ', d); }"';
         }
         
         html += '<tr class="yr-row-regular" ' + dragAttrs + '>';
@@ -8886,7 +8887,6 @@ yrInit();
 </div>
 </body>
 </html>
-
 
 
 
