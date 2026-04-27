@@ -242,6 +242,12 @@ var DataManager = (function() {
                     case "UPDATE_PATIENT_MEMO":
                         if (p) { p.memo = data.value; this._updateMemoAuthors(p, uName); }
                         break;
+                    case "UPDATE_BLOOD_DATE":
+                        if (p) {
+                            p.bloodDate = data.bloodDate;
+                            p.bloodDetail = data.bloodDetail;
+                        }
+                        break;
                     case "TOGGLE_STATUS":
                         // ★修正: 作業者名(author)も一緒に更新する
                         if (p) {
@@ -432,33 +438,19 @@ var DataManager = (function() {
 
             merged.patients = myData.patients || {};
             merged.admissionSchedule = myData.admissionSchedule || [];
-            
-            // ★修正: 退院アーカイブをオブジェクトとして安全に結合し、配列の混入を完全に防ぐ
-            merged.dischargedArchive = {};
-            var allArcIds = {};
-            var mArc = myData.dischargedArchive || {};
-            var dArc = diskData.dischargedArchive || {};
-            
-            if (mArc instanceof Array) {
-                var tempM = {};
-                for (var i = 0; i < mArc.length; i++) if (mArc[i] && mArc[i].id) tempM[mArc[i].id] = mArc[i];
-                mArc = tempM;
-            }
-            if (dArc instanceof Array) {
-                var tempD = {};
-                for (var j = 0; j < dArc.length; j++) if (dArc[j] && dArc[j].id) tempD[dArc[j].id] = dArc[j];
-                dArc = tempD;
-            }
-            
-            for (var idM in mArc) allArcIds[idM] = true;
-            for (var idD in dArc) allArcIds[idD] = true;
-            for (var arcId in allArcIds) {
-                if (mArc[arcId]) merged.dischargedArchive[arcId] = mArc[arcId];
-                else merged.dischargedArchive[arcId] = dArc[arcId];
-            }
-
+            merged.dischargedArchive = myData.dischargedArchive || {};
             merged.todos = myData.todos || [];
-            merged.wardNotes = myData.wardNotes || {};
+
+            // ★修正: 病棟メモ(wardNotes)をサーバーデータと安全にマージする
+            merged.wardNotes = diskData.wardNotes || {}; 
+            if (myData.wardNotes) {
+                for (var wk in myData.wardNotes) {
+                    if (myData.wardNotes.hasOwnProperty(wk)) {
+                        // 自分の手元にデータがある病棟だけを最新化し、他は維持する
+                        merged.wardNotes[wk] = myData.wardNotes[wk];
+                    }
+                }
+            }
 
             var txIdMap = {};
             var mergedTxIds = [];
