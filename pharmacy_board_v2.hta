@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html>
 <head>
 <meta charset="UTF-8">
@@ -594,7 +594,7 @@ function generateAbbreviation() {}
                     <th width="45" class="sortable" onclick="sortPatients('room')">病室 <span class="sort-icon">↕</span></th>
                     <th width="35" class="sortable" onclick="sortPatients('daysInHosp')">在院 <span class="sort-icon">↕</span></th>
                     <th width="65" style="padding: 0;">
-                        <div class="hide-on-print" onclick="updateAllBloodDates()" style="background:#d1ecf1; color:#0c5460; font-size:10px; padding:2px 0; cursor:pointer; border-bottom:1px solid #bee5eb;" title="表示中の全患者の採血日を一括取得します">🩸全体取得</div>
+                        <div class="hide-on-print" onclick="updateAllBloodDates()" style="background:#d1ecf1; color:#0c5460; font-size:10px; padding:2px 0; cursor:pointer; border-bottom:1px solid #bee5eb;" title="表示中の全患者の採血日を一括取得します">[採血] 全体取得</div>
                         <div onclick="sortPatients('bloodDate')" style="cursor:pointer; padding:2px 0;" title="採血日でソート">採血日 <span class="sort-icon">↕</span></div>
                     </th>
                     <th width="35" class="sortable" onclick="sortPatients('status')">介入 <span class="sort-icon">↕</span></th>
@@ -4118,26 +4118,7 @@ function filterPatientTable() {
     }
 }
 
-function processNextBloodFetch() {
-    if (bloodFetchQueue.length === 0) {
-        isBloodFetching = false;
-        var btn = document.getElementById("btn-blood-fetch");
-        if (btn) { btn.disabled = false; btn.innerText = "🩸 採血日更新"; }
-        renderPatients();
-        autoSave();
-        return;
-    }
-    
-    var p = bloodFetchQueue.shift();
-    // 進捗表示
-    var btn = document.getElementById("btn-blood-fetch");
-    if (btn) btn.innerText = "🩸 残り" + (bloodFetchQueue.length + 1) + "名...";
-    
-    fetchSingleBloodDate(p, function() {
-        // 次の患者へ（少し待機してサーバー負荷軽減）
-        setTimeout(processNextBloodFetch, 200);
-    });
-}
+// Dead code processNextBloodFetch removed
 
 function fetchBloodDateForPatient(patientId) {
     var p = findPatientById(patientId);
@@ -4161,50 +4142,61 @@ function updateAllBloodDates() {
     var list = getCurrentPatientsList();
     if (list.length === 0) { alert("更新対象の患者がいません。"); return; }
     
-    if (!confirm("表示中の全患者(" + list.length + "名)の採血日をカルテから一括取得しますか？\n(並列処理により数秒で高速取得します)")) return;
+    if (!confirm("表示中の全患者(" + list.length + "名)の採血日を順次取得しますか？\n(裏で1件ずつ取得するため画面は固まりません)")) return;
 
     var btn = document.querySelector("div[onclick='updateAllBloodDates()']");
-    var originalText = btn ? btn.innerText : "🩸全体取得";
-    if (btn) {
-        btn.style.pointerEvents = "none";
-        btn.innerText = "🩸 取得中...";
+    var originalText = btn ? btn.innerText : "[採血] 全体取得";
+    if (btn) { btn.style.pointerEvents = "none"; btn.innerText = "取得準備中..."; }
+
+    var totalCount = list.length;
+    var index = 0;
+
+    for (var i = 0; i < totalCount; i++) {
+        var tr = document.getElementById("tr-patient-" + list[i].id);
+        if (tr) {
+            var textEl = tr.querySelector(".blood-date-text");
+            if (textEl) textEl.innerText = "待機中...";
+        }
     }
 
-    var completedCount = 0;
-    var totalCount = list.length;
-    
-    for (var i = 0; i < totalCount; i++) {
-        (function(patient, index) {
-            var tr = document.getElementById("tr-patient-" + patient.id);
-            if (tr) {
-                var textEl = tr.querySelector(".blood-date-text");
-                if (textEl) textEl.innerText = "取得中...";
+    function processNext() {
+        if (index >= totalCount) {
+            if (btn) { btn.style.pointerEvents = "auto"; btn.innerText = originalText; }
+            renderPatients();
+            autoSave();
+            alert("全件の取得が完了しました。");
+            return;
+        }
+        var patient = list[index];
+        index++;
+        if (btn) btn.innerText = "残: " + (totalCount - index + 1);
+        
+        var tr = document.getElementById("tr-patient-" + patient.id);
+        if (tr) {
+            var textEl = tr.querySelector(".blood-date-text");
+            if (textEl) textEl.innerText = "取得中...";
+        }
+        fetchSingleBloodDate(patient, function() {
+            var updateTr = document.getElementById("tr-patient-" + patient.id);
+            if (updateTr) {
+                var dtEl = updateTr.querySelector(".blood-date-text");
+                if (dtEl) dtEl.innerText = patient.bloodDate || "-";
             }
-            setTimeout(function() {
-                fetchSingleBloodDate(patient, function() {
-                    completedCount++;
-                    var updateTr = document.getElementById("tr-patient-" + patient.id);
-                    if (updateTr) {
-                        var dtEl = updateTr.querySelector(".blood-date-text");
-                        if (dtEl) dtEl.innerText = patient.bloodDate || "-";
-                    }
-                    if (btn) {
-                        btn.innerText = "🩸 残" + (totalCount - completedCount);
-                    }
-                    
-                    if (completedCount >= totalCount) {
-                        if (btn) {
-                            btn.style.pointerEvents = "auto";
-                            btn.innerText = originalText;
-                        }
-                        renderPatients();
-                        autoSave();
-                        alert("一括取得が完了しました。");
-                    }
+            
+            // ★追加: 取得した瞬間に伝票を発行し、自動更新による消失を防ぐ
+            if (typeof DataManager !== "undefined") {
+                DataManager.appendTransaction("UPDATE_BLOOD_DATE", {
+                    patientId: patient.id,
+                    wardCode: currentWard,
+                    bloodDate: patient.bloodDate,
+                    bloodDetail: patient.bloodDetail
                 });
-            }, index * 100);
-        })(list[i], i);
+            }
+            
+            setTimeout(processNext, 200);
+        });
     }
+    processNext();
 }
 
 // --- Shift-JIS デコード用ヘルパー ---
@@ -4272,7 +4264,7 @@ function fetchSingleBloodDate(p, callback) {
             p.bloodDetail = "読み込みタイムアウト(15秒超過)";
             cleanupAndCallback();
         }
-    }, 15000);
+    }, 90000);
 
     // 読み込み完了時の処理
     iframe.onload = function() {
@@ -4353,7 +4345,7 @@ function fetchSingleBloodDate(p, callback) {
             
             clearTimeout(fallbackTimer);
             cleanupAndCallback();
-        }, 3000); // 3秒待機
+        }, 1500); // 1.5秒待機
     };
     
     try {
@@ -4817,14 +4809,7 @@ function parseBloodDateFromDoc(doc, patientId) {
 
 
 
-function saveDataQuietly() {
-    try {
-        var fso = new ActiveXObject("Scripting.FileSystemObject");
-        var file = fso.CreateTextFile(DATA_FILE, true);
-        file.Write(JSON.stringify(appData, null, 2));
-        file.Close();
-    } catch (e) {}
-}
+// function saveDataQuietly removed to avoid conflict with DataManager
 
 function parseAdmissionHtml(doc) {
     try {
