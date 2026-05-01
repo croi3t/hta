@@ -1537,7 +1537,7 @@ function findPatientById(id) {
 
 var updateMemoDebounced = debounce(function(id, val, element) {
     updateMemo(id, val, element);
-    autoSave();
+    // autoSave(); ←これを削除（カクつきの元凶）
 }, 500);
 
 var updatePersonalMemoDebounced = debounce(function(id, val, element) {
@@ -1555,12 +1555,12 @@ var updatePersonalMemoDebounced = debounce(function(id, val, element) {
             patientId: id, wardCode: currentWard, userId: currentSystemId, value: val
         });
     }
-    autoSave();
+    // autoSave(); ←これを削除
 }, 500);
 
 var updateAdmissionMemoDebounced = debounce(function(idx, val, el) {
     updateAdmissionMemo(idx, val, el);
-    autoSave();
+    // autoSave(); ←これを削除
 }, 500);
 
 // ---------- UI切り替え制御 ----------
@@ -1848,13 +1848,22 @@ function loadTextUtf8(path) {
     var lastError = null;
     for (var i = 0; i < maxRetries; i++) {
         try {
+            // ★追加: ネットワークドライブの古いキャッシュを貫通するため、別名コピーを作ってから読む
+            if (!fso) initFSO();
+            var tempPath = path + "." + new Date().getTime() + ".tmp";
+            fso.CopyFile(path, tempPath, true); // コピーすることで強制的にサーバーの最新実体を取得
+            
             var stream = new ActiveXObject("ADODB.Stream");
             stream.Type = 2; // text
             stream.Charset = "utf-8";
             stream.Open();
-            stream.LoadFromFile(path);
+            stream.LoadFromFile(tempPath);
             var text = stream.ReadText();
             stream.Close();
+            
+            // 読み終わった一時ファイルを掃除
+            try { fso.DeleteFile(tempPath); } catch(e) {}
+            
             return text;
         } catch(e) {
             lastError = e;
@@ -2346,7 +2355,9 @@ var autoSaveTimer = null;
 function autoSave(force) {
     if (!isEditMode && !force) return;
     clearTimeout(autoSaveTimer);
-    autoSaveTimer = setTimeout(function() { saveData(false); }, 2000);
+    autoSaveTimer = setTimeout(function() { 
+        saveData(false); 
+    }, 2000); // 2秒に戻す
 }
 
 function renderHistory() {
@@ -2736,6 +2747,7 @@ window.onload = function() {
     // データ管理モジュールの初期化
     if (typeof DataManager !== "undefined") {
         DataManager.saveTextUtf8 = saveTextUtf8; // 外部プログラムの保存処理もリトライ付きに強制上書き
+        DataManager.loadTextUtf8 = loadTextUtf8; // ★追加：読み込み処理もキャッシュ貫通型に強制上書き
         DataManager.init();
     }
     
@@ -2747,9 +2759,8 @@ window.onload = function() {
     
     // 定期更新タイマー (1分ごとに共有データを再ロード)
     setInterval(function() {
-        // 1. フォーカスが入力欄にあるか（文字入力中）を判定
         var activeEl = document.activeElement;
-        // HTA環境での漏れを防ぐため、属性チェックやエディタのIDを明示的に追加
+        // カーソルが入力枠にあるか（文字入力中か）を判定
         var isTyping = activeEl && (
             activeEl.tagName === 'TEXTAREA' || 
             activeEl.tagName === 'INPUT' || 
@@ -2758,21 +2769,22 @@ window.onload = function() {
             activeEl.id === 'note-editor-rich'
         );
 
-        // 2. 編集作業がメインのタブが開いているかを判定
         var tabYakureki = document.getElementById('tab-yakureki');
         var isYakurekiActive = tabYakureki && tabYakureki.className.indexOf('active') !== -1;
-        
         var tabNotes = document.getElementById('tab-notes');
         var isNotesActive = tabNotes && tabNotes.className.indexOf('active') !== -1;
 
-        // 文字入力中、または薬歴・病棟共有タブを開いている場合は自動更新をスキップして画面を保護する
-        if (isTyping || isYakurekiActive || isNotesActive) {
-            // ★追加：画面更新はスキップするが、裏側でデータだけは最新に保つ
+        // ★未保存チェックのロックを廃止！
+        // 自分が文字を打っている最中、または採血取得中でなければ、1分間隔で画面を更新する
+        if (isTyping || isYakurekiActive || isNotesActive || window.isBloodFetching) {
             if (typeof DataManager !== "undefined") {
                 DataManager.replayTransactions(appData);
             }
             var elTime = document.getElementById("last-local-update-time");
-            if (elTime) elTime.innerText = "[編集中のため自動更新 一時停止]";
+            if (elTime) {
+                var reason = window.isBloodFetching ? "採血取得中" : "編集中";
+                elTime.innerText = "[" + reason + "のため自動更新 一時停止]";
+            }
             return;
         }
 
@@ -4146,12 +4158,14 @@ function updateAllBloodDates() {
 
     var btn = document.querySelector("div[onclick='updateAllBloodDates()']");
     var originalText = btn ? btn.innerText : "[採血] 全体取得";
-    if (btn) { btn.style.pointerEvents = "none"; btn.innerText = "取得準備中..."; }
+    if (btn) { btn.style.pointerEvents = "none"; btn.innerText = "準備中..."; }
 
-    var totalCount = list.length;
-    var index = 0;
+    window.isBloodFetching = true; // ★追加: 全件取得中フラグ
 
-    for (var i = 0; i < totalCount; i++) {
+    // ★修正: オブジェクトそのものではなく、IDのリストだけを保持する
+    var idsToFetch = [];
+    for (var i = 0; i < list.length; i++) {
+        idsToFetch.push(list[i].id);
         var tr = document.getElementById("tr-patient-" + list[i].id);
         if (tr) {
             var textEl = tr.querySelector(".blood-date-text");
@@ -4159,23 +4173,38 @@ function updateAllBloodDates() {
         }
     }
 
+    var totalCount = idsToFetch.length;
+    var index = 0;
+
     function processNext() {
         if (index >= totalCount) {
+            window.isBloodFetching = false; // フラグ解除
             if (btn) { btn.style.pointerEvents = "auto"; btn.innerText = originalText; }
             renderPatients();
-            autoSave();
+            autoSave(true); // 最後に確実に全体を保存
             alert("全件の取得が完了しました。");
             return;
         }
-        var patient = list[index];
+        
+        var targetId = idsToFetch[index];
         index++;
+        
+        // ★重要: 毎回「最新のappData」から患者本人を取り直す（途中でデータが入れ替わっても見失わない）
+        var patient = findPatientById(targetId);
+        
         if (btn) btn.innerText = "残: " + (totalCount - index + 1);
         
+        if (!patient) {
+            setTimeout(processNext, 50); // 退院等で消えていたらスキップ
+            return;
+        }
+
         var tr = document.getElementById("tr-patient-" + patient.id);
         if (tr) {
             var textEl = tr.querySelector(".blood-date-text");
             if (textEl) textEl.innerText = "取得中...";
         }
+        
         fetchSingleBloodDate(patient, function() {
             var updateTr = document.getElementById("tr-patient-" + patient.id);
             if (updateTr) {
@@ -4183,7 +4212,7 @@ function updateAllBloodDates() {
                 if (dtEl) dtEl.innerText = patient.bloodDate || "-";
             }
             
-            // ★追加: 取得した瞬間に伝票を発行し、自動更新による消失を防ぐ
+            // 取得した瞬間に伝票を発行
             if (typeof DataManager !== "undefined") {
                 DataManager.appendTransaction("UPDATE_BLOOD_DATE", {
                     patientId: patient.id,
@@ -4220,7 +4249,6 @@ function decodeShiftJIS(bin) {
 function fetchSingleBloodDate(p, callback) {
     if (!p || !p.id) { callback(); return; }
     
-    // システムIDの取得
     var userId = "16622";
     if (typeof currentSystemId !== "undefined" && currentSystemId) {
         userId = currentSystemId;
@@ -4228,24 +4256,21 @@ function fetchSingleBloodDate(p, callback) {
         userId = appData.settings.adminIds[0];
     }
 
-    // キャッシュ回避用のパラメータをつけてURLを生成
     var url = "http://10.5.71.21:8082/karte/karte.php?kanja_id=" + p.id + 
               "&user_id=" + userId + 
               "&order_search_flg=1&order_search_code=3&order_search_name=#top" +
               "&_nocache=" + new Date().getTime();
-    
-    // 裏で読み込むための透明なiframeを作成
+
     var iframeId = "blood-fetch-iframe-" + p.id;
     var existing = document.getElementById(iframeId);
     if (existing && existing.parentNode) existing.parentNode.removeChild(existing);
-    
+
     var iframe = document.createElement("iframe");
     iframe.id = iframeId;
     iframe.style.display = "none";
-    iframe.application = "yes"; // HTAの強力な権限をiframe内にも適用
+    iframe.application = "yes"; 
     document.body.appendChild(iframe);
 
-    // 次の患者へ進むための安全装置（タイムアウト管理）
     var isDone = false;
     var cleanupAndCallback = function() {
         if (isDone) return;
@@ -4254,28 +4279,25 @@ function fetchSingleBloodDate(p, callback) {
             var ifr = document.getElementById(iframeId);
             if (ifr && ifr.parentNode) ifr.parentNode.removeChild(ifr);
         }, 500);
-        callback(); // 次の患者の処理へ進む
+        callback(); 
     };
 
-    // 万が一、カルテが重すぎて読み込みが終わらない場合に全体が止まるのを防ぐ（15秒で強制スキップ）
+    // ★修正: タイムアウトを180秒(180000ミリ秒 = 3分)に延長
     var fallbackTimer = setTimeout(function() {
         if (!isDone) {
             p.bloodDate = "-";
-            p.bloodDetail = "読み込みタイムアウト(15秒超過)";
+            p.bloodDetail = "読み込みタイムアウト(3分超過)";
             cleanupAndCallback();
         }
-    }, 90000);
+    }, 180000); 
 
-    // 読み込み完了時の処理
     iframe.onload = function() {
-        // ★重要：iframeの大枠が読み込まれた後、中身のフレームが表示されるまで3秒待機する
         setTimeout(function() {
             if (isDone) return;
             try {
                 var doc = iframe.contentWindow.document;
                 var allText = "";
                 
-                // フレームの奥深くまで潜って、表示されているすべてのテキストを回収する関数
                 function collectText(currentDoc) {
                     if (!currentDoc) return;
                     try {
@@ -4283,7 +4305,6 @@ function fetchSingleBloodDate(p, callback) {
                             allText += " " + currentDoc.body.innerText;
                         }
                     } catch(e) {}
-                    
                     var frames = currentDoc.getElementsByTagName("frame");
                     var iframes = currentDoc.getElementsByTagName("iframe");
                     for(var j=0; j<frames.length; j++) {
@@ -4295,11 +4316,9 @@ function fetchSingleBloodDate(p, callback) {
                 }
                 
                 collectText(doc);
-                
-                // ご提示いただいた形式を狙い撃ちする正規表現
+
                 var regex = /【([^】]*?(?:生化学|血液|外注|一般)[^】]*?)】[^【]{0,150}?(\d{4})\/(\d{2})\/(\d{2})/g;
                 var match;
-                
                 var today = new Date();
                 today.setHours(0,0,0,0);
                 var futureEntries = [];
@@ -4307,14 +4326,12 @@ function fetchSingleBloodDate(p, callback) {
                 while ((match = regex.exec(allText)) !== null) {
                     var typeRaw = match[1].replace(/^[0-9:\s]+/, '').replace(/\[.*?\]\s*/g, '').trim();
                     var typeClean = typeRaw.substring(0, 15);
-                    
                     var y = parseInt(match[2], 10);
                     var m = parseInt(match[3], 10);
                     var d = parseInt(match[4], 10);
                     var dt = new Date(y, m - 1, d);
                     
                     var diffDays = (dt.getTime() - today.getTime()) / (1000 * 3600 * 24);
-                    // ★修正：今日(0)を含めず、1日後(明日)～30日以内の予定のみを抽出
                     if (diffDays >= 1 && diffDays <= 30) {
                         futureEntries.push({
                             dateObj: dt,
@@ -4326,26 +4343,34 @@ function fetchSingleBloodDate(p, callback) {
                 }
                 
                 if (futureEntries.length > 0) {
-                    // 今日から一番近い未来日をソートして選択
                     futureEntries.sort(function(a, b) { return a.dateObj.getTime() - b.dateObj.getTime(); });
                     var target = futureEntries[0];
-                    
                     p.bloodDate = target.displayDate + '(' + target.category + ')';
                     p.bloodDetail = target.fullText;
                 } else {
-                    // ★修正：見つからなかった場合は「なし」と表示
                     p.bloodDate = "なし";
                     p.bloodDetail = "明日以降30日以内の検査予定が見つかりませんでした";
                 }
-                
             } catch(e) {
                 p.bloodDate = "-";
                 p.bloodDetail = "フレーム解析エラー: " + (e.message || e);
             }
             
             clearTimeout(fallbackTimer);
+            
+            var tr = document.getElementById('tr-patient-' + p.id);
+            if (tr) {
+                var dateSpan = tr.querySelector('.blood-date-text');
+                if (dateSpan) dateSpan.innerHTML = escapeHtml(p.bloodDate);
+                var fetchBtn = tr.querySelector('.blood-fetch-btn');
+                if (fetchBtn) { fetchBtn.innerText = '完了'; fetchBtn.disabled = false; }
+                var cell = tr.querySelector('.blood-date-cell');
+                if (cell && p.bloodDetail) cell.title = '採血詳細: ' + escapeHtml(p.bloodDetail) + ' (クリックで手動修正)';
+            }
+            
+            autoSave(); 
             cleanupAndCallback();
-        }, 1500); // 1.5秒待機
+        }, 1500); 
     };
     
     try {
