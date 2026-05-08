@@ -1,0 +1,3179 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>患者-薬品-病名 マッチングツール</title>
+    <script src="./xlsx.full.min.js"></script>
+    <style>
+        /* ===== Reset & Base ===== */
+        *,
+        *::before,
+        *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        :root {
+            /* Base font size scaling */
+            --base-font-size: 16px;
+            font-size: var(--base-font-size);
+
+            /* Dark Theme (Default) */
+            --bg-primary: #0f1117;
+            --bg-secondary: #1a1d28;
+            --bg-card: #22263380;
+            --bg-glass: rgba(34, 38, 51, 0.65);
+            --border: rgba(255, 255, 255, 0.08);
+            --border-active: rgba(99, 132, 255, 0.5);
+            --text-primary: #e8eaed;
+            --text-secondary: #9aa0b0;
+            --text-muted: #5f6578;
+            --accent: #6384ff;
+            --accent2: #a78bfa;
+            --green: #34d399;
+            --yellow: #fbbf24;
+            --orange: #f97316;
+            --red: #f87171;
+            --radius: 12px;
+            --radius-sm: 8px;
+            --shadow: 0 4px 24px rgba(0, 0, 0, 0.3);
+            --transition: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        :root.theme-light {
+            /* Light Theme */
+            --bg-primary: #f8fafc;
+            --bg-secondary: #ffffff;
+            --bg-card: #f1f5f980;
+            --bg-glass: rgba(255, 255, 255, 0.85);
+            --border: rgba(0, 0, 0, 0.1);
+            --border-active: rgba(79, 70, 229, 0.5);
+            --text-primary: #1e293b;
+            --text-secondary: #475569;
+            --text-muted: #94a3b8;
+            --accent: #4f46e5;
+            --accent2: #8b5cf6;
+            --green: #10b981;
+            --yellow: #f59e0b;
+            --orange: #f97316;
+            --red: #ef4444;
+            --shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
+        }
+
+        :root.font-md {
+            --base-font-size: 18px;
+        }
+
+        :root.font-lg {
+            --base-font-size: 20px;
+        }
+
+        body {
+            font-family: 'Segoe UI', 'Yu Gothic UI', 'Meiryo', sans-serif;
+            font-size: var(--base-font-size);
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            line-height: 1.6;
+        }
+
+        /* ===== Background Decoration ===== */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background:
+                radial-gradient(ellipse 600px 400px at 10% 20%, rgba(99, 132, 255, 0.08), transparent),
+                radial-gradient(ellipse 500px 300px at 80% 70%, rgba(167, 139, 250, 0.06), transparent);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .app-container {
+            position: relative;
+            z-index: 1;
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 24px;
+        }
+
+        /* ===== Header ===== */
+        .app-header {
+            text-align: center;
+            padding: 32px 0 16px;
+        }
+
+        .app-header h1 {
+            font-size: 1.8rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--accent), var(--accent2));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .app-header p {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            margin-top: 4px;
+        }
+
+        /* ===== Settings Panel ===== */
+        .settings-bar {
+            display: flex;
+            gap: 24px;
+            align-items: center;
+            justify-content: center;
+            flex-wrap: wrap;
+            background: var(--bg-glass);
+            backdrop-filter: blur(16px);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 14px 28px;
+            margin-bottom: 0;
+        }
+
+        /* ===== Exclusion Panel (Inline) ===== */
+        .exclusion-panel {
+            background: var(--bg-glass);
+            backdrop-filter: blur(16px);
+            border: 1px solid var(--border);
+            border-top: none;
+            border-radius: 0 0 var(--radius) var(--radius);
+            margin-bottom: 20px;
+            overflow: hidden;
+            transition: var(--transition);
+        }
+
+        .exclusion-toggle {
+            width: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px 24px;
+            background: none;
+            border: none;
+            border-top: 1px solid var(--border);
+            color: var(--text-secondary);
+            font-size: 0.82rem;
+            cursor: pointer;
+            gap: 8px;
+            transition: var(--transition);
+        }
+
+        .exclusion-toggle:hover {
+            color: var(--accent);
+            background: rgba(99,132,255,0.04);
+        }
+
+        .exclusion-toggle .toggle-arrow {
+            transition: transform 0.25s ease;
+            font-size: 0.7rem;
+        }
+
+        .exclusion-toggle.open .toggle-arrow {
+            transform: rotate(180deg);
+        }
+
+        .exclusion-body {
+            display: none;
+            padding: 16px 24px 20px;
+            animation: fadeIn 0.2s ease;
+        }
+
+        .exclusion-body.open {
+            display: block;
+        }
+
+        .exclusion-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
+        }
+
+        @media (max-width: 700px) {
+            .exclusion-grid { grid-template-columns: 1fr; }
+        }
+
+        .exclusion-section h5 {
+            font-size: 0.82rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .age-range-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .age-range-row input[type="number"] {
+            width: 70px;
+        }
+
+        .exclusion-panel textarea {
+            width: 100%;
+            padding: 8px 10px;
+            border-radius: var(--radius-sm);
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            border: 1px solid var(--border);
+            font-family: inherit;
+            font-size: 0.82rem;
+            resize: vertical;
+            line-height: 1.6;
+        }
+
+        .exclusion-panel textarea:focus {
+            outline: none;
+            border-color: var(--accent);
+        }
+
+        .setting-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .setting-group label {
+            font-size: 0.82rem;
+            color: var(--text-secondary);
+            white-space: nowrap;
+        }
+
+        .setting-group input[type="number"] {
+            width: 60px;
+            padding: 5px 8px;
+            border-radius: var(--radius-sm);
+            border: 1px solid var(--border);
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            font-size: 0.85rem;
+            text-align: center;
+        }
+
+        .setting-group input:focus {
+            outline: none;
+            border-color: var(--accent);
+        }
+
+        /* ===== File Upload Section ===== */
+        .upload-section {
+            margin-bottom: 20px;
+        }
+
+        .upload-card {
+            background: var(--bg-glass);
+            backdrop-filter: blur(16px);
+            border: 2px dashed var(--border);
+            border-radius: var(--radius);
+            padding: 32px 24px;
+            text-align: center;
+            transition: var(--transition);
+            cursor: pointer;
+            position: relative;
+        }
+
+        .upload-card:hover,
+        .upload-card.dragover {
+            border-color: var(--accent);
+            background: rgba(99, 132, 255, 0.05);
+        }
+
+        .upload-card.loaded {
+            border-color: var(--green);
+            border-style: solid;
+        }
+
+        .upload-card .icon {
+            font-size: 2.5rem;
+            margin-bottom: 8px;
+        }
+
+        .upload-card h3 {
+            font-size: 1.1rem;
+            margin-bottom: 4px;
+        }
+
+        .upload-card p {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+        }
+
+        .upload-card .file-info {
+            font-size: 0.85rem;
+            color: var(--green);
+            margin-top: 16px;
+            font-weight: 600;
+            white-space: pre-line;
+            text-align: left;
+            background: rgba(0, 0, 0, 0.1);
+            padding: 12px;
+            border-radius: var(--radius-sm);
+            display: inline-block;
+            min-width: 50%;
+        }
+
+        .upload-card input[type="file"] {
+            position: absolute;
+            inset: 0;
+            opacity: 0;
+            cursor: pointer;
+        }
+
+        /* ===== Action Bar ===== */
+        .action-bar {
+            text-align: center;
+            margin-bottom: 24px;
+        }
+
+        .btn-primary {
+            padding: 12px 40px;
+            border: none;
+            border-radius: var(--radius);
+            background: linear-gradient(135deg, var(--accent), var(--accent2));
+            color: #fff;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: var(--transition);
+            box-shadow: 0 4px 16px rgba(99, 132, 255, 0.3);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 24px rgba(99, 132, 255, 0.4);
+        }
+
+        .btn-primary:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-secondary {
+            padding: 8px 20px;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .btn-secondary:hover {
+            border-color: var(--accent);
+        }
+
+        /* ===== Summary Panel ===== */
+        .summary-panel {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .summary-card {
+            background: var(--bg-glass);
+            backdrop-filter: blur(16px);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 16px;
+            text-align: center;
+        }
+
+        .summary-card .num {
+            font-size: 1.8rem;
+            font-weight: 700;
+        }
+
+        .summary-card .num.accent {
+            color: var(--accent);
+        }
+
+        .summary-card .num.green {
+            color: var(--green);
+        }
+
+        .summary-card .num.yellow {
+            color: var(--yellow);
+        }
+
+        .summary-card .num.orange {
+            color: var(--orange);
+        }
+
+        .summary-card .lbl {
+            font-size: 0.78rem;
+            color: var(--text-secondary);
+            margin-top: 2px;
+        }
+
+        /* ===== Filter Bar ===== */
+        .filter-bar {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            flex-wrap: wrap;
+            margin-bottom: 16px;
+        }
+
+        .filter-bar input,
+        .filter-bar select {
+            padding: 7px 14px;
+            border-radius: var(--radius-sm);
+            border: 1px solid var(--border);
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            font-size: 0.85rem;
+        }
+
+        .filter-bar input {
+            flex: 1;
+            min-width: 200px;
+        }
+
+        .filter-bar input:focus,
+        .filter-bar select:focus {
+            outline: none;
+            border-color: var(--accent);
+        }
+
+        .filter-bar select {
+            min-width: 140px;
+        }
+
+        .match-filters {
+            display: flex;
+            gap: 6px;
+        }
+
+        .match-chip {
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 0.78rem;
+            border: 1px solid var(--border);
+            background: var(--bg-secondary);
+            cursor: pointer;
+            transition: var(--transition);
+            user-select: none;
+        }
+
+        .match-chip.active {
+            border-color: var(--accent);
+            background: rgba(99, 132, 255, 0.15);
+            color: var(--accent);
+        }
+
+        /* ===== Results Table ===== */
+        .results-section {
+            animation: fadeIn 0.5s ease;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(12px);
+            }
+
+            to {
+                opacity: 1;
+                transform: none;
+            }
+        }
+
+        .table-wrapper {
+            background: var(--bg-glass);
+            backdrop-filter: blur(16px);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            overflow: hidden;
+        }
+
+        .results-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.85rem;
+        }
+
+        .results-table thead th {
+            position: sticky;
+            top: 0;
+            z-index: 2;
+            background: var(--bg-secondary);
+            padding: 12px 10px;
+            text-align: left;
+            font-weight: 600;
+            color: var(--text-secondary);
+            font-size: 0.8rem;
+            border-bottom: 1px solid var(--border);
+            cursor: pointer;
+            user-select: none;
+            white-space: nowrap;
+            transition: var(--transition);
+        }
+
+        .results-table thead th:hover {
+            color: var(--accent);
+        }
+
+        .results-table thead th .sort-icon {
+            margin-left: 4px;
+            font-size: 0.7rem;
+            opacity: 0.5;
+        }
+
+        .results-table thead th.sorted .sort-icon {
+            opacity: 1;
+            color: var(--accent);
+        }
+
+        .results-table tbody tr {
+            border-bottom: 1px solid var(--border);
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .results-table tbody tr:hover {
+            background: rgba(99, 132, 255, 0.05);
+        }
+
+        .results-table tbody tr.expanded {
+            background: rgba(99, 132, 255, 0.08);
+        }
+
+        .results-table td {
+            padding: 10px;
+            vertical-align: top;
+        }
+
+        .cell-drugs,
+        .cell-diseases {
+            max-width: 260px;
+            font-size: 0.8rem;
+            line-height: 1.5;
+        }
+
+        .drug-tag,
+        .disease-tag {
+            display: inline-block;
+            padding: 2px 8px;
+            margin: 1px 2px;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            white-space: nowrap;
+        }
+
+        .drug-tag {
+            background: rgba(99, 132, 255, 0.12);
+            color: #93a8ff;
+        }
+
+        .inject-tag {
+            background: rgba(167, 139, 250, 0.12);
+            color: #c4b0ff;
+        }
+
+        .disease-tag {
+            background: rgba(52, 211, 153, 0.12);
+            color: #6ee7b7;
+        }
+
+        .match-badge {
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+
+        .match-full {
+            background: rgba(52, 211, 153, 0.15);
+            color: var(--green);
+        }
+
+        .match-partial {
+            background: rgba(251, 191, 36, 0.15);
+            color: var(--yellow);
+        }
+
+        .match-near {
+            background: rgba(249, 115, 22, 0.15);
+            color: var(--orange);
+        }
+
+        .match-none {
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--text-muted);
+        }
+
+        /* ===== New Filter Table UI ===== */
+        .th-content {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 4px;
+            width: 100%;
+        }
+
+        .filter-icon {
+            opacity: 0.4;
+            padding: 4px;
+            cursor: pointer;
+            transition: var(--transition);
+            border-radius: 4px;
+            font-size: 0.75rem;
+        }
+
+        .filter-icon:hover {
+            opacity: 1;
+            background: rgba(255, 255, 255, 0.1);
+            color: var(--accent);
+        }
+
+        .filter-icon.active {
+            opacity: 1;
+            color: var(--accent);
+        }
+
+        .dropdown-menu {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            z-index: 1000;
+            min-width: 200px;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            padding: 8px 0;
+            margin-top: 4px;
+            animation: fadeIn 0.2s ease;
+        }
+
+        .dropdown-search {
+            padding: 8px 12px;
+            border-bottom: 1px solid var(--border);
+            margin-bottom: 4px;
+        }
+
+        .dropdown-search input {
+            width: 100%;
+            padding: 5px 8px;
+            background: var(--bg-primary);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            color: var(--text-primary);
+            font-size: 0.75rem;
+        }
+
+        .dropdown-list {
+            max-height: 250px;
+            overflow-y: auto;
+            padding: 0 4px;
+        }
+
+        .dropdown-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 12px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            border-radius: 4px;
+            transition: 0.1s;
+        }
+
+        .dropdown-item:hover {
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .dropdown-item input {
+            cursor: pointer;
+        }
+
+        .dropdown-actions {
+            display: flex;
+            gap: 8px;
+            padding: 8px 12px;
+            border-top: 1px solid var(--border);
+            margin-top: 4px;
+        }
+
+        .dropdown-actions button {
+            flex: 1;
+            padding: 4px;
+            background: transparent;
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            color: var(--text-secondary);
+            font-size: 0.72rem;
+            cursor: pointer;
+        }
+
+        .dropdown-actions button:hover {
+            border-color: var(--accent);
+            color: var(--accent);
+        }
+
+        .btn-reset {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 14px;
+            background: rgba(248, 113, 113, 0.1);
+            color: var(--red);
+            border: 1px solid rgba(248, 113, 113, 0.3);
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .btn-reset:hover {
+            background: var(--red);
+            color: #fff;
+            box-shadow: 0 0 12px rgba(248, 113, 113, 0.4);
+        }
+
+        /* ===== Detail Panel ===== */
+        .detail-row td {
+            padding: 0 !important;
+        }
+
+        .detail-panel {
+            background: var(--bg-secondary);
+            border-top: 1px solid var(--border);
+            padding: 20px 24px;
+            animation: slideDown 0.3s ease;
+        }
+
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                max-height: 0;
+            }
+
+            to {
+                opacity: 1;
+                max-height: 2000px;
+            }
+        }
+
+        .detail-columns {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 16px;
+        }
+
+        .detail-col {
+            min-width: 0;
+        }
+
+        .detail-col h4 {
+            font-size: 0.85rem;
+            font-weight: 600;
+            margin-bottom: 10px;
+            padding-bottom: 6px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .detail-col h4.rx-title { color: var(--accent); }
+        .detail-col h4.inj-title { color: var(--accent2); }
+        .detail-col h4.sz-title { color: var(--orange); }
+        .detail-col h4.dx-title { color: var(--green); }
+        .detail-col h4.lab-title { color: var(--accent2); filter: hue-rotate(45deg); }
+
+        .detail-item {
+            padding: 8px 10px;
+            margin-bottom: 6px;
+            border-radius: var(--radius-sm);
+            border-left: 3px solid transparent;
+            font-size: 0.82rem;
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        .detail-item .item-name {
+            font-weight: 600;
+        }
+
+        .detail-item .item-meta {
+            color: var(--text-secondary);
+            font-size: 0.78rem;
+            margin-top: 2px;
+        }
+
+        .detail-item.matched-full {
+            border-left-color: var(--green);
+            background: rgba(52, 211, 153, 0.05);
+        }
+
+        .detail-item.matched-partial {
+            border-left-color: var(--yellow);
+            background: rgba(251, 191, 36, 0.05);
+        }
+
+        .detail-item.matched-near {
+            border-left-color: var(--orange);
+            background: rgba(249, 115, 22, 0.05);
+        }
+
+        /* ===== Scroll ===== */
+        .table-scroll {
+            max-height: 70vh;
+            overflow-y: auto;
+        }
+
+        .table-scroll::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .table-scroll::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .table-scroll::-webkit-scrollbar-thumb {
+            background: var(--text-muted);
+            border-radius: 3px;
+        }
+
+        /* ===== Export button ===== */
+        .export-bar {
+            display: flex;
+            justify-content: flex-end;
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+
+        /* ===== Loading ===== */
+        .loading-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 100;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(15, 17, 23, 0.85);
+            backdrop-filter: blur(8px);
+        }
+
+        .spinner {
+            width: 48px;
+            height: 48px;
+            border: 3px solid var(--border);
+            border-top-color: var(--accent);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        /* ===== Responsive ===== */
+        @media (max-width: 900px) {
+            .detail-columns {
+                grid-template-columns: 1fr;
+            }
+
+            .upload-section {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* ===== Modals ===== */
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 200;
+            background: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(4px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-content {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 24px;
+            width: 90%;
+            max-width: 650px;
+            max-height: 90vh;
+            overflow-y: auto;
+            position: relative;
+            box-shadow: var(--shadow);
+            animation: fadeIn 0.3s ease;
+        }
+
+        .modal-close {
+            position: absolute;
+            top: 16px;
+            right: 16px;
+            background: transparent;
+            border: none;
+            font-size: 1.5rem;
+            color: var(--text-secondary);
+            cursor: pointer;
+        }
+
+        .modal-close:hover {
+            color: var(--text-primary);
+        }
+
+        .modal-title {
+            font-size: 1.4rem;
+            font-weight: 700;
+            margin-bottom: 16px;
+            color: var(--accent);
+        }
+
+        .modal-body h4 {
+            margin: 16px 0 8px;
+            color: var(--text-primary);
+            font-size: 1.05rem;
+        }
+
+        .modal-body ul {
+            margin-left: 24px;
+            margin-bottom: 16px;
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+        }
+
+        .modal-body p {
+            margin-bottom: 12px;
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+            line-height: 1.6;
+        }
+
+        .export-option {
+            display: block;
+            padding: 16px;
+            margin-bottom: 12px;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .export-option:hover {
+            border-color: var(--accent);
+            background: rgba(99, 132, 255, 0.05);
+        }
+
+        .export-option strong {
+            display: block;
+            margin-bottom: 4px;
+            color: var(--text-primary);
+        }
+
+        .export-option span {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+        }
+
+        .drug-tag,
+        .disease-tag,
+        .inject-tag {
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .drug-tag:hover,
+        .disease-tag:hover,
+        .inject-tag:hover {
+            opacity: 0.9;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+        }
+
+        /* ===== Tabs ===== */
+        .tabs {
+            display: flex;
+            gap: 4px;
+            margin: 24px 0 16px;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 0;
+        }
+
+        .tab-btn {
+            padding: 10px 24px;
+            border: none;
+            background: none;
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: var(--transition);
+            border-bottom: 3px solid transparent;
+            margin-bottom: -1px;
+        }
+
+        .tab-btn:hover {
+            color: var(--text-primary);
+        }
+
+        .tab-btn.active {
+            color: var(--accent);
+            border-bottom-color: var(--accent);
+        }
+
+        .tab-content {
+            display: none;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        /* ===== Raw Data View ===== */
+        .raw-controls {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 16px;
+            align-items: center;
+        }
+
+        .raw-table-container {
+            background: var(--bg-glass);
+            backdrop-filter: blur(16px);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            overflow: auto;
+            max-height: 70vh;
+        }
+
+        .raw-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.75rem;
+        }
+
+        .raw-table th {
+            background: var(--bg-secondary);
+            padding: 10px;
+            text-align: left;
+            position: sticky;
+            top: 0;
+            z-index: 5;
+            border-bottom: 1px solid var(--border);
+            color: var(--text-secondary);
+            white-space: nowrap;
+        }
+
+        .raw-table td {
+            padding: 8px 10px;
+            border-bottom: 1px solid var(--border);
+            white-space: nowrap;
+            color: var(--text-primary);
+        }
+
+        .raw-table tr:hover {
+            background: rgba(255, 255, 255, 0.03);
+        }
+    </style>
+</head>
+
+<body>
+    <div class="app-container">
+        <!-- Header -->
+        <header class="app-header">
+            <div style="position: absolute; right: 24px; top: 24px; display: flex; gap: 8px; z-index: 10;">
+                <button class="btn-reset" onclick="resetData()">↻ データをリセット</button>
+                <button class="btn-secondary" id="btn-help" title="ヘルプ">❔ ヘルプ</button>
+                <button class="btn-secondary" id="btn-font" title="文字サイズ変更">A サイズ</button>
+                <button class="btn-secondary" id="btn-theme" title="テーマ切替">🌓 テーマ</button>
+            </div>
+            <h1>患者-薬品-病名 マッチングツール</h1>
+            <p>処方・注射統計データと診断病名データから同一患者を抽出し、投与期間と病名の関連を分析します</p>
+        </header>
+
+        <!-- Settings -->
+        <div class="settings-bar">
+            <div class="setting-group">
+                <label>近接日数 (±日)</label>
+                <input type="number" id="proximityDays" value="14" min="0" max="90">
+            </div>
+            <div class="setting-group">
+                <label>連続処方閾値 (日)</label>
+                <input type="number" id="continuousThreshold" value="3" min="0" max="30">
+            </div>
+        </div>
+
+        <!-- Inline Exclusion Panel -->
+        <div class="exclusion-panel">
+            <button class="exclusion-toggle" id="exclusion-toggle-btn" onclick="toggleExclusionPanel()">
+                <span>🚫 絞り込み・除外設定 <span id="exclusion-badge" style="display:none; color:var(--orange); font-weight:700;"></span></span>
+                <span class="toggle-arrow">▼</span>
+            </button>
+            <div class="exclusion-body" id="exclusion-body">
+                <div class="exclusion-grid">
+                    <div class="exclusion-section">
+                        <h5>📅 対象年齢の範囲</h5>
+                        <p style="font-size:0.78rem; color:var(--text-muted); margin-bottom:10px;">範囲外の患者を除外します。年齢不明の患者は「❓ 年齢不明」タブに分類されます。</p>
+                        <div class="age-range-row">
+                            <input type="number" id="exclude-age-min" class="setting-group input" placeholder="-" min="0" max="150">
+                            <label style="font-size:0.82rem; color:var(--text-secondary); white-space:nowrap;">歳以上</label>
+                            <span style="color:var(--text-muted);">〜</span>
+                            <input type="number" id="exclude-age-max" class="setting-group input" placeholder="-" min="0" max="150">
+                            <label style="font-size:0.82rem; color:var(--text-secondary); white-space:nowrap;">歳未満</label>
+                        </div>
+                    </div>
+                    <div class="exclusion-section">
+                        <h5>💊 除外する薬品名（1行に1つ・部分一致）</h5>
+                        <textarea id="exclusion-drug-list" rows="4" placeholder="例：&#10;アドナ&#10;トランサミン"></textarea>
+                    </div>
+                    <div class="exclusion-section" style="grid-column: span 2; margin-top: 16px; border-top: 1px solid var(--border); padding-top: 16px;">
+                        <h5>🧪 検査値による除外設定</h5>
+                        <p style="font-size:0.78rem; color:var(--text-muted); margin-bottom:10px;">特定の検査項目が条件に合致する患者を除外します。1つでも該当データがある患者全体が非表示になります。</p>
+                        <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                            <select id="lab-filter-item" class="setting-group input" style="flex: 1; min-width: 200px;">
+                                <option value="">-- 検査項目を選択 --</option>
+                            </select>
+                            <select id="lab-filter-op" class="setting-group input" style="width: 100px;">
+                                <option value=">=">&gt;= 以上</option>
+                                <option value="<=">&lt;= 以下</option>
+                                <option value=">">&gt; より大きい</option>
+                                <option value="<">&lt; 未満</option>
+                            </select>
+                            <input type="number" id="lab-filter-val" class="setting-group input" style="width: 100px;" placeholder="閾値" step="any">
+                            <button class="btn-secondary" onclick="addLabFilter()" style="padding: 5px 15px;">除外条件に追加</button>
+                        </div>
+                        <div id="lab-filter-tags" style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px;"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- File Upload -->
+        <div class="upload-section">
+            <div class="upload-card" id="card-dropzone">
+                <input type="file" id="file-any" accept=".csv, .xlsx, .xls, .xlsm, .tsv, .txt" multiple>
+                <div class="icon">📁</div>
+                <h3>データをアップロード (複数ファイル選択可)</h3>
+                <p>処方、注射、手術リスト、病名などのCSVファイルをここにドラッグ＆ドロップ、またはクリックして選択してください</p>
+                <div class="file-info hidden" id="info-files"></div>
+            </div>
+        </div>
+
+        <!-- Action -->
+        <div class="action-bar">
+            <button class="btn-primary" id="btn-analyze" disabled>分析開始</button>
+        </div>
+
+        <!-- Results (hidden until analyzed) -->
+        <div id="results-area" class="hidden">
+            <!-- Tabs Navigation -->
+            <div class="tabs">
+                <button class="tab-btn active" id="tab-results-btn" onclick="switchTab('results')">📊 マッチング結果</button>
+                <button class="tab-btn hidden" id="tab-unknown-btn" onclick="switchTab('unknown')">❓ 年齢不明</button>
+                <button class="tab-btn" id="tab-raw-btn" onclick="switchTab('raw')">📄 元データ確認</button>
+            </div>
+
+            <!-- Tab Content: Results -->
+            <div id="tab-results" class="tab-content active">
+                <!-- Summary -->
+                <div class="summary-panel" id="summary-panel"></div>
+
+            <!-- Export -->
+            <div class="export-bar">
+                <button class="btn-secondary" id="btn-export-csv">📥 CSV出力</button>
+            </div>
+
+            <div class="filter-bar">
+                <input type="text" id="search-input" placeholder="患者ID・氏名・薬品名・病名で検索..." oninput="applyFilters()">
+                <select id="filter-dept" onchange="applyFilters()">
+                    <option value="">全診療科</option>
+                </select>
+                <div class="match-filters">
+                    <span class="match-chip active" data-match="all">すべて</span>
+                    <span class="match-chip" data-match="full">🟢 完全一致</span>
+                    <span class="match-chip" data-match="partial">🟡 部分一致</span>
+                    <span class="match-chip" data-match="near">🟠 近接一致</span>
+                    <span class="match-chip" data-match="none">⚪ 不一致</span>
+                </div>
+            </div>
+
+            <!-- Table -->
+            <div class="table-wrapper">
+                <div class="table-scroll">
+                    <table class="results-table">
+                        <thead>
+                            <tr>
+                                <th data-col="id"><div class="th-content">患者ID <span class="sort-icon">▲▼</span></div></th>
+                                <th data-col="name"><div class="th-content">氏名 <span class="sort-icon">▲▼</span></div></th>
+                                <th data-col="age"><div class="th-content">年齢 <span class="sort-icon">▲▼</span></div></th>
+                                <th data-col="dept">
+                                    <div class="th-content">
+                                        診療科 <span class="sort-icon">▲▼</span>
+                                        <span class="filter-icon" onclick="toggleFilterMenu('dept', event)">▼</span>
+                                    </div>
+                                </th>
+                                <th data-col="type">
+                                    <div class="th-content">
+                                        区分 <span class="sort-icon">▲▼</span>
+                                        <span class="filter-icon" onclick="toggleFilterMenu('type', event)">▼</span>
+                                    </div>
+                                </th>
+                                <th data-col="drug">
+                                    <div class="th-content">
+                                        対象 <span class="sort-icon">▲▼</span>
+                                        <span class="filter-icon" onclick="toggleFilterMenu('drug', event)">▼</span>
+                                    </div>
+                                </th>
+                                <th data-col="period"><div class="th-content">投与・対象期間 <span class="sort-icon">▲▼</span></div></th>
+                                <th data-col="match"><div class="th-content">マッチ <span class="sort-icon">▲▼</span></div></th>
+                            </tr>
+                        </thead>
+                        <tbody id="results-body"></tbody>
+                    </table>
+                </div>
+            </div>
+                <div style="text-align:center;padding:12px;color:var(--text-muted);font-size:0.8rem;" id="result-count"></div>
+            </div>
+
+            <!-- Tab Content: Raw Data -->
+            <div id="tab-raw" class="tab-content">
+                <div class="raw-controls">
+                    <select id="raw-category" onchange="renderRawTable()">
+                        <option value="rx">💊 処方データ</option>
+                        <option value="inj">💉 注射データ</option>
+                        <option value="sz">🩺 手術・処置データ</option>
+                        <option value="dx">🏥 診断病名データ</option>
+                    </select>
+                    <input type="text" id="raw-search" placeholder="生データ内を検索..." oninput="renderRawTable()" style="flex:1;">
+                    <span id="raw-count" style="font-size:0.85rem; color:var(--text-secondary); min-width:80px; text-align:right;"></span>
+                </div>
+                <div class="raw-table-container">
+                    <table class="raw-table">
+                        <thead id="raw-thead"></thead>
+                        <tbody id="raw-tbody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modals -->
+    <div class="modal-overlay hidden" id="modal-help">
+        <div class="modal-content">
+            <button class="modal-close"
+                onclick="document.getElementById('modal-help').classList.add('hidden')">×</button>
+            <div class="modal-title">❔ ヘルプ・設定説明</div>
+            <div class="modal-body">
+                <h4>一致の4パターンについて</h4>
+                <ul style="margin-bottom:12px;">
+                    <li><span class="match-badge match-full">🟢 完全一致</span> : 投与期間が、診断病名の期間内に完全に含まれている状態です。</li>
+                    <li><span class="match-badge match-partial">🟡 部分一致</span> : 投与期間と診断病名の期間が一部重複している状態です。</li>
+                    <li><span class="match-badge match-near">🟠 近接一致</span> : 期間は重複していませんが、下記の「近接日数」以内に存在している状態です。</li>
+                    <li><span class="match-badge match-none">⚪ 不一致</span> : 期間が重複しておらず、近接日数以内にも関連する記録がない状態です。</li>
+                </ul>
+                <h4 style="margin-top:12px;">設定値について</h4>
+                <p><strong>近接日数 (±日):</strong><br>処方/注射の投与期間と診断病名の期間が重なっていない場合でも、指定した日数以内であれば「🟠 近接一致」と判定します。</p>
+                <p><strong>連続処方閾値
+                        (日):</strong><br>同じ患者・同じ薬品のデータが複数ある場合、前回の投与終了日と次回の発行日の間隔がこの設定日数以内であれば、1つの連続した投与期間として結合します。</p>
+                <h4 style="margin-top:12px;">CSV・データが認識する列名一覧（必須条件）</h4>
+                <p>以下の列名が含まれているデータ行を自動認識し、内容に合わせて「処方」「注射」「手術」「病名」に自動振り分けします。<br>
+                    <span style="color:var(--orange);">※
+                        伝票区分や病名転帰などその他の列は無くてもマッチ動作自体は可能です。機能しない・エラーが起きる場合は、<strong>太文字で示した必須列名</strong>がデータに含まれているかご確認ください。</span>
+                </p>
+                <ul style="margin-top: 8px;">
+                    <li><strong>処方・注射・手術:</strong> <b>患者ID</b>, <b>薬品名（または術式, 麻酔名称）</b>, <b>発行日（または手術日, 手術開始日）</b><br>
+                        <span style="font-size:0.85rem; color:var(--text-muted)">その他の認識可能列: 患者氏名, 診療科, 担当医師（または執刀医, 麻酔医,
+                            介助医）, 日数・回数, 日回単位, 伝票区分（または予定緊急, 麻酔区分）, 用量, 単位</span>
+                    </li>
+                    <li><strong>病名検索:</strong> <b>患者ID</b>, <b>診断病名（または病名）</b><br>
+                        <span style="font-size:0.85rem; color:var(--text-muted)">その他の認識可能列: 年齢, 性別, 病名開始日,
+                            病名終了日（または手術終了日）, 病名転帰, 診療科</span>
+                    </li>
+                </ul>
+                <p>※ 一覧の「薬品名」や「病名」のタグをクリックすると、検索欄に自動入力され素早く絞り込みができます。</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay hidden" id="modal-export">
+        <div class="modal-content">
+            <button class="modal-close"
+                onclick="document.getElementById('modal-export').classList.add('hidden')">×</button>
+            <div class="modal-title">📥 CSV出力形式の選択</div>
+            <div class="modal-body">
+                <label class="export-option" onclick="doExportCSV('summary-newline')">
+                    <strong>1. 1患者1行サマリー（セル内改行形式）</strong>
+                    <span>患者ごとに1行で出力し、複数の薬や病名はセル内で改行してまとめます。実務での閲覧・管理に最適です。</span>
+                </label>
+                <label class="export-option" onclick="doExportCSV('summary-flags')">
+                    <strong>2. 1患者1行・統計用フラグ形式</strong>
+                    <span>患者ごとに1行で出力し、各イベントの「あり(1)/なし(0)」をフラグ化します。統計解析やクロス集計に最適です。</span>
+                </label>
+                <label class="export-option" onclick="doExportCSV('event-db')">
+                    <strong>3. イベント別データベース（縦持ち形式）</strong>
+                    <span>処方や手術などの各イベントを1行ずつ出力します。ピボットテーブル等での分析に最適です。</span>
+                </label>
+                <label class="export-option" onclick="doExportCSV('raw-full')">
+                    <strong>4. マッチ患者の元データ完全抽出形式</strong>
+                    <span>表示されている患者に該当する「アップロードされた元の行データ」を、全列そのままの状態で出力します。</span>
+                </label>
+            </div>
+        </div>
+    </div>
+
+
+
+    <!-- Loading Overlay -->
+    <div class="loading-overlay hidden" id="loading">
+        <div class="spinner"></div>
+    </div>
+
+    <script>
+        // ===== Global State =====
+        var rawDataRows = [];
+        var rawDataByCategory = { rx: [], inj: [], dx: [], sz: [] };
+        var loadedFilesData = [];
+        var analysisResult = [];
+        var unknownAgeResult = [];
+        var filteredResult = [];
+        var activeTab = 'results';
+        var activeMatchFilter = 'all';
+        var activeFilters = { dept: {}, type: {}, drug: {} }; // colName -> { value -> checked }
+        var sortState = { col: 'id', asc: true };
+        var expandedPatientIds = {};
+        var exclusionDrugs = [];
+        var activeLabFilters = [];
+
+        // ===== CSV Parsing =====
+        function detectEncoding(buffer) {
+            var bytes = new Uint8Array(buffer);
+            // Check for UTF-8 BOM
+            if (bytes.length >= 3 && bytes[0] === 0xEF && bytes[1] === 0xBB && bytes[2] === 0xBF) return 'utf-8';
+            // Heuristic: check for Shift-JIS patterns
+            var sjisScore = 0, utf8Score = 0;
+            for (var i = 0; i < Math.min(bytes.length, 1000); i++) {
+                if (bytes[i] >= 0x80) {
+                    if (bytes[i] >= 0x81 && bytes[i] <= 0x9F || bytes[i] >= 0xE0 && bytes[i] <= 0xFC) sjisScore++;
+                    if (bytes[i] >= 0xC0 && bytes[i] <= 0xFD) utf8Score++;
+                }
+            }
+            return sjisScore > utf8Score ? 'shift-jis' : 'utf-8';
+        }
+
+        function readFileAsText(file, callback) {
+            var reader = new FileReader();
+            reader.onload = function (e) {
+                var encoding = detectEncoding(e.target.result);
+                var reader2 = new FileReader();
+                reader2.onload = function (e2) { callback(e2.target.result); };
+                reader2.readAsText(file, encoding === 'shift-jis' ? 'Shift_JIS' : 'UTF-8');
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        function parseCSV(text) {
+            if (!text) return [];
+            
+            // Auto-detect delimiter: check first line for tabs
+            var firstLine = text.split('\n')[0];
+            var delimiter = ',';
+            if (firstLine.indexOf('\t') >= 0) delimiter = '\t';
+
+            var lines = [];
+            var current = '';
+            var inQuote = false;
+            for (var i = 0; i < text.length; i++) {
+                var ch = text[i];
+                if (inQuote) {
+                    if (ch === '"') {
+                        if (i + 1 < text.length && text[i + 1] === '"') { current += '"'; i++; }
+                        else { inQuote = false; }
+                    } else { current += ch; }
+                } else {
+                    if (ch === '"') { inQuote = true; }
+                    else if (ch === delimiter) { lines.push(current); current = ''; }
+                    else if (ch === '\n' || ch === '\r') {
+                        if (ch === '\r' && i + 1 < text.length && text[i + 1] === '\n') i++;
+                        lines.push(current); current = '';
+                        // End of row marker
+                        lines.push(null);
+                    } else { current += ch; }
+                }
+            }
+            if (current) { lines.push(current); lines.push(null); }
+
+            // Reconstruct rows
+            var rows = [];
+            var row = [];
+            for (var j = 0; j < lines.length; j++) {
+                if (lines[j] === null) {
+                    if (row.length > 0) rows.push(row);
+                    row = [];
+                } else { row.push(lines[j].trim()); }
+            }
+            if (row.length > 0) rows.push(row);
+            return rows;
+        }
+
+        function normalizeColName(name) {
+            if (!name) return '';
+            // Lowercase, trim, and normalize full-width and common variations
+            var s = name.toString().toLowerCase()
+                .replace(/[\uff01-\uff5e]/g, function (ch) { return String.fromCharCode(ch.charCodeAt(0) - 0xFEE0); }) // Full-width to half-width
+                .replace(/\u3000/g, ' ') // Full-width space to half-width
+                .replace(/[()（）\[\]［］\-_]/g, '') // Remove formatting marks
+                .replace(/\s/g, ''); // Remove all spaces
+            return s;
+        }
+
+        function csvToObjects(rows) {
+            if (rows.length < 2) return [];
+            var headers = rows[0].map(normalizeColName);
+            var result = [];
+            for (var i = 1; i < rows.length; i++) {
+                var obj = {};
+                for (var j = 0; j < headers.length; j++) {
+                    obj[headers[j]] = (rows[i][j] || '').trim();
+                }
+                result.push(obj);
+            }
+            return result;
+        }
+
+        // ===== Column Name Resolution =====
+        function hasCol(obj, candidates) {
+            for (var i = 0; i < candidates.length; i++) {
+                var normalizedKey = normalizeColName(candidates[i]);
+                if (obj.hasOwnProperty(normalizedKey)) return true;
+            }
+            return false;
+        }
+
+        function findCol(obj, candidates) {
+            for (var i = 0; i < candidates.length; i++) {
+                var normalizedKey = normalizeColName(candidates[i]);
+                if (obj.hasOwnProperty(normalizedKey)) return obj[normalizedKey];
+            }
+            return '';
+        }
+
+        function getPatientId(obj) { return (findCol(obj, ['患者ID', '患者ＩＤ', '患者id', '患者番号', '患者番号', '患者コード', '患者ｺｰﾄﾞ', 'カルテ番号', 'PID', 'ID', 'ID半角', '患者No', 'No']) || '').toString().trim(); }
+        function getPatientName(obj) { return (findCol(obj, ['患者氏名', '患者名', '氏名', '氏名漢字', '名前', '名称']) || '').toString().trim(); }
+        
+        // Normalization for comparison
+        function normalizeId(id) {
+            if (id === null || id === undefined) return '';
+            var s = id.toString().trim();
+            // Convert full-width numbers to half-width
+            return s.replace(/[０-９]/g, function (ch) {
+                return String.fromCharCode(ch.charCodeAt(0) - 0xFEE0);
+            });
+        }
+        function normalizeName(name) {
+            if (!name) return '';
+            // Remove all whitespace (half and full width)
+            return name.toString().replace(/[\s\u3000]/g, '');
+        }
+
+        function getDrugName(obj) { return findCol(obj, ['術式', '術式名', '薬品', '薬品名', '薬剤名', '品名', '処方内容', '投与薬剤', '麻酔名称', '手術名称', '手術名', '傷病名', '病名', '依頼名称', '検査項目', '項目名']); }
+        function getIssueDate(obj) { return findCol(obj, ['手術日', '病名開始日', '発行日', '開始日', '検査日', '実施日', '調剤日', '処方日', '算定日', '手術開始日', '年月日', '診療開始日']); }
+        function getDays(obj) { return findCol(obj, ['日数・回数', '日数', '回数', '回数日数']); }
+        function getDayUnit(obj) { return findCol(obj, ['日回単位', '単位']); }
+        function getDept(obj) { return findCol(obj, ['診療科', '診療科名', '診療科名称', '部署', '科']); }
+        function getDoctor(obj) { return findCol(obj, ['担当医師', '担当医', '主治医', '執刀医', '麻酔医', '介助医']); }
+        function getWard(obj) { return findCol(obj, ['病棟', '病棟名']); }
+        function getSlipType(obj) { return findCol(obj, ['伝票区分', '予定緊急', '麻酔区分', '区分']); }
+        function getInjDose(obj) { return findCol(obj, ['用量', '投与量']); }
+        function getInjUnit(obj) { return findCol(obj, ['単位', '用量単位']); }
+        function getLabResult(obj) { return findCol(obj, ['結果', '結果値', '検査値']); }
+        function getLabUnit(obj) { return findCol(obj, ['結果単位', '単位', '検査単位']); }
+        function getLabFlag(obj) { return findCol(obj, ['判定', 'フラグ', 'H/L', '異常値区分', '結果フラグ']); }
+        function getAge(obj) { return findCol(obj, ['年齢', '年齢（歳）', 'Age']); }
+        function getDxName(obj) { return findCol(obj, ['診断病名', '病名', '傷病名', '疾患名', '適応症']); }
+        function getDxStart(obj) { return findCol(obj, ['手術日', '病名開始日', '発行日', '開始日', '検査日', '実施日', '疾患開始日', '診療開始日']); }
+        function getDxEnd(obj) { return findCol(obj, ['病名終了日', '終了日', '疾患終了日', '手術終了日', '転帰日']); }
+        function getDxOutcome(obj) { return findCol(obj, ['病名転帰', '転帰']); }
+        function getDxOutcomeCode(obj) { return findCol(obj, ['病名転帰コード', '転帰コード']); }
+        function getDxCode(obj) { return findCol(obj, ['病名コード', '診断病名コード', '疾患コード', '傷病名コード']); }
+        function getGender(obj) { return findCol(obj, ['性別', '性別区分']); }
+        function getDrugUsage(obj) { return findCol(obj, ['用法', '用法名称', '用法名', '飲方', '服用方法']); }
+        function getLabJudge(obj) { return findCol(obj, ['判定', '判定種別', 'H/L', '異常値区分']); }
+        function getLabRef(obj) { return findCol(obj, ['標準値', '基準値', '基準範囲', '標準範囲']); }
+
+        function parseAge(str) {
+            if (str === null || str === undefined || str === '') return null;
+            // Extract numbers from strings like "75歳", "75", "75.5"
+            var m = str.toString().match(/\d+(\.\d+)?/);
+            return m ? parseFloat(m[0]) : null;
+        }
+
+        // ===== Date Utilities =====
+        function parseDate(str) {
+            if (!str) return null;
+            str = str.toString().replace(/[\s\u3000].*$/, '').replace(/\s/g, '');
+            
+            // Excelシリアル値の対応
+            if (/^\d{4,5}(\.\d+)?$/.test(str)) {
+                var serial = parseInt(str, 10);
+                if (serial > 10000 && serial < 80000) {
+                    var baseDate = new Date(1899, 11, 30);
+                    baseDate.setDate(baseDate.getDate() + serial);
+                    return baseDate;
+                }
+            }
+
+            // ハイフンや日本語表記をスラッシュに変換 (例: 2025-12-01 -> 2025/12/01)
+            str = str.replace(/[-年]/g, '/').replace(/[月日]/g, '/').replace(/\/+$/, '');
+
+            var parts = str.split('/');
+            if (parts.length >= 3) {
+                var y = parseInt(parts[0], 10);
+                var m = parseInt(parts[1], 10);
+                var d = parseInt(parts[2], 10);
+                
+                // 年が2桁で読み込まれた場合（SheetJSの仕様対策）
+                if (y >= 0 && y <= 99) {
+                    y += (y < 50 ? 2000 : 1900); 
+                }
+
+                if (isNaN(y) || isNaN(m) || isNaN(d)) return null;
+                if (y === 1 && m === 1 && d === 1) return null; // 0001/01/01 = 未設定
+                return new Date(y, m - 1, d);
+            }
+            return null;
+        }
+
+        function formatDate(date) {
+            if (!date) return '-';
+            var y = date.getFullYear();
+            var m = date.getMonth() + 1;
+            var d = date.getDate();
+            return y + '/' + (m < 10 ? '0' + m : m) + '/' + (d < 10 ? '0' + d : d);
+        }
+
+        function formatDxRange(start, end) {
+            var s = formatDate(start);
+            var e = end ? formatDate(end) : '<span style="color:var(--yellow); font-weight:bold;">継続中</span>';
+            return s + ' ～ ' + e;
+        }
+
+        function daysBetween(d1, d2) {
+            return Math.round((d2 - d1) / (1000 * 60 * 60 * 24));
+        }
+
+        function addDays(date, n) {
+            var r = new Date(date);
+            r.setDate(r.getDate() + n);
+            return r;
+        }
+
+        var TODAY = new Date();
+        TODAY.setHours(0, 0, 0, 0);
+
+        // ===== Analysis Logic =====
+        function buildMedicationPeriods(rxRecords, continuousThreshold) {
+            // Group by patient + drug
+            var groups = {};
+            rxRecords.forEach(function (r) {
+                var pid = normalizeId(getPatientId(r));
+                var drug = getDrugName(r);
+                var key = pid + '|||' + drug;
+                if (!groups[key]) groups[key] = [];
+                groups[key].push(r);
+            });
+
+            var periods = []; // { patientId, drug, startDate, endDate, records }
+            Object.keys(groups).forEach(function (key) {
+                var recs = groups[key];
+                // Parse and sort by issue date
+                var parsed = [];
+                recs.forEach(function (r) {
+                    var issueDate = parseDate(getIssueDate(r));
+                    if (!issueDate) {
+                        var parts = key.split('|||');
+                        periods.push({ patientId: parts[0], drug: parts[1], startDate: null, endDate: null, records: [r], type: 'rx' });
+                        return;
+                    }
+                    var days = parseInt(getDays(r), 10) || 1;
+                    var unit = getDayUnit(r);
+                    var endDate;
+                    if (unit && unit.indexOf('日') >= 0) {
+                        endDate = addDays(issueDate, days - 1);
+                    } else {
+                        // 回分 (as needed) - treat as single day
+                        endDate = new Date(issueDate);
+                    }
+                    parsed.push({ issueDate: issueDate, endDate: endDate, record: r });
+                });
+                parsed.sort(function (a, b) { return a.issueDate - b.issueDate; });
+
+                // Merge continuous prescriptions
+                var parts = key.split('|||');
+                var currentStart = null, currentEnd = null, currentRecs = [];
+                parsed.forEach(function (p) {
+                    if (!currentStart) {
+                        currentStart = p.issueDate; currentEnd = p.endDate; currentRecs = [p.record];
+                    } else {
+                        var gap = daysBetween(currentEnd, p.issueDate);
+                        if (gap <= continuousThreshold) {
+                            // Continuous
+                            if (p.endDate > currentEnd) currentEnd = p.endDate;
+                            currentRecs.push(p.record);
+                        } else {
+                            // New period
+                            periods.push({ patientId: parts[0], drug: parts[1], startDate: currentStart, endDate: currentEnd, records: currentRecs, type: 'rx' });
+                            currentStart = p.issueDate; currentEnd = p.endDate; currentRecs = [p.record];
+                        }
+                    }
+                });
+                if (currentStart) {
+                    periods.push({ patientId: parts[0], drug: parts[1], startDate: currentStart, endDate: currentEnd, records: currentRecs, type: 'rx' });
+                }
+            });
+            return periods;
+        }
+
+        function buildInjectionPeriods(injRecords, continuousThreshold, type) {
+            var groups = {};
+            injRecords.forEach(function (r) {
+                var pid = normalizeId(getPatientId(r));
+                var drug = getDrugName(r);
+                var key = pid + '|||' + drug;
+                if (!groups[key]) groups[key] = [];
+                groups[key].push(r);
+            });
+
+            var periods = [];
+            Object.keys(groups).forEach(function (key) {
+                var recs = groups[key];
+                var parsed = [];
+                recs.forEach(function (r) {
+                    var d = parseDate(getIssueDate(r));
+                    if (d) {
+                        parsed.push({ date: d, record: r });
+                    } else {
+                        var parts = key.split('|||');
+                        periods.push({ patientId: parts[0], drug: parts[1], startDate: null, endDate: null, records: [r], type: type || 'inj' });
+                    }
+                });
+                parsed.sort(function (a, b) { return a.date - b.date; });
+
+                var parts = key.split('|||');
+                var currentStart = null, currentEnd = null, currentRecs = [];
+                parsed.forEach(function (p) {
+                    if (!currentStart) {
+                        currentStart = p.date; currentEnd = p.date; currentRecs = [p.record];
+                    } else {
+                        var gap = daysBetween(currentEnd, p.date);
+                        if (gap <= continuousThreshold) {
+                            currentEnd = p.date; currentRecs.push(p.record);
+                        } else {
+                            periods.push({ patientId: parts[0], drug: parts[1], startDate: currentStart, endDate: currentEnd, records: currentRecs, type: type || 'inj' });
+                            currentStart = p.date; currentEnd = p.date; currentRecs = [p.record];
+                        }
+                    }
+                });
+                if (currentStart) {
+                    periods.push({ patientId: parts[0], drug: parts[1], startDate: currentStart, endDate: currentEnd, records: currentRecs, type: type || 'inj' });
+                }
+            });
+            return periods;
+        }
+
+        function matchPeriodWithDisease(period, disease, proximityDays) {
+            if (!period.startDate || !disease.startDate) return 'none'; // 開始日不明はスキップ
+
+            var startA = period.startDate.getTime();
+            var endA = period.endDate ? period.endDate.getTime() : Infinity; // 終了日nullは継続中
+            var startB = disease.startDate.getTime();
+            var endB = disease.endDate ? disease.endDate.getTime() : Infinity; // 終了日nullは継続中
+
+            // Check overlap
+            var isOverlap = (startA <= endB) && (startB <= endA);
+
+            if (isOverlap) {
+                // There is overlap
+                if (startB <= startA && endA <= endB) {
+                    return 'full'; // 完全一致: 投与期間が病名期間内
+                }
+                return 'partial'; // 部分一致
+            }
+
+            // Check proximity
+            var dist = Infinity;
+            if (endA < startB) {
+                dist = Math.round((startB - endA) / (1000 * 60 * 60 * 24));
+            } else if (endB < startA) {
+                dist = Math.round((startA - endB) / (1000 * 60 * 60 * 24));
+            }
+
+            if (dist <= proximityDays) {
+                return 'near'; // 近接一致
+            }
+            return 'none';
+        }
+
+        function runAnalysis() {
+            var proximityDays = parseInt(document.getElementById('proximityDays').value, 10) || 14;
+            var continuousThreshold = parseInt(document.getElementById('continuousThreshold').value, 10) || 3;
+
+            var rxData = [];
+            var injData = [];
+            var szData = [];
+            var dxData = [];
+            var labData = [];
+
+            // Categorize
+            rawDataRows.forEach(function (row) {
+                var isDrugCol = hasCol(row, ['薬品', '薬品名', '薬剤名']);
+                var isUsageOrDaysCol = hasCol(row, ['用法', '用法名称', '日数・回数', '日数', '日数等']);
+                var isDoseOrUnitCol = hasCol(row, ['用量', '単位', '用量単位']);
+                var isLabCol = hasCol(row, ['依頼名称', '検査項目', '項目名']);
+                var isSzCol = hasCol(row, ['術式', '麻酔名称', '手術名称', '手術名']);
+                var isDxCol = hasCol(row, ['診断病名', '病名', '傷病名', '疾患名']);
+                var labVal = getLabResult(row);
+
+                // 1. lab data
+                if (isLabCol && labVal) {
+                    labData.push(row);
+                } 
+                // 2. surgery data
+                else if (isSzCol) {
+                    szData.push(row);
+                }
+                // 3. prescription data (with usage or days)
+                else if (isDrugCol && isUsageOrDaysCol) {
+                    rxData.push(row);
+                }
+                // 4. injection data (with dose/unit but NO usage/days)
+                else if (isDrugCol && isDoseOrUnitCol && !isUsageOrDaysCol) {
+                    injData.push(row);
+                }
+                // 5. diagnosis data (Fallback if not an event)
+                else if (isDxCol) {
+                    dxData.push(row);
+                }
+                // 6. fallback to rx if it's medical but not yet classified
+                else if (isDrugCol) {
+                    rxData.push(row);
+                }
+            });
+            rawDataByCategory = { rx: rxData, inj: injData, dx: dxData, sz: szData, lab: labData };
+
+            // Build medication/event periods
+// 検査データ専用：間隔に関わらず同じ項目を1つの期間としてまとめる関数
+        function buildLabPeriods(labRecords) {
+            var groups = {};
+            labRecords.forEach(function (r) {
+                var pid = normalizeId(getPatientId(r));
+                var drug = getDrugName(r); // 検査項目名
+                var key = pid + '|||' + drug;
+                if (!groups[key]) groups[key] = [];
+                groups[key].push(r);
+            });
+            var periods = [];
+            Object.keys(groups).forEach(function (key) {
+                var parsed = [];
+                groups[key].forEach(function (r) {
+                    var d = parseDate(getIssueDate(r));
+                    if (d) parsed.push({ date: d, record: r });
+                });
+                parsed.sort(function (a, b) { return a.date - b.date; });
+                if (parsed.length > 0) {
+                    var parts = key.split('|||');
+                    periods.push({
+                        patientId: parts[0], drug: parts[1],
+                        startDate: parsed[0].date, endDate: parsed[parsed.length - 1].date,
+                        records: parsed.map(function(p){ return p.record; }), type: 'lab'
+                    });
+                }
+            });
+            return periods;
+        }
+
+// 手術データ専用：同日の術式をまとめ、メイン（加算以外）を優先する関数
+        function buildSzPeriods(szRecords) {
+            var groups = {};
+            szRecords.forEach(function (r) {
+                var pid = normalizeId(getPatientId(r));
+                var date = getIssueDate(r); // 手術日
+                var key = pid + '|||' + date;
+                if (!groups[key]) groups[key] = [];
+                groups[key].push(r);
+            });
+            var periods = [];
+            Object.keys(groups).forEach(function (key) {
+                var recs = groups[key];
+                var parts = key.split('|||');
+                var d = parseDate(parts[1]);
+                
+                // 代表的な術式名の選定（「加算」「料」「支援」などを含まないものを優先）
+                var mainRec = recs.find(function(r) {
+                    var name = getDrugName(r);
+                    return !/(加算|料|支援|管理)/.test(name);
+                }) || recs[0];
+
+                periods.push({
+                    patientId: parts[0],
+                    drug: getDrugName(mainRec),
+                    startDate: d, endDate: d,
+                    records: recs, type: 'sz'
+                });
+            });
+            return periods;
+        }
+
+        var rxPeriods = buildMedicationPeriods(rxData, continuousThreshold);
+        var injPeriods = buildInjectionPeriods(injData, continuousThreshold, 'inj');
+        var szPeriods = buildSzPeriods(szData); // 専用関数を使用
+        var labPeriods = buildLabPeriods(labData);
+
+            // Collect patient IDs
+            var reqPatientIds = {};
+            rxPeriods.forEach(function (p) { reqPatientIds[p.patientId] = true; });
+            injPeriods.forEach(function (p) { reqPatientIds[p.patientId] = true; });
+            szPeriods.forEach(function (p) { reqPatientIds[p.patientId] = true; });
+            labPeriods.forEach(function (p) { reqPatientIds[p.patientId] = true; });
+
+            var dxPatientIds = {};
+            dxData.forEach(function (d) { dxPatientIds[normalizeId(getPatientId(d))] = true; });
+
+            // ID filtering
+            var commonIds = {};
+            var hasEvents = Object.keys(reqPatientIds).length > 0;
+            var hasDx = Object.keys(dxPatientIds).length > 0;
+
+            if (hasEvents && hasDx) {
+                Object.keys(reqPatientIds).forEach(function (id) {
+                    if (dxPatientIds[id]) commonIds[id] = true;
+                });
+            } else if (hasEvents && !hasDx) {
+                commonIds = reqPatientIds;
+            } else if (!hasEvents && hasDx) {
+                commonIds = dxPatientIds;
+            } else {
+                analysisResult = [];
+                return analysisResult;
+            }
+
+            // Build patient records mapping
+            var patients = {};
+            function initPatient(rawId, r) {
+                var pid = normalizeId(rawId);
+                var name = getPatientName(r);
+                var normName = normalizeName(name);
+
+                if (!patients[pid]) {
+                    patients[pid] = { 
+                        id: rawId,
+                        name: name,
+                        allNames: {}, 
+                        age: getAge(r) || '',
+                        dept: getDept(r) || '',
+                        gender: '',
+                        rxPeriods: [],
+                        injPeriods: [],
+                        szPeriods: [],
+                        labPeriods: [],
+                        diseases: [] 
+                    };
+                    if (name) patients[pid].allNames[normName] = name;
+                } else {
+                    if (!patients[pid].name && name) patients[pid].name = name;
+                    if (name) patients[pid].allNames[normName] = name;
+                    if (!patients[pid].dept && getDept(r)) patients[pid].dept = getDept(r);
+                    if (!patients[pid].age && getAge(r)) patients[pid].age = getAge(r);
+                }
+            }
+
+            rxData.forEach(function (r) { var pid = normalizeId(getPatientId(r)); if (commonIds[pid]) initPatient(pid, r); });
+            injData.forEach(function (r) { var pid = normalizeId(getPatientId(r)); if (commonIds[pid]) initPatient(pid, r); });
+            szData.forEach(function (r) { var pid = normalizeId(getPatientId(r)); if (commonIds[pid]) initPatient(pid, r); });
+            labData.forEach(function (r) { var pid = normalizeId(getPatientId(r)); if (commonIds[pid]) initPatient(pid, r); });
+
+            dxData.forEach(function (d) {
+                var pid = normalizeId(getPatientId(d));
+                if (!commonIds[pid]) return;
+                initPatient(pid, d);
+                if (!patients[pid].age && getAge(d)) patients[pid].age = getAge(d);
+                if (!patients[pid].gender && getGender(d)) patients[pid].gender = getGender(d);
+
+                var startDate = parseDate(getDxStart(d));
+                var endDate = parseDate(getDxEnd(d));
+                patients[pid].diseases.push({
+                    name: getDxName(d),
+                    code: getDxCode(d),
+                    startDate: startDate,
+                    endDate: endDate,
+                    outcome: getDxOutcome(d),
+                    outcomeCode: getDxOutcomeCode(d),
+                    dept: getDept(d),
+                    raw: d
+                });
+            });
+
+            // Attach periods to patients
+            rxPeriods.forEach(function (p) { if (patients[p.patientId]) { p.type = 'rx'; patients[p.patientId].rxPeriods.push(p); } });
+            injPeriods.forEach(function (p) { if (patients[p.patientId]) { p.type = 'inj'; patients[p.patientId].injPeriods.push(p); } });
+            szPeriods.forEach(function (p) { if (patients[p.patientId]) { p.type = 'sz'; patients[p.patientId].szPeriods.push(p); } });
+            labPeriods.forEach(function (p) { if (patients[p.patientId]) { p.type = 'lab'; patients[p.patientId].labPeriods.push(p); } });
+
+            // Exclusion and Age range filtering setup
+            var exclusionText = document.getElementById('exclusion-drug-list').value;
+            var currentExclusionDrugs = exclusionText.split('\n').map(function (s) { return s.trim(); }).filter(function (s) { return s.length > 0; });
+            var ageMin = parseFloat(document.getElementById('exclude-age-min').value);
+            var ageMax = parseFloat(document.getElementById('exclude-age-max').value);
+            var isAgeFilterActive = !isNaN(ageMin) || !isNaN(ageMax);
+
+            analysisResult = [];
+            unknownAgeResult = [];
+
+            var MATCH_RANK = { full: 3, partial: 2, near: 1, none: 0 };
+
+            Object.keys(patients).forEach(function (pid) {
+                var pt = patients[pid];
+
+                // Name mismatch check
+                var uniqueNormNames = Object.keys(pt.allNames);
+                if (uniqueNormNames.length > 1) {
+                    pt.nameMismatch = true;
+                    pt.matchingNames = uniqueNormNames.map(function(n) { return pt.allNames[n]; });
+                }
+
+                var ageNum = parseAge(pt.age);
+                var isUnknownAge = isAgeFilterActive && ageNum === null;
+
+                // 患者が持つ全イベント（処方・注射・手術・検査）を一つの配列に
+                var allItems = pt.rxPeriods.concat(pt.injPeriods).concat(pt.szPeriods).concat(pt.labPeriods);
+                if (allItems.length === 0 && pt.diseases.length === 0) return;
+
+                // 各イベントに対してマッチングを実行し、患者全体の最高一致度を算出
+                var bestLevel = 'none';
+                var targetNames = [];
+                
+                allItems.forEach(function(p) {
+                    var res = createResultItem(p);
+                    p.matches = res.matches; // 詳細表示用に保持
+                    if (MATCH_RANK[res.matchLevel] > MATCH_RANK[bestLevel]) bestLevel = res.matchLevel;
+                    
+                    // 「対象」列に表示する名前のリストを作成（重複排除）
+                    if (targetNames.indexOf(p.drug) === -1) targetNames.push(p.drug);
+                });
+
+                // 区分アイコンの作成
+                var typeIcons = [];
+                if (pt.rxPeriods.length > 0) typeIcons.push('💊');
+                if (pt.injPeriods.length > 0) typeIcons.push('💉');
+                if (pt.szPeriods.length > 0) typeIcons.push('🩺');
+                if (pt.labPeriods.length > 0) typeIcons.push('🧪');
+                if (pt.diseases.length > 0) typeIcons.push('🏥');
+                var typeLabel = typeIcons.join(' ');
+
+                // 全体の期間を算出
+                var allDates = [];
+                allItems.forEach(function(p) { if(p.startDate) allDates.push(p.startDate); if(p.endDate) allDates.push(p.endDate); });
+                pt.diseases.forEach(function(d) { if(d.startDate) allDates.push(d.startDate); if(d.endDate) allDates.push(d.endDate); });
+                var minDate = allDates.length ? new Date(Math.min.apply(null, allDates)) : null;
+                var maxDate = allDates.length ? new Date(Math.max.apply(null, allDates)) : null;
+                var periodDisplay = minDate ? formatDate(minDate) + ' ～ ' + formatDate(maxDate) : '-';
+
+                // 対象列の表示文字列
+                var summaryDrug = targetNames.slice(0, 2).join(', ') + (targetNames.length > 2 ? ' 他' + (targetNames.length - 2) + '件' : '');
+                if (summaryDrug === "" && pt.diseases.length > 0) {
+                    var dxNames = pt.diseases.map(function(d){ return d.name; });
+                    var uniqueDx = [];
+                    dxNames.forEach(function(n){ if(uniqueDx.indexOf(n) === -1) uniqueDx.push(n); });
+                    summaryDrug = '[病名] ' + uniqueDx.slice(0, 2).join(', ') + (uniqueDx.length > 2 ? ' 他' : '');
+                }
+
+                // 患者単位のサマリー行を作成
+                var summaryRow = {
+                    id: pid,
+                    name: pt.name,
+                    age: pt.age,
+                    dept: pt.dept,
+                    type: 'summary',
+                    typeLabel: typeLabel,
+                    drug: summaryDrug,
+                    periodDisplay: periodDisplay,
+                    matchLevel: bestLevel,
+                    patientData: pt,
+                    allItems: allItems,
+                    eventCount: allItems.length,
+                    rowId: pid // 患者IDをそのままrowIdに
+                };
+
+                // Filter: Age
+                if (isAgeFilterActive && ageNum !== null) {
+                    if (!isNaN(ageMin) && ageNum < ageMin) return;
+                    if (!isNaN(ageMax) && ageNum >= ageMax) return;
+                }
+
+                // Filter: Drug Exclusion
+                if (currentExclusionDrugs.length > 0) {
+                    var anyExcluded = targetNames.some(function(drugName) {
+                        return currentExclusionDrugs.some(function(ex) {
+                            return drugName.toLowerCase().indexOf(ex.toLowerCase()) >= 0;
+                        });
+                    });
+                    if (anyExcluded) return;
+                }
+
+                // Filter: Lab Values (Exclusion)
+                if (activeLabFilters.length > 0) {
+                    var isExcludedByLab = activeLabFilters.some(function(filter) {
+                        return pt.labPeriods.some(function(p) {
+                            if (p.drug === filter.item) {
+                                return p.records.some(function(r) {
+                                    var rawVal = getLabResult(r);
+                                    if (!rawVal) return false;
+                                    var cleanVal = rawVal.toString().replace(/[^0-9.-]/g, '');
+                                    var val = parseFloat(cleanVal);
+                                    if (isNaN(val)) return false;
+                                    switch (filter.op) {
+                                        case '>=': return val >= filter.val;
+                                        case '<=': return val <= filter.val;
+                                        case '>':  return val >  filter.val;
+                                        case '<':  return val <  filter.val;
+                                    }
+                                    return false;
+                                });
+                            }
+                            return false;
+                        });
+                    });
+                    if (isExcludedByLab) return;
+                }
+
+                if (isUnknownAge) unknownAgeResult.push(summaryRow);
+                else analysisResult.push(summaryRow);
+
+                function createResultItem(period) {
+                    var periodMatches = [];
+                    var bestMatch = 'none';
+                    
+                    if (period) {
+                        // 比較対象となる全ターゲット（病名 + 他の全イベント）を作成
+                        var allTargets = [];
+                        
+                        // 病名をターゲットに追加
+                        pt.diseases.forEach(function(dx) {
+                            if (dx.startDate) {
+                                allTargets.push({ name: dx.name, startDate: dx.startDate, endDate: dx.endDate, type: 'dx' });
+                            }
+                        });
+                        
+                        // 他の全てのイベント（処方、注射、手術、検査）をターゲットに追加
+                        var otherCategories = [
+                            { list: pt.rxPeriods, type: 'rx' },
+                            { list: pt.injPeriods, type: 'inj' },
+                            { list: pt.szPeriods, type: 'sz' },
+                            { list: pt.labPeriods, type: 'lab' }
+                        ];
+                        
+                        otherCategories.forEach(function(cat) {
+                            cat.list.forEach(function(otherP) {
+                                // 自分自身とは比較しない
+                                if (otherP === period) return;
+                                if (otherP.startDate) {
+                                    allTargets.push({ name: otherP.drug, startDate: otherP.startDate, endDate: otherP.endDate, type: cat.type });
+                                }
+                            });
+                        });
+
+                        // 全ターゲットに対して期間の重なりをチェック
+                        allTargets.forEach(function (target) {
+                            var level = matchPeriodWithDisease(period, target, proximityDays);
+                            if (level !== 'none') {
+                                periodMatches.push({ disease: target, level: level });
+                            }
+                            if (MATCH_RANK[level] > MATCH_RANK[bestMatch]) bestMatch = level;
+                        });
+                    }
+
+                    return {
+                        id: pid,
+                        rowId: pid + '_' + (period ? (period.type + '_' + period.drug + '_' + (period.startDate ? period.startDate.getTime() : 'nodate')) : 'dx'),
+                        name: pt.name,
+                        age: pt.age,
+                        dept: (period && period.records.length > 0) ? getDept(period.records[0]) : pt.dept,
+                        gender: pt.gender,
+                        type: period ? period.type : 'dx',
+                        drug: period ? period.drug : (pt.diseases.length > 0 ? '[病名] ' + pt.diseases.map(function(d){return d.name;}).join(', ') : '[病名] 不明'),
+                        period: period,
+                        matchLevel: bestMatch,
+                        matches: periodMatches,
+                        patientData: pt
+                    };
+                }
+            });
+
+            var unknownBtn = document.getElementById('tab-unknown-btn');
+            if (isAgeFilterActive && unknownAgeResult.length > 0) {
+                unknownBtn.classList.remove('hidden');
+            } else {
+                unknownBtn.classList.add('hidden');
+                if (activeTab === 'unknown') switchTab('results');
+            }
+
+            updateLabItemDropdown();
+            return analysisResult;
+        }
+
+        // ===== Rendering =====
+        function getMatchLabel(level) {
+            switch (level) {
+                case 'full': return '<span class="match-badge match-full">🟢 完全一致</span>';
+                case 'partial': return '<span class="match-badge match-partial">🟡 部分一致</span>';
+                case 'near': return '<span class="match-badge match-near">🟠 近接一致</span>';
+                default: return '<span class="match-badge match-none">⚪ 不一致</span>';
+            }
+        }
+
+        function uniqueNames(periods) {
+            var seen = {};
+            var result = [];
+            periods.forEach(function (p) {
+                if (!seen[p.drug]) { seen[p.drug] = true; result.push(p.drug); }
+            });
+            return result;
+        }
+
+        function uniqueDiseaseNames(diseases) {
+            var seen = {};
+            var result = [];
+            diseases.forEach(function (d) {
+                var label = d.code ? '[' + d.code + '] ' + d.name : d.name;
+                if (!seen[label]) { seen[label] = true; result.push(label); }
+            });
+            return result;
+        }
+
+        function renderTags(names, tagClass) {
+            return names.map(function (n) { return '<span class="' + tagClass + '" onclick="filterByTag(this, event)">' + escHtml(n) + '</span>'; }).join(' ');
+        }
+
+        function filterByTag(el, event) {
+            event.stopPropagation();
+            var text = el.innerText || el.textContent;
+            var input = document.getElementById('search-input');
+            input.value = text;
+            applyFilters();
+        }
+
+        function escHtml(s) {
+            var d = document.createElement('div');
+            d.appendChild(document.createTextNode(s));
+            return d.innerHTML;
+        }
+
+        function renderSummary() {
+            var total = analysisResult.length;
+            var full = 0, partial = 0, near = 0, none = 0;
+            analysisResult.forEach(function (p) {
+                switch (p.matchLevel) {
+                    case 'full': full++; break;
+                    case 'partial': partial++; break;
+                    case 'near': near++; break;
+                    default: none++; break;
+                }
+            });
+
+            var ageUnknownHtml = '';
+            if (unknownAgeResult.length > 0) {
+                ageUnknownHtml = '<div class="summary-card" style="cursor:pointer;" onclick="switchTab(\'unknown\')"><div class="num orange">' + unknownAgeResult.length + '</div><div class="lbl">❓ 年齢不明者</div></div>';
+            }
+
+            document.getElementById('summary-panel').innerHTML =
+                '<div class="summary-card"><div class="num accent">' + total + '</div><div class="lbl">分析対象数</div></div>' +
+                '<div class="summary-card"><div class="num green">' + full + '</div><div class="lbl">🟢 完全一致</div></div>' +
+                '<div class="summary-card"><div class="num yellow">' + partial + '</div><div class="lbl">🟡 部分一致</div></div>' +
+                '<div class="summary-card"><div class="num orange">' + near + '</div><div class="lbl">🟠 近接一致</div></div>' +
+                '<div class="summary-card"><div class="num" style="color:#c4b0ff;">' + rawDataByCategory.lab.length + '</div><div class="lbl">🧪 検査データ</div></div>' +
+                ageUnknownHtml +
+                '<div class="summary-card"><div class="num">' + none + '</div><div class="lbl">⚪ 不一致</div></div>';
+
+            // Update tab badge count if needed
+            var unknownBtn = document.getElementById('tab-unknown-btn');
+            if (unknownAgeResult.length > 0) {
+                unknownBtn.textContent = '❓ 年齢不明 (' + unknownAgeResult.length + ')';
+            }
+        }
+
+        function resetData() {
+            if (!confirm('全てのデータをリセットしますか？')) return;
+            
+            rawDataRows = [];
+            rawDataByCategory = { rx: [], inj: [], dx: [], sz: [], lab: [] };
+            loadedFilesData = [];
+            analysisResult = [];
+            unknownAgeResult = [];
+            filteredResult = [];
+            patients = {};
+            commonIds = {};
+            ptNames = {};
+            expandedPatientIds = {};
+            activeFilters = { dept: {}, type: {}, drug: {} };
+            activeMatchFilter = 'all';
+            activeLabFilters = [];
+            renderLabFilterTags();
+            updateLabItemDropdown();
+            
+            // UI Reset
+            document.getElementById('file-any').value = '';
+            document.getElementById('info-files').innerHTML = '';
+            var card = document.getElementById('card-dropzone');
+            card.classList.remove('loaded');
+            card.querySelector('h3').textContent = 'データをアップロード (複数ファイル選択可)';
+            card.querySelector('p').textContent = '処方、注射、手術リスト、病名などのCSVファイルをここにドラッグ＆ドロップ、またはクリックして選択してください';
+
+            document.getElementById('summary-panel').innerHTML = '';
+            document.getElementById('results-body').innerHTML = '';
+            document.getElementById('result-count').textContent = '';
+            document.getElementById('filter-dept').innerHTML = '<option value="">全診療科</option>';
+            document.getElementById('search-input').value = '';
+            
+            // Update UI components
+            document.querySelectorAll('.match-chip').forEach(function(c) {
+                c.classList.remove('active');
+                if (c.dataset.match === 'all') c.classList.add('active');
+            });
+            
+            // Switch to analysis tab
+            switchTab('results');
+        }
+
+        function toggleFilterMenu(col, event) {
+            event.stopPropagation();
+            var existing = document.getElementById('active-filter-menu');
+            if (existing) {
+                var currentCol = existing.dataset.col;
+                existing.remove();
+                if (currentCol === col) return;
+            }
+
+            var menu = document.createElement('div');
+            menu.id = 'active-filter-menu';
+            menu.className = 'dropdown-menu';
+            menu.dataset.col = col;
+            
+            // Position
+            var rect = event.target.getBoundingClientRect();
+            menu.style.left = (rect.left + window.scrollX) + 'px';
+            menu.style.top = (rect.bottom + window.scrollY) + 'px';
+
+            // Data
+            var source = (activeTab === 'unknown') ? unknownAgeResult : analysisResult;
+            var values = {};
+            source.forEach(function(item) {
+                var val = item[col] || '(空白)';
+                values[val] = true;
+            });
+            var sortedValues = Object.keys(values).sort();
+
+            // Render
+            var html = '<div class="dropdown-search"><input type="text" placeholder="キーワードで絞り込み..." oninput="filterDropdownItems(this)"></div>';
+            html += '<div class="dropdown-list">';
+            sortedValues.forEach(function(val) {
+                var checked = activeFilters[col][val] !== false; // Default to true
+                html += '<label class="dropdown-item"><input type="checkbox" data-val="' + escHtml(val) + '" ' + (checked ? 'checked' : '') + ' onchange="updateFilterState(\'' + col + '\', this)"> ' + escHtml(val) + '</label>';
+            });
+            html += '</div>';
+            html += '<div class="dropdown-actions">';
+            html += '<button onclick="setAllFilters(\'' + col + '\', true)">すべて選択</button>';
+            html += '<button onclick="setAllFilters(\'' + col + '\', false)">クリア</button>';
+            html += '</div>';
+            
+            menu.innerHTML = html;
+            document.body.appendChild(menu);
+
+            // Document click to close
+            function closeMenu(e) {
+                if (!menu.contains(e.target) && e.target !== event.target) {
+                    menu.remove();
+                    document.removeEventListener('click', closeMenu);
+                }
+            }
+            setTimeout(function() { document.addEventListener('click', closeMenu); }, 10);
+        }
+
+        window.filterDropdownItems = function(input) {
+            var filter = input.value.toLowerCase();
+            var items = input.closest('.dropdown-menu').querySelectorAll('.dropdown-item');
+            items.forEach(function(item) {
+                var text = item.textContent.toLowerCase();
+                item.style.display = text.indexOf(filter) > -1 ? '' : 'none';
+            });
+        };
+
+        window.updateFilterState = function(col, checkbox) {
+            var val = checkbox.dataset.val;
+            activeFilters[col][val] = checkbox.checked;
+            applyFilters();
+            updateFilterIconState(col);
+        };
+
+        window.setAllFilters = function(col, state) {
+            var menu = document.getElementById('active-filter-menu');
+            var checks = menu.querySelectorAll('input[type="checkbox"]');
+            checks.forEach(function(c) {
+                c.checked = state;
+                activeFilters[col][c.dataset.val] = state;
+            });
+            applyFilters();
+            updateFilterIconState(col);
+        };
+
+        function updateFilterIconState(col) {
+            var th = document.querySelector('th[data-col="' + col + '"]');
+            if (!th) return;
+            var icon = th.querySelector('.filter-icon');
+            var isFiltering = Object.values(activeFilters[col]).some(function(v) { return v === false; });
+            if (isFiltering) icon.classList.add('active');
+            else icon.classList.remove('active');
+        }
+
+        function renderDeptFilter() {
+            var depts = {};
+            analysisResult.concat(unknownAgeResult).forEach(function (p) { if (p.dept) depts[p.dept] = true; });
+            var sel = document.getElementById('filter-dept');
+            sel.innerHTML = '<option value="">全診療科</option>';
+            Object.keys(depts).sort().forEach(function (d) {
+                sel.innerHTML += '<option value="' + escHtml(d) + '">' + escHtml(d) + '</option>';
+            });
+        }
+
+        function applyFilters() {
+            var search = document.getElementById('search-input').value.toLowerCase();
+            var deptSelect = document.getElementById('filter-dept').value;
+            
+            var source = (activeTab === 'unknown') ? unknownAgeResult : analysisResult;
+
+            filteredResult = source.filter(function (res) {
+                // Match chip filter
+                if (activeMatchFilter !== 'all' && res.matchLevel !== activeMatchFilter) return false;
+                
+                // Column Filters
+                for (var col in activeFilters) {
+                    var val = res[col] || '(空白)';
+                    if (activeFilters[col][val] === false) return false;
+                }
+
+                // Dept select (legacy, keep for compatibility or remove)
+                if (deptSelect && res.dept !== deptSelect) return false;
+
+                // Search filter
+                if (search) {
+                    var haystack = (res.id + ' ' + res.name + ' ' + res.drug + ' ' +
+                        res.patientData.diseases.map(function(dx) { return (dx.code||'') + ' ' + dx.name; }).join(' ')).toLowerCase();
+                    if (haystack.indexOf(search) < 0) return false;
+                }
+                return true;
+            });
+            sortResults();
+            renderTable();
+        }
+
+        function sortResults() {
+            var col = sortState.col;
+            var asc = sortState.asc;
+            var MATCH_ORDER = { full: 3, partial: 2, near: 1, none: 0 };
+            var TYPE_ORDER = { rx: 1, inj: 2, sz: 3, dx: 4 };
+
+            filteredResult.sort(function (a, b) {
+                var va, vb;
+                switch (col) {
+                    case 'id': va = a.id; vb = b.id; break;
+                    case 'name': va = a.name; vb = b.name; break;
+                    case 'age': va = parseInt(a.age) || 0; vb = parseInt(b.age) || 0; return asc ? va - vb : vb - va;
+                    case 'dept': va = a.dept; vb = b.dept; break;
+                    case 'type': va = TYPE_ORDER[a.type] || 9; vb = TYPE_ORDER[b.type] || 9; break;
+                    case 'drug': va = a.drug; vb = b.drug; break;
+                    case 'period': va = (a.period && a.period.startDate) ? a.period.startDate.getTime() : 0; vb = (b.period && b.period.startDate) ? b.period.startDate.getTime() : 0; break;
+                    case 'match': va = MATCH_ORDER[a.matchLevel] || 0; vb = MATCH_ORDER[b.matchLevel] || 0; return asc ? va - vb : vb - va;
+                    default: va = a.id; vb = b.id;
+                }
+                if (va < vb) return asc ? -1 : 1;
+                if (va > vb) return asc ? 1 : -1;
+                return 0;
+            });
+        }
+
+        function renderTable() {
+            var tbody = document.getElementById('results-body');
+            var html = '';
+            filteredResult.forEach(function (res) {
+                var isExpanded = !!expandedPatientIds[res.rowId];
+                var nameDisplay = escHtml(res.name);
+                if (res.patientData.nameMismatch) {
+                    nameDisplay += ' <span style="color:var(--orange); cursor:help;" title="氏名不一致: ' + escHtml(res.patientData.matchingNames.join(', ')) + '">⚠️</span>';
+                }
+                
+                var pt = res.patientData;
+                var allItems = res.allItems || [];
+
+                var typeLabel = res.typeLabel || '-';
+                var periodDisplay = res.periodDisplay || '-';
+
+                html += '<tr data-rowid="' + escHtml(res.rowId) + '" class="' + (isExpanded ? 'expanded' : '') + '">' +
+                    '<td>' + escHtml(res.id) + '</td>' +
+                    '<td>' + nameDisplay + '</td>' +
+                    '<td>' + escHtml(res.age) + '</td>' +
+                    '<td>' + escHtml(res.dept) + '</td>' +
+                    '<td>' + typeLabel + '</td>' +
+                    '<td class="cell-drugs">' + escHtml(res.drug) + '</td>' +
+                    '<td>' + periodDisplay + '</td>' +
+                    '<td>' + getMatchLabel(res.matchLevel) + '</td>' +
+                    '</tr>';
+                if (isExpanded) {
+                    html += '<tr class="detail-row"><td colspan="8">' + renderDetailPanel(res) + '</td></tr>';
+                }
+            });
+            tbody.innerHTML = html;
+            var totalCount = (activeTab === 'unknown') ? unknownAgeResult.length : analysisResult.length;
+            document.getElementById('result-count').textContent = '表示: ' + filteredResult.length + ' / ' + totalCount + ' 件';
+
+            // Attach row click
+            var rows = tbody.querySelectorAll('tr[data-rowid]');
+            rows.forEach(function (row) {
+                row.addEventListener('click', function () {
+                    if (window.getSelection().toString().length > 0) return;
+                    var rowId = this.getAttribute('data-rowid');
+                    if (expandedPatientIds[rowId]) delete expandedPatientIds[rowId];
+                    else expandedPatientIds[rowId] = true;
+                    renderTable();
+                });
+            });
+        }
+
+        function renderDetailPanel(res) {
+            var pt = res.patientData;
+            var html = '<div class="detail-panel">';
+            html += '<div style="margin-bottom:16px; padding-bottom:12px; border-bottom:1px solid var(--border); display:flex; gap:16px; align-items:center;">';
+            html += '<strong style="color:var(--text-secondary);">患者ID:</strong> <span style="user-select:all; background:rgba(255,255,255,0.05); padding:2px 8px; border-radius:4px; font-family:monospace; font-size:1.1em;">' + escHtml(res.id) + '</span>';
+            html += '<strong style="color:var(--text-secondary);">氏名:</strong> <span style="user-select:all; background:rgba(255,255,255,0.05); padding:2px 8px; border-radius:4px; font-size:1.1em;">' + escHtml(res.name) + '</span>';
+            html += '<strong style="color:var(--text-secondary); margin-left:12px;">区分:</strong> <span style="font-weight:600;">' + escHtml(res.drug) + '</span>';
+            html += '<span style="font-size:0.85em; color:var(--text-muted); margin-left:auto;">※テキストを選択してコピー可能</span>';
+            html += '</div>';
+            html += '<div class="detail-columns">';
+
+            // Rx column
+            html += '<div class="detail-col"><h4 class="rx-title">💊 処方薬品 (' + pt.rxPeriods.length + '期間)</h4>';
+            if (pt.rxPeriods.length === 0) html += '<div style="color:var(--text-muted);font-size:0.8rem;">データなし</div>';
+            pt.rxPeriods.forEach(function (p) {
+                var isCurrent = (res.period === p);
+                var matchClass = '';
+                var matchInfo = '';
+                if (p.matches && p.matches.length > 0) {
+                    var best = p.matches.reduce(function (a, b) {
+                        var rank = { full: 3, partial: 2, near: 1, none: 0 };
+                        return rank[a.level] >= rank[b.level] ? a : b;
+                    });
+                    matchClass = 'matched-' + best.level;
+                    matchInfo = ' → ' + best.disease.name + ' (' + getMatchLabelText(best.level) + ')';
+                }
+                var firstRec = p.records[0];
+                var meta = formatDate(p.startDate) + ' ～ ' + formatDate(p.endDate);
+                var usage = getDrugUsage(firstRec);
+                var dose = getInjDose(firstRec);
+                var unit = getInjUnit(firstRec);
+                if (dose) meta += ' | ' + dose + (unit || '');
+                if (usage) meta += ' | ' + usage;
+
+                var dept = getDept(firstRec);
+                if (dept) meta += ' | ' + dept;
+                meta += ' (' + p.records.length + '件)';
+                html += '<div class="detail-item ' + matchClass + '" style="' + (isCurrent ? 'outline:2px solid var(--accent);' : '') + '">' +
+                    '<div class="item-name">' + (isCurrent ? '📌 ' : '') + escHtml(p.drug) + '</div>' +
+                    '<div class="item-meta">' + escHtml(meta) + '</div>';
+                if (matchInfo) html += '<div class="item-meta" style="color:var(--green)">' + escHtml(matchInfo) + '</div>';
+                html += '</div>';
+            });
+            html += '</div>';
+
+            // Inj column
+            html += '<div class="detail-col"><h4 class="inj-title">💉 注射薬品 (' + pt.injPeriods.length + '期間)</h4>';
+            if (pt.injPeriods.length === 0) html += '<div style="color:var(--text-muted);font-size:0.8rem;">データなし</div>';
+            pt.injPeriods.forEach(function (p) {
+                var isCurrent = (res.period === p);
+                var matchClass = '';
+                var matchInfo = '';
+                if (p.matches && p.matches.length > 0) {
+                    var best = p.matches.reduce(function (a, b) {
+                        var rank = { full: 3, partial: 2, near: 1, none: 0 };
+                        return rank[a.level] >= rank[b.level] ? a : b;
+                    });
+                    matchClass = 'matched-' + best.level;
+                    matchInfo = ' → ' + best.disease.name + ' (' + getMatchLabelText(best.level) + ')';
+                }
+                var firstRec = p.records[0];
+                var meta = formatDate(p.startDate) + ' ～ ' + formatDate(p.endDate);
+                var usage = getDrugUsage(firstRec);
+                var dose = getInjDose(firstRec);
+                var unit = getInjUnit(firstRec);
+                if (dose) meta += ' | ' + dose + (unit || '');
+                if (usage) meta += ' | ' + usage;
+
+                var dept = getDept(firstRec);
+                if (dept) meta += ' | ' + dept;
+                meta += ' (' + p.records.length + '件)';
+                html += '<div class="detail-item ' + matchClass + '" style="' + (isCurrent ? 'outline:2px solid var(--accent2);' : '') + '">' +
+                    '<div class="item-name">' + (isCurrent ? '📌 ' : '') + escHtml(p.drug) + '</div>' +
+                    '<div class="item-meta">' + escHtml(meta) + '</div>';
+                if (matchInfo) html += '<div class="item-meta" style="color:var(--green)">' + escHtml(matchInfo) + '</div>';
+                html += '</div>';
+            });
+            html += '</div>';
+
+            // Sz column
+            html += '<div class="detail-col"><h4 class="sz-title">🩺 手術・処置 (' + pt.szPeriods.length + '件)</h4>';
+            if (pt.szPeriods.length === 0) html += '<div style="color:var(--text-muted);font-size:0.8rem;">データなし</div>';
+            pt.szPeriods.forEach(function (p) {
+                var isCurrent = (res.period === p);
+                var matchClass = '';
+                var matchInfo = '';
+                if (p.matches && p.matches.length > 0) {
+                    var best = p.matches.reduce(function (a, b) {
+                        var rank = { full: 3, partial: 2, near: 1, none: 0 };
+                        return rank[a.level] >= rank[b.level] ? a : b;
+                    });
+                    matchClass = 'matched-' + best.level;
+                    matchInfo = ' → ' + best.disease.name + ' (' + getMatchLabelText(best.level) + ')';
+                }
+                var meta = formatDate(p.startDate);
+                if (p.startDate !== p.endDate) meta += ' ～ ' + formatDate(p.endDate);
+                
+                var firstRec = p.records[0];
+                var diag = findCol(firstRec, ['診断病名', '病名', '疾患名', '傷病名']);
+                if (diag) meta += ' | 手術時診断: ' + diag;
+                
+                var doctor = getDoctor(firstRec);
+                if (doctor) meta += ' | 執刀医: ' + doctor;
+
+                html += '<div class="detail-item ' + matchClass + '" style="' + (isCurrent ? 'outline:2px solid var(--orange);' : '') + '">' +
+                    '<div class="item-name">' + (isCurrent ? '📌 ' : '') + escHtml(p.drug) + '</div>' +
+                    '<div class="item-meta">' + escHtml(meta) + '</div>';
+                if (matchInfo) html += '<div class="item-meta" style="color:var(--green)">' + escHtml(matchInfo) + '</div>';
+                html += '</div>';
+            });
+            html += '</div>';
+
+            // Dx column
+            html += '<div class="detail-col"><h4 class="dx-title">🏥 診断病名 (' + pt.diseases.length + '件)</h4>';
+            if (pt.diseases.length === 0) html += '<div style="color:var(--text-muted);font-size:0.8rem;">データなし</div>';
+            pt.diseases.forEach(function (d) {
+                var range = formatDxRange(d.startDate, d.endDate);
+                var outcome = d.outcome || (d.outcomeCode === '0' ? '継続中' : d.outcome);
+                html += '<div class="detail-item">' +
+                    '<div class="item-name">' + (d.code ? '<span style="color:var(--text-muted); font-family:monospace; margin-right:6px;">[' + escHtml(d.code) + ']</span>' : '') + escHtml(d.name) + '</div>' +
+                    '<div class="item-meta">' + range + (outcome ? ' | ' + outcome : '') + (d.dept ? ' | ' + d.dept : '') + '</div>' +
+                    '</div>';
+            });
+            html += '</div>';
+
+            // Lab column
+            var totalLabCount = pt.labPeriods.reduce(function(acc, p){ return acc + p.records.length; }, 0);
+            html += '<div class="detail-col"><h4 class="lab-title">🧪 検査データ (' + totalLabCount + '件)</h4>';
+            if (pt.labPeriods.length === 0) html += '<div style="color:var(--text-muted);font-size:0.8rem;">データなし</div>';
+            pt.labPeriods.forEach(function (p) {
+                var isCurrent = (res.period === p);
+                var matchClass = '';
+                var matchInfo = '';
+                if (p.matches && p.matches.length > 0) {
+                    var best = p.matches.reduce(function (a, b) {
+                        var rank = { full: 3, partial: 2, near: 1, none: 0 };
+                        return rank[a.level] >= rank[b.level] ? a : b;
+                    });
+                    matchClass = 'matched-' + best.level;
+                    matchInfo = ' → ' + best.disease.name + ' (' + getMatchLabelText(best.level) + ')';
+                }
+                
+                // まとめたレコードをすべて展開して表示
+                p.records.forEach(function (rec) {
+                    var val = getLabResult(rec);
+                    var unit = getLabUnit(rec);
+                    var judge = getLabJudge(rec);
+                    var ref = getLabRef(rec);
+                    var recDate = parseDate(getIssueDate(rec));
+                    
+                    var labDisplay = escHtml(p.drug) + ' | <span style="font-weight:bold; color:var(--accent);">' + (val || '-') + '</span> ' + (unit || '');
+                    
+                    var meta = formatDate(recDate);
+                    if (judge) meta += ' | 判定: <span style="font-weight:bold; color:var(--orange);">' + escHtml(judge) + '</span>';
+                    if (ref) meta += ' | 標準: ' + escHtml(ref);
+                    
+                    var dept = getDept(rec);
+                    if (dept) meta += ' | ' + dept;
+
+                    html += '<div class="detail-item ' + matchClass + '" style="' + (isCurrent ? 'outline:2px solid var(--accent2); background:rgba(167,139,250,0.1);' : '') + '">' +
+                        '<div class="item-name">' + (isCurrent ? '📌 ' : '') + labDisplay + '</div>' +
+                        '<div class="item-meta">' + meta + matchInfo + '</div>' +
+                        '</div>';
+                });
+            });
+            html += '</div>';
+
+            html += '</div></div>';
+            return html;
+        }
+
+        function getMatchLabelText(level) {
+            switch (level) {
+                case 'full': return '完全一致';
+                case 'partial': return '部分一致';
+                case 'near': return '近接一致';
+                default: return '不一致';
+            }
+        }
+
+        // ===== CSV Export =====
+        function doExportCSV(mode) {
+            document.getElementById('modal-export').classList.add('hidden');
+            var BOM = '\uFEFF';
+            var csv = '';
+
+            function stripEmojis(str) {
+                if (!str) return "";
+                // 絵文字や特殊記号を除去（CSV文字化け対策）
+                return str.toString().replace(/[\uD800-\uDBFF][\uDC00-\uDFFF]|\u2611|\u2705|\u2714|\u24C2|[\u2B50\u2B55\u23F3\u23F0\u23E9-\u23F2]|[\u203C\u2049\u2122\u2139\u2194-\u2199\u21A9-\u21AA\u231A-\u231B\u2328\u23CF\u23E9-\u23F3\u23F8-\u23FA\u24C2\u25AA-\u25AB\u25B6\u25C0\u25FB-\u25FE\u2600-\u2604\u260E\u2611\u2614-\u2615\u2618\u261D\u2620\u2622\u2623\u2626\u262A\u262E\u262F\u2638-\u263A\u2640\u2642\u2648-\u2653\u2660\u2663\u2665\u2666\u2668\u267B\u267F\u2692-\u2694\u2696\u2697\u2699\u269B\u269C\u26A0\u26A1\u26AA-\u26AB\u26B0-\u26B1\u26BD-\u26BE\u26C4-\u26C5\u26C8\u26CE-\u26CF\u26D1\u26D3-\u26D4\u26E9-\u26EA\u26F0-\u26F5\u26F7-\u26FA\u26FD\u2702\u2705\u2708-\u270D\u270F\u2712\u2714\u2716\u271D\u2721\u2728\u2733-\u2734\u2744\u2747\u274C\u274E\u2753-\u2755\u2757\u2763-\u2764\u2795-\u2797\u27A1\u27B0\u27BF\u2934-\u2935\u2B05-\u2B07\u2B1B-\u2B1C\u2B50\u2B55\u3030\u303D\u3297\u3299]/g, "");
+            }
+
+            function csvVal(v) {
+                if (v === null || v === undefined) return '""';
+                var s = stripEmojis(v.toString());
+                // ダブルクォーテーションをエスケープし、全体を囲む
+                return '"' + s.replace(/"/g, '""') + '"';
+            }
+
+            if (mode === 'summary-newline') {
+                csv = '患者ID,患者氏名,年齢,総合判定,疾患一覧,処方・注射履歴,手術履歴,検査結果履歴\n';
+                filteredResult.forEach(function (res) {
+                    var pt = res.patientData;
+                    
+                    var dxList = pt.diseases.map(function(d) {
+                        return d.name + (d.startDate ? ' (' + formatDate(d.startDate) + '~' + (d.endDate ? formatDate(d.endDate) : '継続中') + ')' : '');
+                    }).join('\n');
+
+                    var rxInjList = pt.rxPeriods.concat(pt.injPeriods).map(function(p) {
+                        var firstRec = p.records[0];
+                        var dose = getInjDose(firstRec);
+                        var unit = getInjUnit(firstRec);
+                        var usage = getDrugUsage(firstRec);
+                        var info = [];
+                        if (dose) info.push(dose + (unit || ''));
+                        if (usage) info.push(usage);
+                        var infoStr = info.length > 0 ? ' (' + info.join('/') + ')' : '';
+                        return p.drug + infoStr + ' ' + formatDate(p.startDate) + '~' + formatDate(p.endDate);
+                    }).join('\n');
+
+                    var szList = pt.szPeriods.map(function(p) {
+                        var firstRec = p.records[0];
+                        var doctor = getDoctor(firstRec);
+                        return p.drug + ' ' + formatDate(p.startDate) + (doctor ? ' (執刀: ' + doctor + ')' : '');
+                    }).join('\n');
+
+                    var labList = pt.labPeriods.map(function(p) {
+                        return p.records.map(function(r) {
+                            var val = getLabResult(r);
+                            var unit = getLabUnit(r);
+                            var dateStr = formatDate(parseDate(getIssueDate(r)));
+                            return p.drug + ' ' + (val || '-') + (unit || '') + ' (' + dateStr + ')';
+                        }).join('\n');
+                    }).join('\n');
+
+                    csv += [
+                        csvVal(res.id), csvVal(res.name), csvVal(res.age), csvVal(getMatchLabelText(res.matchLevel)),
+                        csvVal(dxList), csvVal(rxInjList), csvVal(szList), csvVal(labList)
+                    ].join(',') + '\n';
+                });
+
+            } else if (mode === 'summary-flags') {
+                csv = '患者ID,患者氏名,年齢,マッチ判定,疾患あり,処方あり,注射あり,手術あり,検査あり\n';
+                filteredResult.forEach(function (res) {
+                    var pt = res.patientData;
+                    csv += [
+                        csvVal(res.id), csvVal(res.name), csvVal(res.age), csvVal(getMatchLabelText(res.matchLevel)),
+                        pt.diseases.length > 0 ? 1 : 0,
+                        pt.rxPeriods.length > 0 ? 1 : 0,
+                        pt.injPeriods.length > 0 ? 1 : 0,
+                        pt.szPeriods.length > 0 ? 1 : 0,
+                        pt.labPeriods.length > 0 ? 1 : 0
+                    ].join(',') + '\n';
+                });
+
+            } else if (mode === 'event-db') {
+                csv = '患者ID,氏名,年齢,イベント区分,対象名称,開始日,終了日,詳細情報,マッチ判定\n';
+                filteredResult.forEach(function (res) {
+                    var pt = res.patientData;
+                    var base = [csvVal(res.id), csvVal(res.name), csvVal(res.age)];
+                    
+                    // Diseases
+                    pt.diseases.forEach(function(d) {
+                        var info = (d.outcome || '') + (d.code ? ' [コード:' + d.code + ']' : '');
+                        csv += base.concat([csvVal('疾患'), csvVal(d.name), csvVal(formatDate(d.startDate)), csvVal(formatDate(d.endDate)), csvVal(info), csvVal('-')]).join(',') + '\n';
+                    });
+                    
+                    // Rx / Inj
+                    pt.rxPeriods.concat(pt.injPeriods).forEach(function(p) {
+                        var firstRec = p.records[0];
+                        var dose = getInjDose(firstRec);
+                        var unit = getInjUnit(firstRec);
+                        var usage = getDrugUsage(firstRec);
+                        var info = (dose ? dose + (unit || '') : '') + (usage ? ' ' + usage : '');
+                        var matchStatus = p.matches ? p.matches.map(function(m){ return m.disease.name + '(' + getMatchLabelText(m.level) + ')'; }).join('; ') : '不一致';
+                        csv += base.concat([csvVal(p.type === 'rx' ? '処方' : '注射'), csvVal(p.drug), csvVal(formatDate(p.startDate)), csvVal(formatDate(p.endDate)), csvVal(info), csvVal(matchStatus)]).join(',') + '\n';
+                    });
+
+                    // Sz
+                    pt.szPeriods.forEach(function(p) {
+                        var firstRec = p.records[0];
+                        var doctor = getDoctor(firstRec);
+                        var diag = findCol(firstRec, ['診断病名', '病名', '疾患名', '傷病名']);
+                        var info = (doctor ? '執刀:' + doctor : '') + (diag ? ' 診断:' + diag : '');
+                        var matchStatus = p.matches ? p.matches.map(function(m){ return m.disease.name + '(' + getMatchLabelText(m.level) + ')'; }).join('; ') : '不一致';
+                        csv += base.concat([csvVal('手術'), csvVal(p.drug), csvVal(formatDate(p.startDate)), csvVal(formatDate(p.endDate)), csvVal(info), csvVal(matchStatus)]).join(',') + '\n';
+                    });
+
+                    // Lab
+                    pt.labPeriods.forEach(function(p) {
+                        p.records.forEach(function(r) {
+                            var val = getLabResult(r);
+                            var unit = getLabUnit(r);
+                            var judge = getLabJudge(r);
+                            var date = parseDate(getIssueDate(r));
+                            var info = (val || '-') + (unit || '') + (judge ? ' [判定:' + judge + ']' : '');
+                            var matchStatus = p.matches ? p.matches.map(function(m){ return m.disease.name + '(' + getMatchLabelText(m.level) + ')'; }).join('; ') : '不一致';
+                            csv += base.concat([csvVal('検査'), csvVal(p.drug), csvVal(formatDate(date)), csvVal(formatDate(date)), csvVal(info), csvVal(matchStatus)]).join(',') + '\n';
+                        });
+                    });
+                });
+
+            } else if (mode === 'raw-full') {
+                var ptMatchMap = {};
+                filteredResult.forEach(function (res) {
+                    ptMatchMap[normalizeId(res.id)] = getMatchLabelText(res.matchLevel);
+                });
+
+                var targetRows = rawDataRows.filter(function (r) {
+                    return ptMatchMap.hasOwnProperty(normalizeId(getPatientId(r)));
+                });
+
+                if (targetRows.length === 0) {
+                    alert('出力対象となるデータがありません。');
+                    return;
+                }
+
+                // 全ての対象オブジェクトから動的に列名を収集
+                var headers = [];
+                var headerMap = {};
+                targetRows.forEach(function (r) {
+                    Object.keys(r).forEach(function (k) {
+                        if (!headerMap[k]) {
+                            headerMap[k] = true;
+                            headers.push(k);
+                        }
+                    });
+                });
+                
+                var outHeaders = headers.concat(['マッチ判定']);
+                csv = outHeaders.map(function(h) { return csvVal(h); }).join(',') + '\n';
+                
+                targetRows.forEach(function(r) {
+                    var matchStatus = ptMatchMap[normalizeId(getPatientId(r))] || '';
+                    var rowData = headers.map(function(h) {
+                        return csvVal(r[h]);
+                    });
+                    rowData.push(csvVal(matchStatus));
+                    csv += rowData.join(',') + '\n';
+                });
+            }
+
+            var blob = new Blob([BOM + csv], { type: 'text/csv;charset=utf-8' });
+            var url = URL.createObjectURL(blob);
+            var a = document.createElement('a');
+            a.href = url; a.download = 'patient_matching_result_' + mode + '.csv';
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        // ===== Event Handlers =====
+        function setupFileDropzone() {
+            var input = document.getElementById('file-any');
+            var card = document.getElementById('card-dropzone');
+            var info = document.getElementById('info-files');
+
+            function handleFiles(files) {
+                if (!files || files.length === 0) return;
+
+                var fileCount = files.length;
+                var loadedCount = 0;
+
+                for (var i = 0; i < files.length; i++) {
+                    (function (file) {
+                        var ext = file.name.split('.').pop().toLowerCase();
+                        if (ext === 'xlsx' || ext === 'xls' || ext === 'xlsm') {
+                            var reader = new FileReader();
+                            reader.onload = function (e) {
+                                var data = new Uint8Array(e.target.result);
+                                var workbook = XLSX.read(data, { type: 'array' });
+                                var sheetName = workbook.SheetNames[0];
+                                var sheet = workbook.Sheets[sheetName];
+                                // raw: true にすることで、日付がExcel本来の正確な数値（シリアル値）として取り出されます。
+                                var rawJson = XLSX.utils.sheet_to_json(sheet, { defval: "", raw: true });
+                                
+                                // Normalize keys and values specifically for Excel to prevent type-related crashes
+                                var objRows = rawJson.map(function(row) {
+                                    var newRow = {};
+                                    Object.keys(row).forEach(function(k) {
+                                        var cleanKey = String(k).trim();
+                                        var cleanVal = String(row[k]).trim();
+                                        newRow[normalizeColName(cleanKey)] = cleanVal;
+                                    });
+                                    return newRow;
+                                });
+
+                                rawDataRows = rawDataRows.concat(objRows);
+                                loadedFilesData.push({ name: file.name, count: objRows.length });
+                                finalize();
+                            };
+                            reader.readAsArrayBuffer(file);
+                        } else {
+                            readFileAsText(file, function (text) {
+                                var rows = parseCSV(text);
+                                var objRows = csvToObjects(rows);
+                                rawDataRows = rawDataRows.concat(objRows);
+                                loadedFilesData.push({ name: file.name, count: objRows.length });
+                                finalize();
+                            });
+                        }
+
+                        function finalize() {
+                            loadedCount++;
+                            if (loadedCount === fileCount) {
+                                card.classList.add('loaded');
+                                info.classList.remove('hidden');
+                                info.textContent = loadedFilesData.map(function (f) { return '✓ ' + f.name + ' (' + f.count + ' 行)'; }).join('\n');
+                                updateAnalyzeButton();
+                                updateLabItemDropdown();
+                            }
+                        }
+                    })(files[i]);
+                }
+            }
+
+            input.addEventListener('change', function () { handleFiles(this.files); });
+
+            // Drag & Drop
+            card.addEventListener('dragover', function (e) { e.preventDefault(); card.classList.add('dragover'); });
+            card.addEventListener('dragleave', function () { card.classList.remove('dragover'); });
+            card.addEventListener('drop', function (e) {
+                e.preventDefault(); card.classList.remove('dragover');
+                handleFiles(e.dataTransfer.files);
+            });
+        }
+
+        function updateAnalyzeButton() {
+            document.getElementById('btn-analyze').disabled = rawDataRows.length === 0;
+        }
+
+        function init() {
+            setupFileDropzone();
+
+            document.getElementById('btn-analyze').addEventListener('click', function () {
+                document.getElementById('loading').classList.remove('hidden');
+                expandedPatientIds = {};
+                setTimeout(function () {
+                    try {
+                        runAnalysis();
+                        renderSummary();
+                        renderDeptFilter();
+                        applyFilters();
+                        document.getElementById('results-area').classList.remove('hidden');
+                    } catch (e) {
+                        alert('分析中にエラーが発生しました: ' + e.message);
+                        console.error(e);
+                    }
+                    document.getElementById('loading').classList.add('hidden');
+                }, 100);
+            });
+
+            // Search & filter
+            document.getElementById('search-input').addEventListener('input', function () { applyFilters(); });
+            document.getElementById('filter-dept').addEventListener('change', function () { applyFilters(); });
+
+            // Match chips
+            document.querySelectorAll('.match-chip').forEach(function (chip) {
+                chip.addEventListener('click', function () {
+                    document.querySelectorAll('.match-chip').forEach(function (c) { c.classList.remove('active'); });
+                    this.classList.add('active');
+                    activeMatchFilter = this.getAttribute('data-match');
+                    applyFilters();
+                });
+            });
+
+            // Sort
+            document.querySelectorAll('.results-table thead th[data-col]').forEach(function (th) {
+                th.addEventListener('click', function () {
+                    var col = this.getAttribute('data-col');
+                    if (sortState.col === col) { sortState.asc = !sortState.asc; }
+                    else { sortState.col = col; sortState.asc = true; }
+                    document.querySelectorAll('.results-table thead th').forEach(function (t) { t.classList.remove('sorted'); });
+                    this.classList.add('sorted');
+                    applyFilters();
+                });
+            });
+
+            // Modals & Theme
+            document.getElementById('btn-help').addEventListener('click', function () { document.getElementById('modal-help').classList.remove('hidden'); });
+            document.getElementById('btn-export-csv').addEventListener('click', function () { document.getElementById('modal-export').classList.remove('hidden'); });
+
+            // Exclusion panel badge update on input change
+            document.getElementById('exclude-age-min').addEventListener('input', updateExclusionBadge);
+            document.getElementById('exclude-age-max').addEventListener('input', updateExclusionBadge);
+            document.getElementById('exclusion-drug-list').addEventListener('input', updateExclusionBadge);
+
+            var fontSizes = ['', 'font-md', 'font-lg'];
+            var currentFontIdx = 0;
+            document.getElementById('btn-font').addEventListener('click', function () {
+                var root = document.documentElement;
+                root.classList.remove('font-md', 'font-lg');
+                currentFontIdx = (currentFontIdx + 1) % 3;
+                if (fontSizes[currentFontIdx]) root.classList.add(fontSizes[currentFontIdx]);
+            });
+
+            var isLight = false;
+            document.getElementById('btn-theme').addEventListener('click', function () {
+                isLight = !isLight;
+                if (isLight) document.documentElement.classList.add('theme-light');
+                else document.documentElement.classList.remove('theme-light');
+            });
+        }
+
+        // ===== Tab & Raw View Logic =====
+        function toggleExclusionPanel() {
+            var btn = document.getElementById('exclusion-toggle-btn');
+            var body = document.getElementById('exclusion-body');
+            btn.classList.toggle('open');
+            body.classList.toggle('open');
+        }
+
+        function updateExclusionBadge() {
+            var ageMin = document.getElementById('exclude-age-min').value;
+            var ageMax = document.getElementById('exclude-age-max').value;
+            var drugs = document.getElementById('exclusion-drug-list').value.trim();
+            var parts = [];
+            if (ageMin !== '' || ageMax !== '') {
+                var rangeStr = (ageMin !== '' ? ageMin + '歳以上' : '') + (ageMin !== '' && ageMax !== '' ? '〜' : '') + (ageMax !== '' ? ageMax + '歳未満' : '');
+                parts.push(rangeStr);
+            }
+            if (drugs) {
+                var drugCount = drugs.split('\n').filter(function(s) { return s.trim(); }).length;
+                parts.push('薬品' + drugCount + '件');
+            }
+            if (activeLabFilters.length > 0) {
+                parts.push('検査値' + activeLabFilters.length + '件');
+            }
+            var badge = document.getElementById('exclusion-badge');
+            if (parts.length > 0) {
+                badge.textContent = '▶ ' + parts.join(' / ');
+                badge.style.display = 'inline';
+            } else {
+                badge.style.display = 'none';
+            }
+        }
+
+        function updateLabItemDropdown() {
+            var sel = document.getElementById('lab-filter-item');
+            var currentVal = sel.value;
+            var items = {};
+            var labCols = ['依頼名称', '検査項目', '項目名'];
+            
+            // rawDataByCategory.lab または全体から検査項目を抽出
+            var labData = (rawDataByCategory && rawDataByCategory.lab) ? rawDataByCategory.lab : [];
+            if (labData.length === 0) {
+                // まだ分類前かもしれないので rawDataRows から探す
+                rawDataRows.forEach(function(r) {
+                    var name = findCol(r, labCols);
+                    if (name) items[name] = true;
+                });
+            } else {
+                labData.forEach(function(r) {
+                    var name = findCol(r, labCols);
+                    if (name) items[name] = true;
+                });
+            }
+
+            var sorted = Object.keys(items).sort();
+            sel.innerHTML = '<option value="">-- 検査項目を選択 --</option>';
+            sorted.forEach(function(item) {
+                var opt = document.createElement('option');
+                opt.value = item;
+                opt.textContent = item;
+                if (item === currentVal) opt.selected = true;
+                sel.appendChild(opt);
+            });
+        }
+
+        function addLabFilter() {
+            var item = document.getElementById('lab-filter-item').value;
+            var op = document.getElementById('lab-filter-op').value;
+            var val = parseFloat(document.getElementById('lab-filter-val').value);
+
+            if (!item) { alert('検査項目を選択してください。'); return; }
+            if (isNaN(val)) { alert('閾値を数値で入力してください。'); return; }
+
+            activeLabFilters.push({ item: item, op: op, val: val });
+            renderLabFilterTags();
+            updateExclusionBadge();
+            
+            // 分析済みなら再実行
+            if (analysisResult.length > 0 || unknownAgeResult.length > 0) {
+                document.getElementById('btn-analyze').click();
+            }
+        }
+
+        function removeLabFilter(idx) {
+            activeLabFilters.splice(idx, 1);
+            renderLabFilterTags();
+            updateExclusionBadge();
+            if (analysisResult.length > 0 || unknownAgeResult.length > 0) {
+                document.getElementById('btn-analyze').click();
+            }
+        }
+
+        function renderLabFilterTags() {
+            var container = document.getElementById('lab-filter-tags');
+            container.innerHTML = '';
+            activeLabFilters.forEach(function(f, idx) {
+                var tag = document.createElement('span');
+                tag.className = 'match-chip active';
+                tag.style.borderRadius = '4px';
+                tag.style.padding = '4px 8px';
+                tag.style.display = 'flex';
+                tag.style.alignItems = 'center';
+                tag.style.gap = '6px';
+                tag.style.background = 'rgba(167, 139, 250, 0.2)';
+                tag.style.color = 'var(--accent2)';
+                tag.style.borderColor = 'var(--accent2)';
+                
+                var text = document.createElement('span');
+                text.textContent = f.item + ' ' + f.op + ' ' + f.val;
+                
+                var close = document.createElement('span');
+                close.textContent = '×';
+                close.style.cursor = 'pointer';
+                close.style.fontWeight = 'bold';
+                close.onclick = function() { removeLabFilter(idx); };
+                
+                tag.appendChild(text);
+                tag.appendChild(close);
+                container.appendChild(tag);
+            });
+        }
+
+        function switchTab(tabId) {
+            activeTab = tabId;
+            document.querySelectorAll('.tab-btn').forEach(function(b) { b.classList.remove('active'); });
+            document.querySelectorAll('.tab-content').forEach(function(c) { c.classList.remove('active'); });
+            
+            var btn = document.getElementById('tab-' + tabId + '-btn');
+            // 'results' and 'unknown' share the same table container
+            var contentId = (tabId === 'results' || tabId === 'unknown') ? 'tab-results' : 'tab-' + tabId;
+            var content = document.getElementById(contentId);
+            
+            if (btn) btn.classList.add('active');
+            if (content) content.classList.add('active');
+            
+            if (tabId === 'raw') renderRawTable();
+            else applyFilters(); // Refresh table for results or unknown
+        }
+
+        function renderRawTable() {
+            var cat = document.getElementById('raw-category').value;
+            var searchText = document.getElementById('raw-search').value.toLowerCase();
+            var data = rawDataByCategory[cat] || [];
+            
+            var filtered = data.filter(function(r) {
+                if (!searchText) return true;
+                return Object.values(r).some(function(v) {
+                    return String(v).toLowerCase().indexOf(searchText) >= 0;
+                });
+            });
+
+            document.getElementById('raw-count').textContent = filtered.length + ' 行';
+
+            var thead = document.getElementById('raw-thead');
+            var tbody = document.getElementById('raw-tbody');
+            thead.innerHTML = '';
+            tbody.innerHTML = '';
+
+            if (filtered.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;padding:24px;color:var(--text-muted);">データがありません</td></tr>';
+                return;
+            }
+
+            // Get all unique keys from data (headers)
+            var headers = [];
+            filtered.forEach(function(r) {
+                Object.keys(r).forEach(function(k) {
+                    if (headers.indexOf(k) < 0) headers.push(k);
+                });
+            });
+
+            var trH = document.createElement('tr');
+            headers.forEach(function(h) {
+                var th = document.createElement('th');
+                th.textContent = h;
+                trH.appendChild(th);
+            });
+            thead.appendChild(trH);
+
+            filtered.slice(0, 500).forEach(function(r) {
+                var tr = document.createElement('tr');
+                headers.forEach(function(h) {
+                    var td = document.createElement('td');
+                    var val = r[h] || '';
+                    
+                    // 列名に「日」が含まれていて、値がある場合は日付形式に変換して表示
+                    if (h.indexOf('日') >= 0 && val !== '') {
+                        var d = parseDate(val);
+                        if (d) val = formatDate(d);
+                    }
+                    
+                    td.textContent = val;
+                    tr.appendChild(td);
+                });
+                tbody.appendChild(tr);
+            });
+            
+            if (filtered.length > 500) {
+                var trM = document.createElement('tr');
+                trM.innerHTML = '<td colspan="' + headers.length + '" style="text-align:center;padding:12px;color:var(--text-muted);background:rgba(255,255,255,0.05);">500行以上あるため表示を省略しました（検索で絞り込んでください）</td>';
+                tbody.appendChild(trM);
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+
+</html>
