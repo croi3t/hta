@@ -1593,7 +1593,12 @@
         function formatDxRange(start, end) {
             var s = formatDate(start);
             var e = end ? formatDate(end) : '<span style="color:var(--yellow); font-weight:bold;">継続中</span>';
-            return s + ' ～ ' + e;
+            var dur = 0;
+            if (start) {
+                var endVal = end || TODAY;
+                dur = Math.floor((endVal.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+            }
+            return s + ' ～ ' + e + (dur > 0 ? ' (' + dur + '日間)' : '');
         }
 
         function daysBetween(d1, d2) {
@@ -1805,71 +1810,19 @@
 
             // Build medication/event periods
 // 検査データ専用：間隔に関わらず同じ項目を1つの期間としてまとめる関数
-        function buildLabPeriods(labRecords) {
-            var groups = {};
-            labRecords.forEach(function (r) {
-                var pid = normalizeId(getPatientId(r));
-                var drug = getDrugName(r); // 検査項目名
-                var key = pid + '|||' + drug;
-                if (!groups[key]) groups[key] = [];
-                groups[key].push(r);
-            });
-            var periods = [];
-            Object.keys(groups).forEach(function (key) {
-                var parsed = [];
-                groups[key].forEach(function (r) {
-                    var d = parseDate(getIssueDate(r));
-                    if (d) parsed.push({ date: d, record: r });
-                });
-                parsed.sort(function (a, b) { return a.date - b.date; });
-                if (parsed.length > 0) {
-                    var parts = key.split('|||');
-                    periods.push({
-                        patientId: parts[0], drug: parts[1],
-                        startDate: parsed[0].date, endDate: parsed[parsed.length - 1].date,
-                        records: parsed.map(function(p){ return p.record; }), type: 'lab'
-                    });
-                }
-            });
-            return periods;
+        function buildLabPeriods(labRecords, continuousThreshold) {
+            return buildInjectionPeriods(labRecords, continuousThreshold, 'lab');
         }
 
 // 手術データ専用：同日の術式をまとめ、メイン（加算以外）を優先する関数
-        function buildSzPeriods(szRecords) {
-            var groups = {};
-            szRecords.forEach(function (r) {
-                var pid = normalizeId(getPatientId(r));
-                var date = getIssueDate(r); // 手術日
-                var key = pid + '|||' + date;
-                if (!groups[key]) groups[key] = [];
-                groups[key].push(r);
-            });
-            var periods = [];
-            Object.keys(groups).forEach(function (key) {
-                var recs = groups[key];
-                var parts = key.split('|||');
-                var d = parseDate(parts[1]);
-                
-                // 代表的な術式名の選定（「加算」「料」「支援」などを含まないものを優先）
-                var mainRec = recs.find(function(r) {
-                    var name = getDrugName(r);
-                    return !/(加算|料|支援|管理)/.test(name);
-                }) || recs[0];
-
-                periods.push({
-                    patientId: parts[0],
-                    drug: getDrugName(mainRec),
-                    startDate: d, endDate: d,
-                    records: recs, type: 'sz'
-                });
-            });
-            return periods;
+        function buildSzPeriods(szRecords, continuousThreshold) {
+            return buildInjectionPeriods(szRecords, continuousThreshold, 'sz');
         }
 
         var rxPeriods = buildMedicationPeriods(rxData, continuousThreshold);
         var injPeriods = buildInjectionPeriods(injData, continuousThreshold, 'inj');
-        var szPeriods = buildSzPeriods(szData); // 専用関数を使用
-        var labPeriods = buildLabPeriods(labData);
+        var szPeriods = buildSzPeriods(szData, continuousThreshold); 
+        var labPeriods = buildLabPeriods(labData, continuousThreshold);
 
             // Collect patient IDs
             var reqPatientIds = {};
@@ -2019,6 +1972,9 @@
                 var minDate = allDates.length ? new Date(Math.min.apply(null, allDates)) : null;
                 var maxDate = allDates.length ? new Date(Math.max.apply(null, allDates)) : null;
                 var periodDisplay = minDate ? formatDate(minDate) + ' ～ ' + formatDate(maxDate) : '-';
+                if (allItems.length > 1 || pt.diseases.length > 1) {
+                    periodDisplay += ' <span style="margin-left:5px; font-size:0.8em; background-color:#ffeedd; color:#cc5500; padding:2px 6px; border-radius:4px; font-weight:bold;">🔄複数期間</span>';
+                }
 
                 // 対象列の表示文字列
                 var summaryDrug = targetNames.slice(0, 2).join(', ') + (targetNames.length > 2 ? ' 他' + (targetNames.length - 2) + '件' : '');
@@ -2544,7 +2500,7 @@
                     matchInfo = ' → ' + best.disease.name + ' (' + getMatchLabelText(best.level) + ')';
                 }
                 var firstRec = p.records[0];
-                var meta = formatDate(p.startDate) + ' ～ ' + formatDate(p.endDate);
+                var meta = formatDate(p.startDate) + ' ～ ' + formatDate(p.endDate) + ' (' + p.duration + '日間)';
                 var usage = getDrugUsage(firstRec);
                 var dose = getInjDose(firstRec);
                 var unit = getInjUnit(firstRec);
@@ -2578,7 +2534,7 @@
                     matchInfo = ' → ' + best.disease.name + ' (' + getMatchLabelText(best.level) + ')';
                 }
                 var firstRec = p.records[0];
-                var meta = formatDate(p.startDate) + ' ～ ' + formatDate(p.endDate);
+                var meta = formatDate(p.startDate) + ' ～ ' + formatDate(p.endDate) + ' (' + p.duration + '日間)';
                 var usage = getDrugUsage(firstRec);
                 var dose = getInjDose(firstRec);
                 var unit = getInjUnit(firstRec);
@@ -2613,6 +2569,7 @@
                 }
                 var meta = formatDate(p.startDate);
                 if (p.startDate !== p.endDate) meta += ' ～ ' + formatDate(p.endDate);
+                meta += ' (' + p.duration + '日間)';
                 
                 var firstRec = p.records[0];
                 var diag = findCol(firstRec, ['診断病名', '病名', '疾患名', '傷病名']);
