@@ -1163,6 +1163,25 @@
                         </div>
                         <div id="lab-filter-tags" style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px;"></div>
                     </div>
+                    <div class="exclusion-section" style="grid-column: span 2; margin-top: 16px; border-top: 1px solid var(--border); padding-top: 16px;">
+                        <h5>💊 投与日数による絞り込み</h5>
+                        <p style="font-size:0.78rem; color:var(--text-muted); margin-bottom:10px;">処方または注射の投与日数（期間）で絞り込みます。条件に合致しない患者を除外します。</p>
+                        <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                            <select id="dur-filter-type" class="setting-group input" style="width: 100px;">
+                                <option value="rx">💊 処方</option>
+                                <option value="inj">💉 注射</option>
+                            </select>
+                            <select id="dur-filter-op" class="setting-group input" style="width: 100px;">
+                                <option value=">=">&gt;= 以上</option>
+                                <option value="<=">&lt;= 以下</option>
+                                <option value=">">&gt; より大きい</option>
+                                <option value="<">&lt; 未満</option>
+                            </select>
+                            <input type="number" id="dur-filter-val" class="setting-group input" style="width: 100px;" placeholder="日数">
+                            <button class="btn-secondary" onclick="addDurationFilter()" style="padding: 5px 15px;">条件を追加</button>
+                        </div>
+                        <div id="dur-filter-tags" style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px;"></div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -1362,6 +1381,7 @@
         var expandedPatientIds = {};
         var exclusionDrugs = [];
         var activeLabFilters = [];
+        var activeDurationFilters = [];
 
         // ===== CSV Parsing =====
         function detectEncoding(buffer) {
@@ -1610,7 +1630,7 @@
                     var issueDate = parseDate(getIssueDate(r));
                     if (!issueDate) {
                         var parts = key.split('|||');
-                        periods.push({ patientId: parts[0], drug: parts[1], startDate: null, endDate: null, records: [r], type: 'rx' });
+                        periods.push({ patientId: parts[0], drug: parts[1], startDate: null, endDate: null, duration: 0, records: [r], type: 'rx' });
                         return;
                     }
                     var days = parseInt(getDays(r), 10) || 1;
@@ -1640,13 +1660,15 @@
                             currentRecs.push(p.record);
                         } else {
                             // New period
-                            periods.push({ patientId: parts[0], drug: parts[1], startDate: currentStart, endDate: currentEnd, records: currentRecs, type: 'rx' });
+                            var dur = Math.floor((currentEnd.getTime() - currentStart.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+                            periods.push({ patientId: parts[0], drug: parts[1], startDate: currentStart, endDate: currentEnd, duration: dur, records: currentRecs, type: 'rx' });
                             currentStart = p.issueDate; currentEnd = p.endDate; currentRecs = [p.record];
                         }
                     }
                 });
                 if (currentStart) {
-                    periods.push({ patientId: parts[0], drug: parts[1], startDate: currentStart, endDate: currentEnd, records: currentRecs, type: 'rx' });
+                    var dur = Math.floor((currentEnd.getTime() - currentStart.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+                    periods.push({ patientId: parts[0], drug: parts[1], startDate: currentStart, endDate: currentEnd, duration: dur, records: currentRecs, type: 'rx' });
                 }
             });
             return periods;
@@ -1672,7 +1694,7 @@
                         parsed.push({ date: d, record: r });
                     } else {
                         var parts = key.split('|||');
-                        periods.push({ patientId: parts[0], drug: parts[1], startDate: null, endDate: null, records: [r], type: type || 'inj' });
+                        periods.push({ patientId: parts[0], drug: parts[1], startDate: null, endDate: null, duration: 0, records: [r], type: type || 'inj' });
                     }
                 });
                 parsed.sort(function (a, b) { return a.date - b.date; });
@@ -1687,13 +1709,15 @@
                         if (gap <= continuousThreshold) {
                             currentEnd = p.date; currentRecs.push(p.record);
                         } else {
-                            periods.push({ patientId: parts[0], drug: parts[1], startDate: currentStart, endDate: currentEnd, records: currentRecs, type: type || 'inj' });
+                            var dur = Math.floor((currentEnd.getTime() - currentStart.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+                            periods.push({ patientId: parts[0], drug: parts[1], startDate: currentStart, endDate: currentEnd, duration: dur, records: currentRecs, type: type || 'inj' });
                             currentStart = p.date; currentEnd = p.date; currentRecs = [p.record];
                         }
                     }
                 });
                 if (currentStart) {
-                    periods.push({ patientId: parts[0], drug: parts[1], startDate: currentStart, endDate: currentEnd, records: currentRecs, type: type || 'inj' });
+                    var dur = Math.floor((currentEnd.getTime() - currentStart.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+                    periods.push({ patientId: parts[0], drug: parts[1], startDate: currentStart, endDate: currentEnd, duration: dur, records: currentRecs, type: type || 'inj' });
                 }
             });
             return periods;
@@ -2063,6 +2087,32 @@
                     });
                     if (isExcludedByLab) return;
                 }
+                
+                // Filter: Duration
+                if (activeDurationFilters.length > 0) {
+                    var isExcludedByDuration = activeDurationFilters.some(function(filter) {
+                        var targetPeriods = (filter.type === 'rx') ? pt.rxPeriods : pt.injPeriods;
+                        
+                        if (filter.op === '>=' || filter.op === '>') {
+                            // "少なくとも一つの期間が条件を満たす必要がある" ロジック
+                            var hasMatching = targetPeriods.some(function(p) {
+                                if (filter.op === '>=') return p.duration >= filter.val;
+                                if (filter.op === '>')  return p.duration >  filter.val;
+                                return false;
+                            });
+                            return !hasMatching; // 満たすものが一つもなければ除外
+                        } else {
+                            // "全ての期間が条件を満たす必要がある（上限を超えてはならない）" ロジック
+                            var hasViolation = targetPeriods.some(function(p) {
+                                if (filter.op === '<=') return p.duration > filter.val;
+                                if (filter.op === '<')  return p.duration >= filter.val;
+                                return false;
+                            });
+                            return hasViolation; // 一つでも違反があれば除外
+                        }
+                    });
+                    if (isExcludedByDuration) return;
+                }
 
                 if (isUnknownAge) unknownAgeResult.push(summaryRow);
                 else analysisResult.push(summaryRow);
@@ -2235,7 +2285,9 @@
             activeFilters = { dept: {}, type: {}, drug: {} };
             activeMatchFilter = 'all';
             activeLabFilters = [];
+            activeDurationFilters = [];
             renderLabFilterTags();
+            renderDurationFilterTags();
             updateLabItemDropdown();
             
             // UI Reset
@@ -2992,6 +3044,9 @@
             if (activeLabFilters.length > 0) {
                 parts.push('検査値' + activeLabFilters.length + '件');
             }
+            if (activeDurationFilters.length > 0) {
+                parts.push('投与日数' + activeDurationFilters.length + '件');
+            }
             var badge = document.getElementById('exclusion-badge');
             if (parts.length > 0) {
                 badge.textContent = '▶ ' + parts.join(' / ');
@@ -3083,6 +3138,62 @@
                 close.style.cursor = 'pointer';
                 close.style.fontWeight = 'bold';
                 close.onclick = function() { removeLabFilter(idx); };
+                
+                tag.appendChild(text);
+                tag.appendChild(close);
+                container.appendChild(tag);
+            });
+        }
+
+        function addDurationFilter() {
+            var type = document.getElementById('dur-filter-type').value;
+            var op = document.getElementById('dur-filter-op').value;
+            var val = parseInt(document.getElementById('dur-filter-val').value);
+
+            if (isNaN(val)) { alert('日数を数値で入力してください。'); return; }
+
+            activeDurationFilters.push({ type: type, op: op, val: val });
+            renderDurationFilterTags();
+            updateExclusionBadge();
+            
+            if (analysisResult.length > 0 || unknownAgeResult.length > 0) {
+                document.getElementById('btn-analyze').click();
+            }
+        }
+
+        function removeDurationFilter(idx) {
+            activeDurationFilters.splice(idx, 1);
+            renderDurationFilterTags();
+            updateExclusionBadge();
+            if (analysisResult.length > 0 || unknownAgeResult.length > 0) {
+                document.getElementById('btn-analyze').click();
+            }
+        }
+
+        function renderDurationFilterTags() {
+            var container = document.getElementById('dur-filter-tags');
+            container.innerHTML = '';
+            activeDurationFilters.forEach(function(f, idx) {
+                var tag = document.createElement('span');
+                tag.className = 'match-chip active';
+                tag.style.borderRadius = '4px';
+                tag.style.padding = '4px 8px';
+                tag.style.display = 'flex';
+                tag.style.alignItems = 'center';
+                tag.style.gap = '6px';
+                tag.style.background = 'rgba(99, 132, 255, 0.1)';
+                tag.style.color = 'var(--accent)';
+                tag.style.borderColor = 'var(--accent)';
+                
+                var typeLabel = f.type === 'rx' ? '💊処方' : '💉注射';
+                var text = document.createElement('span');
+                text.textContent = typeLabel + ' ' + f.op + ' ' + f.val + '日';
+                
+                var close = document.createElement('span');
+                close.textContent = '×';
+                close.style.cursor = 'pointer';
+                close.style.fontWeight = 'bold';
+                close.onclick = function() { removeDurationFilter(idx); };
                 
                 tag.appendChild(text);
                 tag.appendChild(close);
