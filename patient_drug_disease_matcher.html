@@ -1146,7 +1146,7 @@
                         <textarea id="exclusion-drug-list" rows="4" placeholder="例：&#10;アドナ&#10;トランサミン"></textarea>
                     </div>
                     <div class="exclusion-section" style="grid-column: span 2; margin-top: 16px; border-top: 1px solid var(--border); padding-top: 16px;">
-                        <h5>🧪 検査値による除外設定</h5>
+                        <h5>🔬 検査値による除外設定</h5>
                         <p style="font-size:0.78rem; color:var(--text-muted); margin-bottom:10px;">特定の検査項目が条件に合致する患者を除外します。1つでも該当データがある患者全体が非表示になります。</p>
                         <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
                             <select id="lab-filter-item" class="setting-group input" style="flex: 1; min-width: 200px;">
@@ -1279,7 +1279,7 @@
                     <select id="raw-category" onchange="renderRawTable()">
                         <option value="rx">💊 処方データ</option>
                         <option value="inj">💉 注射データ</option>
-                        <option value="sz">🩺 手術・処置データ</option>
+                        <option value="sz">🔪 手術・処置データ</option>
                         <option value="dx">🏥 診断病名データ</option>
                     </select>
                     <input type="text" id="raw-search" placeholder="生データ内を検索..." oninput="renderRawTable()" style="flex:1;">
@@ -1960,8 +1960,8 @@
                 var typeIcons = [];
                 if (pt.rxPeriods.length > 0) typeIcons.push('💊');
                 if (pt.injPeriods.length > 0) typeIcons.push('💉');
-                if (pt.szPeriods.length > 0) typeIcons.push('🩺');
-                if (pt.labPeriods.length > 0) typeIcons.push('🧪');
+                if (pt.szPeriods.length > 0) typeIcons.push('🔪');
+                if (pt.labPeriods.length > 0) typeIcons.push('🔬');
                 if (pt.diseases.length > 0) typeIcons.push('🏥');
                 var typeLabel = typeIcons.join(' ');
 
@@ -2214,7 +2214,7 @@
                 '<div class="summary-card"><div class="num green">' + full + '</div><div class="lbl">🟢 完全一致</div></div>' +
                 '<div class="summary-card"><div class="num yellow">' + partial + '</div><div class="lbl">🟡 部分一致</div></div>' +
                 '<div class="summary-card"><div class="num orange">' + near + '</div><div class="lbl">🟠 近接一致</div></div>' +
-                '<div class="summary-card"><div class="num" style="color:#c4b0ff;">' + rawDataByCategory.lab.length + '</div><div class="lbl">🧪 検査データ</div></div>' +
+                '<div class="summary-card"><div class="num" style="color:#c4b0ff;">' + rawDataByCategory.lab.length + '</div><div class="lbl">🔬 検査データ</div></div>' +
                 ageUnknownHtml +
                 '<div class="summary-card"><div class="num">' + none + '</div><div class="lbl">⚪ 不一致</div></div>';
 
@@ -2553,7 +2553,7 @@
             html += '</div>';
 
             // Sz column
-            html += '<div class="detail-col"><h4 class="sz-title">🩺 手術・処置 (' + pt.szPeriods.length + '件)</h4>';
+            html += '<div class="detail-col"><h4 class="sz-title">🔪 手術・処置 (' + pt.szPeriods.length + '件)</h4>';
             if (pt.szPeriods.length === 0) html += '<div style="color:var(--text-muted);font-size:0.8rem;">データなし</div>';
             pt.szPeriods.forEach(function (p) {
                 var isCurrent = (res.period === p);
@@ -2601,7 +2601,7 @@
 
             // Lab column
             var totalLabCount = pt.labPeriods.reduce(function(acc, p){ return acc + p.records.length; }, 0);
-            html += '<div class="detail-col"><h4 class="lab-title">🧪 検査データ (' + totalLabCount + '件)</h4>';
+            html += '<div class="detail-col"><h4 class="lab-title">🔬 検査データ (' + totalLabCount + '件)</h4>';
             if (pt.labPeriods.length === 0) html += '<div style="color:var(--text-muted);font-size:0.8rem;">データなし</div>';
             pt.labPeriods.forEach(function (p) {
                 var isCurrent = (res.period === p);
