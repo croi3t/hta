@@ -1017,7 +1017,6 @@ function generateAbbreviation() {}
                             </div>
                             <textarea id="macroOutput" class="yr-form-control yr-pane-textarea" placeholder="ここに整理された結果が表示されます..."></textarea>
                             <div id="macro-tokuyaku-panel" style="display:none; margin-top:5px; padding:5px 8px; border-radius:4px; font-size:11px; max-height:60px; overflow-y:auto;"></div>
-                            <div id="macro-tokuyaku-panel" style="display:none; margin-top:5px; padding:5px 8px; border-radius:4px; font-size:11px; max-height:60px; overflow-y:auto;"></div>
                             
                             <div style="margin-top: 10px; display: flex; justify-content: space-between; align-items: center;">
                                 <span class="yr-text-muted yr-small">※変換を実行するたびに元のテキストが自動保存されます</span>
@@ -6668,31 +6667,38 @@ function removeClass(el, className) {
         }
 
         function yrSaveSettings() {
-            try { myStorage.setItem('set-halfwidth', document.getElementById('set-halfwidth').checked ? 'true' : 'false'); } catch(e){}
+            if (!currentSystemId) return;
+            try {
+                // ファイルを開くのはこの1回だけ
+                var data = myStorage._load();
+                if (!data[currentSystemId]) data[currentSystemId] = {};
+                var ud = data[currentSystemId];
 
-            var kanaFormatRadio = document.querySelector('input[name="set-kana-format"]:checked');
-            if (kanaFormatRadio) {
-                try { myStorage.setItem('set-kana-format', kanaFormatRadio.value); } catch(e){}
-            }
-
-            try { myStorage.setItem('set-merge', document.getElementById('set-merge').checked ? 'true' : 'false'); } catch(e){}
-            try { myStorage.setItem('set-softdelete', document.getElementById('set-softdelete').checked ? 'true' : 'false'); } catch(e){}
-            try { myStorage.setItem('set-remove-form', document.getElementById('set-remove-form').checked ? 'true' : 'false'); } catch(e){}
-            try { myStorage.setItem('set-remove-iv-words', document.getElementById('set-remove-iv-words').checked ? 'true' : 'false'); } catch(e){}
-            try { myStorage.setItem('set-remove-salt', document.getElementById('set-remove-salt').checked ? 'true' : 'false'); } catch(e){}
-            try { myStorage.setItem('set-remove-maker', document.getElementById('set-remove-maker').checked ? 'true' : 'false'); } catch(e){}
-            try { myStorage.setItem('set-add-number', document.getElementById('set-add-number').checked ? 'true' : 'false'); } catch(e){}
-            
-            var chkAbbr = document.getElementById('chk-use-abbr-dict');
-            if(chkAbbr) { try{ myStorage.setItem('set-abbr-dict', chkAbbr.checked ? 'true' : 'false'); } catch(e){} }
-            
-            var hlToggle = document.getElementById('set-tokuyaku-highlight');
-            if(hlToggle) { try{ myStorage.setItem('set-tokuyaku-highlight', hlToggle.checked ? 'true' : 'false'); } catch(e){} }
-            
-            var incTiming = document.getElementById('includeTiming');
-            if(incTiming) { try{ myStorage.setItem('set-timing', incTiming.value); } catch(e){} }
-            
-            // 自動再描画は行わない（手動編集テキストがリセットされるのを防ぐため）
+                ud['set-halfwidth'] = document.getElementById('set-halfwidth').checked ? 'true' : 'false';
+                
+                var kanaFormatRadio = document.querySelector('input[name="set-kana-format"]:checked');
+                if (kanaFormatRadio) ud['set-kana-format'] = kanaFormatRadio.value;
+                
+                ud['set-merge'] = document.getElementById('set-merge').checked ? 'true' : 'false';
+                ud['set-softdelete'] = document.getElementById('set-softdelete').checked ? 'true' : 'false';
+                ud['set-remove-form'] = document.getElementById('set-remove-form').checked ? 'true' : 'false';
+                ud['set-remove-iv-words'] = document.getElementById('set-remove-iv-words').checked ? 'true' : 'false';
+                ud['set-remove-salt'] = document.getElementById('set-remove-salt').checked ? 'true' : 'false';
+                ud['set-remove-maker'] = document.getElementById('set-remove-maker').checked ? 'true' : 'false';
+                ud['set-add-number'] = document.getElementById('set-add-number').checked ? 'true' : 'false';
+                
+                var chkAbbr = document.getElementById('chk-use-abbr-dict');
+                if (chkAbbr) ud['set-abbr-dict'] = chkAbbr.checked ? 'true' : 'false';
+                
+                var hlToggle = document.getElementById('set-tokuyaku-highlight');
+                if (hlToggle) ud['set-tokuyaku-highlight'] = hlToggle.checked ? 'true' : 'false';
+                
+                var incTiming = document.getElementById('includeTiming');
+                if (incTiming) ud['set-timing'] = incTiming.value;
+                
+                // ファイルへの書き込みも最後に1回だけ
+                myStorage._save(data);
+            } catch(e) {}
         }
 
         function saveAbbrSetting() {
