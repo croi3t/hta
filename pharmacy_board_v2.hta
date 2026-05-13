@@ -4160,9 +4160,8 @@ function updateAllBloodDates() {
     var originalText = btn ? btn.innerText : "[採血] 全体取得";
     if (btn) { btn.style.pointerEvents = "none"; btn.innerText = "準備中..."; }
 
-    window.isBloodFetching = true; // ★追加: 全件取得中フラグ
+    window.isBloodFetching = true;
 
-    // ★修正: オブジェクトそのものではなく、IDのリストだけを保持する
     var idsToFetch = [];
     for (var i = 0; i < list.length; i++) {
         idsToFetch.push(list[i].id);
@@ -4178,24 +4177,25 @@ function updateAllBloodDates() {
 
     function processNext() {
         if (index >= totalCount) {
-            window.isBloodFetching = false; // フラグ解除
+            window.isBloodFetching = false;
             if (btn) { btn.style.pointerEvents = "auto"; btn.innerText = originalText; }
             renderPatients();
-            autoSave(true); // 最後に確実に全体を保存
+            
+            // ★超重要：遅延保存(autoSave)ではなく、アラートが出る前に【即時保存】を強制実行！
+            saveData(false);
+            
             alert("全件の取得が完了しました。");
             return;
         }
         
         var targetId = idsToFetch[index];
         index++;
-        
-        // ★重要: 毎回「最新のappData」から患者本人を取り直す（途中でデータが入れ替わっても見失わない）
         var patient = findPatientById(targetId);
         
         if (btn) btn.innerText = "残: " + (totalCount - index + 1);
         
         if (!patient) {
-            setTimeout(processNext, 50); // 退院等で消えていたらスキップ
+            setTimeout(processNext, 50);
             return;
         }
 
@@ -4211,17 +4211,6 @@ function updateAllBloodDates() {
                 var dtEl = updateTr.querySelector(".blood-date-text");
                 if (dtEl) dtEl.innerText = patient.bloodDate || "-";
             }
-            
-            // 取得した瞬間に伝票を発行
-            if (typeof DataManager !== "undefined") {
-                DataManager.appendTransaction("UPDATE_BLOOD_DATE", {
-                    patientId: patient.id,
-                    wardCode: currentWard,
-                    bloodDate: patient.bloodDate,
-                    bloodDetail: patient.bloodDetail
-                });
-            }
-            
             setTimeout(processNext, 200);
         });
     }
@@ -4282,7 +4271,6 @@ function fetchSingleBloodDate(p, callback) {
         callback(); 
     };
 
-    // ★修正: タイムアウトを180秒(180000ミリ秒 = 3分)に延長
     var fallbackTimer = setTimeout(function() {
         if (!isDone) {
             p.bloodDate = "-";
@@ -4356,6 +4344,16 @@ function fetchSingleBloodDate(p, callback) {
                 p.bloodDetail = "フレーム解析エラー: " + (e.message || e);
             }
             
+            // ★追加: データ取得成功時に、ここで確実に伝票(Transaction)を発行する
+            if (typeof DataManager !== "undefined") {
+                DataManager.appendTransaction("UPDATE_BLOOD_DATE", {
+                    patientId: p.id,
+                    wardCode: currentWard,
+                    bloodDate: p.bloodDate,
+                    bloodDetail: p.bloodDetail
+                });
+            }
+
             clearTimeout(fallbackTimer);
             
             var tr = document.getElementById('tr-patient-' + p.id);
@@ -5021,6 +5019,17 @@ function changeBloodDate(patientId) {
     if (newVal !== null) {
         p.bloodDate = newVal;
         p.bloodDetail = '';
+        
+        // ★追加: 手動入力時も確実に伝票(Transaction)を発行する
+        if (typeof DataManager !== "undefined") {
+            DataManager.appendTransaction("UPDATE_BLOOD_DATE", {
+                patientId: p.id,
+                wardCode: currentWard,
+                bloodDate: p.bloodDate,
+                bloodDetail: p.bloodDetail
+            });
+        }
+
         // DOM直接更新
         var tr = document.getElementById('tr-patient-' + p.id);
         if (tr) {
@@ -5212,7 +5221,10 @@ function startDeadlineTimer() {
                 if(confirm(overduePrefix + "のタスク\n" + t.text + "\n期限: " + t.deadline + "\n\n「OK」で了解（通知停止）\n「キャンセル」で10分後に再通知")) {
                     t.alerted = true; // 了解
                     delete snoozeList[t.id];
-                    autoSave(); // 通知済みステータスを即座に共有保存
+                    
+                    // ★修正：autoSave()の遅延を許さず、アラート直後に強制即時保存！
+                    saveData(false); 
+                    
                 } else {
                     // スヌーズ設定（10分後）
                     snoozeList[t.id] = now.getTime() + (10 * 60 * 1000);
@@ -5228,7 +5240,9 @@ function startDeadlineTimer() {
             if(isMyTodo && t.done && !t.deleted && !t.archived && t.notifyOnDone && !t.doneAlerted) {
                 alert("【タスク完了のお知らせ】\n\n「" + t.text + "」\nが完了されました。");
                 t.doneAlerted = true;
-                autoSave();
+                
+                // ★修正：autoSave()の遅延を許さず、アラート直後に強制即時保存！
+                saveData(false);
             }
         }
     }, 60000);
