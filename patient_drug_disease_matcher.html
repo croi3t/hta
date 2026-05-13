@@ -98,7 +98,7 @@
         .app-container {
             position: relative;
             z-index: 1;
-            max-width: 1400px;
+            max-width: 98%;
             margin: 0 auto;
             padding: 24px;
         }
@@ -775,7 +775,7 @@
 
         .detail-columns {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            grid-template-columns: repeat(5, 1fr);
             gap: 16px;
         }
 
@@ -890,6 +890,12 @@
         }
 
         /* ===== Responsive ===== */
+        @media (max-width: 1400px) {
+            .detail-columns {
+                grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+            }
+        }
+
         @media (max-width: 900px) {
             .detail-columns {
                 grid-template-columns: 1fr;
@@ -1182,6 +1188,14 @@
                         </div>
                         <div id="dur-filter-tags" style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px;"></div>
                     </div>
+                    <div class="exclusion-section" style="grid-column: span 2; margin-top: 16px; border-top: 1px solid var(--border); padding-top: 16px;">
+                        <h5>🔪 手術の「加算」除外設定</h5>
+                        <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-size:0.85rem;">
+                            <input type="checkbox" id="exclude-sz-kasan" checked>
+                            ☑ 手術の『加算』データをマッチングから除外する
+                        </label>
+                        <p style="font-size:0.75rem; color:var(--text-muted); margin-top:6px;">※チェックを入れると、術式名に「加算」が含まれるデータは分析対象から外れます（元データ確認画面には影響しません）。</p>
+                    </div>
                 </div>
             </div>
         </div>
@@ -1276,11 +1290,8 @@
             <!-- Tab Content: Raw Data -->
             <div id="tab-raw" class="tab-content">
                 <div class="raw-controls">
-                    <select id="raw-category" onchange="renderRawTable()">
-                        <option value="rx">💊 処方データ</option>
-                        <option value="inj">💉 注射データ</option>
-                        <option value="sz">🔪 手術・処置データ</option>
-                        <option value="dx">🏥 診断病名データ</option>
+                    <select id="raw-file-select" onchange="renderRawTable()" style="max-width:300px;" class="setting-group input">
+                        <option value="">-- ファイルを選択 --</option>
                     </select>
                     <input type="text" id="raw-search" placeholder="生データ内を検索..." oninput="renderRawTable()" style="flex:1;">
                     <span id="raw-count" style="font-size:0.85rem; color:var(--text-secondary); min-width:80px; text-align:right;"></span>
@@ -1369,6 +1380,7 @@
     <script>
         // ===== Global State =====
         var rawDataRows = [];
+        var allUploadedFiles = {};
         var rawDataByCategory = { rx: [], inj: [], dx: [], sz: [] };
         var loadedFilesData = [];
         var analysisResult = [];
@@ -1468,6 +1480,20 @@
         function csvToObjects(rows) {
             if (rows.length < 2) return [];
             var headers = rows[0].map(normalizeColName);
+            var result = [];
+            for (var i = 1; i < rows.length; i++) {
+                var obj = {};
+                for (var j = 0; j < headers.length; j++) {
+                    obj[headers[j]] = (rows[i][j] || '').trim();
+                }
+                result.push(obj);
+            }
+            return result;
+        }
+
+        function csvToRawObjects(rows) {
+            if (rows.length < 2) return [];
+            var headers = rows[0];
             var result = [];
             for (var i = 1; i < rows.length; i++) {
                 var obj = {};
@@ -1764,6 +1790,8 @@
         function runAnalysis() {
             var proximityDays = parseInt(document.getElementById('proximityDays').value, 10) || 14;
             var continuousThreshold = parseInt(document.getElementById('continuousThreshold').value, 10) || 3;
+            var excludeSzKasanCheckbox = document.getElementById('exclude-sz-kasan');
+            var excludeSzKasan = excludeSzKasanCheckbox ? excludeSzKasanCheckbox.checked : false;
 
             var rxData = [];
             var injData = [];
@@ -1787,6 +1815,12 @@
                 } 
                 // 2. surgery data
                 else if (isSzCol) {
+                    if (excludeSzKasan) {
+                        var szName = getDrugName(row) || '';
+                        if (szName.indexOf('加算') !== -1) {
+                            return; // skip
+                        }
+                    }
                     szData.push(row);
                 }
                 // 3. prescription data (with usage or days)
@@ -2777,42 +2811,106 @@
                 });
 
             } else if (mode === 'raw-full') {
-                var ptMatchMap = {};
-                filteredResult.forEach(function (res) {
-                    ptMatchMap[normalizeId(res.id)] = getMatchLabelText(res.matchLevel);
+                var exportData = filteredResult.map(function (res) {
+                    return { res: res, pt: res.patientData };
                 });
 
-                var targetRows = rawDataRows.filter(function (r) {
-                    return ptMatchMap.hasOwnProperty(normalizeId(getPatientId(r)));
-                });
-
-                if (targetRows.length === 0) {
+                if (exportData.length === 0) {
                     alert('出力対象となるデータがありません。');
                     return;
                 }
 
-                // 全ての対象オブジェクトから動的に列名を収集
-                var headers = [];
-                var headerMap = {};
-                targetRows.forEach(function (r) {
-                    Object.keys(r).forEach(function (k) {
-                        if (!headerMap[k]) {
-                            headerMap[k] = true;
-                            headers.push(k);
+                // 1. カテゴリ定義とキー・最大件数の収集
+                var categories = [
+                    { key: 'dx', label: '病名', listKey: 'diseases', getRecords: function (item) { return [item.raw]; } },
+                    { key: 'rx', label: '処方', listKey: 'rxPeriods', getRecords: function (item) { return item.records; } },
+                    { key: 'inj', label: '注射', listKey: 'injPeriods', getRecords: function (item) { return item.records; } },
+                    { key: 'sz', label: '手術', listKey: 'szPeriods', getRecords: function (item) { return item.records; } },
+                    { key: 'lab', label: '検査', listKey: 'labPeriods', getRecords: function (item) { return item.records; } }
+                ];
+
+                var baseKeys = ['患者ID', '患者名', '年齢', '性別', '診療科', 'マッチ判定'];
+                var baseKeysNorm = baseKeys.map(normalizeColName);
+
+                var catInfo = {};
+                categories.forEach(function (cat) {
+                    var allKeys = [];
+                    var keySet = {};
+                    var maxCount = 0;
+                    exportData.forEach(function (d) {
+                        var items = d.pt[cat.listKey];
+                        if (items.length > maxCount) maxCount = items.length;
+                        items.forEach(function (item) {
+                            var recs = cat.getRecords(item);
+                            recs.forEach(function (r) {
+                                if (!r) return;
+                                Object.keys(r).forEach(function (k) {
+                                    var kn = normalizeColName(k);
+                                    if (baseKeysNorm.indexOf(kn) === -1 && !keySet[k]) {
+                                        keySet[k] = true;
+                                        allKeys.push(k);
+                                    }
+                                });
+                            });
+                        });
+                    });
+                    catInfo[cat.key] = { keys: allKeys, max: maxCount, label: cat.label };
+                });
+
+                // 2. ヘッダー生成
+                var headerRow = baseKeys.slice();
+                categories.forEach(function (cat) {
+                    var info = catInfo[cat.key];
+                    for (var i = 1; i <= info.max; i++) {
+                        info.keys.forEach(function (k) {
+                            headerRow.push(info.label + i + '_' + k);
+                        });
+                    }
+                });
+
+                csv = headerRow.map(csvVal).join(',') + '\n';
+
+                // 3. データ行の生成
+                exportData.forEach(function (d) {
+                    var pt = d.pt;
+                    var res = d.res;
+                    
+                    // 基本情報
+                    var row = [];
+                    row.push(csvVal(res.id));
+                    row.push(csvVal(res.name));
+                    row.push(csvVal(res.age));
+                    
+                    // 性別 (患者データまたは生データから取得)
+                    var gender = pt.gender || '';
+                    if (!gender) {
+                        categories.forEach(function(c) {
+                            if (gender) return;
+                            var items = pt[c.listKey];
+                            if (items.length > 0) {
+                                var rec = c.getRecords(items[0])[0];
+                                gender = findCol(rec, ['性別']);
+                            }
+                        });
+                    }
+                    row.push(csvVal(gender));
+                    row.push(csvVal(res.dept));
+                    row.push(csvVal(getMatchLabelText(res.matchLevel)));
+
+                    // 各カテゴリのイベントを横に展開
+                    categories.forEach(function (cat) {
+                        var info = catInfo[cat.key];
+                        var items = pt[cat.listKey];
+                        for (var i = 0; i < info.max; i++) {
+                            var item = items[i];
+                            var rec = item ? cat.getRecords(item)[0] : null;
+                            info.keys.forEach(function (k) {
+                                row.push(csvVal(rec ? rec[k] : ''));
+                            });
                         }
                     });
-                });
-                
-                var outHeaders = headers.concat(['マッチ判定']);
-                csv = outHeaders.map(function(h) { return csvVal(h); }).join(',') + '\n';
-                
-                targetRows.forEach(function(r) {
-                    var matchStatus = ptMatchMap[normalizeId(getPatientId(r))] || '';
-                    var rowData = headers.map(function(h) {
-                        return csvVal(r[h]);
-                    });
-                    rowData.push(csvVal(matchStatus));
-                    csv += rowData.join(',') + '\n';
+
+                    csv += row.join(',') + '\n';
                 });
             }
 
@@ -2849,6 +2947,9 @@
                                 // raw: true にすることで、日付がExcel本来の正確な数値（シリアル値）として取り出されます。
                                 var rawJson = XLSX.utils.sheet_to_json(sheet, { defval: "", raw: true });
                                 
+                                // 元データ確認用の忠実な再現データ
+                                allUploadedFiles[file.name] = rawJson;
+                                
                                 // Normalize keys and values specifically for Excel to prevent type-related crashes
                                 var objRows = rawJson.map(function(row) {
                                     var newRow = {};
@@ -2868,6 +2969,7 @@
                         } else {
                             readFileAsText(file, function (text) {
                                 var rows = parseCSV(text);
+                                allUploadedFiles[file.name] = csvToRawObjects(rows);
                                 var objRows = csvToObjects(rows);
                                 rawDataRows = rawDataRows.concat(objRows);
                                 loadedFilesData.push({ name: file.name, count: objRows.length });
@@ -2883,6 +2985,20 @@
                                 info.textContent = loadedFilesData.map(function (f) { return '✓ ' + f.name + ' (' + f.count + ' 行)'; }).join('\n');
                                 updateAnalyzeButton();
                                 updateLabItemDropdown();
+                                
+                                // ファイル選択ドロップダウンの更新
+                                var fileSelect = document.getElementById('raw-file-select');
+                                if (fileSelect) {
+                                    fileSelect.innerHTML = '';
+                                    loadedFilesData.forEach(function(f, idx) {
+                                        var opt = document.createElement('option');
+                                        opt.value = f.name;
+                                        opt.textContent = '📄 ' + f.name + ' (' + f.count + '行)';
+                                        if (idx === 0) opt.selected = true; // 最初のファイルを選択状態に
+                                        fileSelect.appendChild(opt);
+                                    });
+                                    if (activeTab === 'raw') renderRawTable();
+                                }
                             }
                         }
                     })(files[i]);
@@ -2959,6 +3075,12 @@
             document.getElementById('exclude-age-min').addEventListener('input', updateExclusionBadge);
             document.getElementById('exclude-age-max').addEventListener('input', updateExclusionBadge);
             document.getElementById('exclusion-drug-list').addEventListener('input', updateExclusionBadge);
+            document.getElementById('exclude-sz-kasan').addEventListener('change', function() {
+                updateExclusionBadge();
+                if (analysisResult.length > 0 || unknownAgeResult.length > 0) {
+                    document.getElementById('btn-analyze').click();
+                }
+            });
 
             var fontSizes = ['', 'font-md', 'font-lg'];
             var currentFontIdx = 0;
@@ -3003,6 +3125,9 @@
             }
             if (activeDurationFilters.length > 0) {
                 parts.push('投与日数' + activeDurationFilters.length + '件');
+            }
+            if (document.getElementById('exclude-sz-kasan') && document.getElementById('exclude-sz-kasan').checked) {
+                parts.push('手術加算除外');
             }
             var badge = document.getElementById('exclusion-badge');
             if (parts.length > 0) {
@@ -3176,9 +3301,11 @@
         }
 
         function renderRawTable() {
-            var cat = document.getElementById('raw-category').value;
+            var fileSelect = document.getElementById('raw-file-select');
+            if (!fileSelect) return;
+            var fileName = fileSelect.value;
             var searchText = document.getElementById('raw-search').value.toLowerCase();
-            var data = rawDataByCategory[cat] || [];
+            var data = allUploadedFiles[fileName] || [];
             
             var filtered = data.filter(function(r) {
                 if (!searchText) return true;
@@ -3187,7 +3314,8 @@
                 });
             });
 
-            document.getElementById('raw-count').textContent = filtered.length + ' 行';
+            var countLabel = document.getElementById('raw-count');
+            if (countLabel) countLabel.textContent = filtered.length + ' 行';
 
             var thead = document.getElementById('raw-thead');
             var tbody = document.getElementById('raw-tbody');
@@ -3195,15 +3323,19 @@
             tbody.innerHTML = '';
 
             if (filtered.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;padding:24px;color:var(--text-muted);">データがありません</td></tr>';
+                tbody.innerHTML = '<tr><td style="text-align:center;padding:24px;color:var(--text-muted);">データがありません</td></tr>';
                 return;
             }
 
-            // Get all unique keys from data (headers)
+            // 全ての対象行から動的に列名を収集（元の姿を再現）
             var headers = [];
-            filtered.forEach(function(r) {
+            var headerMap = {};
+            data.forEach(function(r) {
                 Object.keys(r).forEach(function(k) {
-                    if (headers.indexOf(k) < 0) headers.push(k);
+                    if (!headerMap[k]) {
+                        headerMap[k] = true;
+                        headers.push(k);
+                    }
                 });
             });
 
@@ -3219,9 +3351,10 @@
                 var tr = document.createElement('tr');
                 headers.forEach(function(h) {
                     var td = document.createElement('td');
-                    var val = r[h] || '';
+                    var val = r[h];
+                    if (val === undefined || val === null) val = '';
                     
-                    // 列名に「日」が含まれていて、値がある場合は日付形式に変換して表示
+                    // シリアル値の日付を読みやすく変換（列名に「日」が含まれる場合）
                     if (h.indexOf('日') >= 0 && val !== '') {
                         var d = parseDate(val);
                         if (d) val = formatDate(d);
