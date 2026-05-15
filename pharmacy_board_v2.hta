@@ -4588,6 +4588,29 @@ function processFetchedPatients(newPatients, wardName) {
                     delete appData.dischargedArchive[np.id];
                 }
 
+                // ★追加: アーカイブにもない場合、さらに「入院予定(admissionSchedule)」にデータがないか探す
+                if(!inherited && appData.admissionSchedule) {
+                    for(var as=0; as<appData.admissionSchedule.length; as++) {
+                        var asP = appData.admissionSchedule[as];
+                        if(asP && String(asP.id) === String(np.id)) {
+                            np.status = asP.status || 0;
+                            np.statusAuthor = asP.statusAuthor || "";
+                            np.memo = asP.memo || "";
+                            np.memoAuthors = asP.memoAuthors || [];
+                            np.memoAuthor = asP.memoAuthor || "";
+                            np.alertLevel = asP.alertLevel || 0;
+                            np.personalMemos = asP.personalMemos || {};
+                            // 採血予定が入っていればそれも引き継ぐ
+                            if (asP.bloodDate && asP.bloodDate !== "-") {
+                                np.bloodDate = asP.bloodDate;
+                                np.bloodDetail = asP.bloodDetail || "";
+                            }
+                            inherited = true;
+                            break;
+                        }
+                    }
+                }
+
                 // それでも存在しない完全な新規患者の場合
                 if(!inherited) {
                     np.status = 0;
