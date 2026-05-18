@@ -1549,11 +1549,10 @@ var updatePersonalMemoDebounced = debounce(function(id, val, element) {
     if(!p) return;
     if(!p.personalMemos) p.personalMemos = {};
     p.personalMemos[currentSystemId] = val;
-    if (typeof DataManager !== "undefined") {
-        DataManager.appendTransaction("UPDATE_PERSONAL_MEMO", {
-            patientId: id, wardCode: currentWard, userId: currentSystemId, value: val
-        });
-    }
+    
+    // ★ここにあった if (typeof DataManager !== "undefined") { ... } の伝票発行ブロックをまるごと削除します
+    // （入力完了時の finalizePersonalMemo 関数側に任せるため）
+    
     // autoSave(); ←これを削除
 }, 500);
 
@@ -2853,29 +2852,33 @@ function doLogin() {
             currentWard = userCodes[0];
         }
     }
-    // 病棟タブとデータを更新
+    
+    // ★先に基本の画面だけを描画して見せる
     renderWardTabs();
     renderPatients();
-
     updateUIMode();
-    renderTodos(); // 介入者リストをログイン後すぐに反映
-    yrInit(); // ログイン確定後に自IDの設定をUIへ再ロード
-    
-    // 設定画面の初期表示を更新
-    var idLbl = document.getElementById('set-current-id-label-main');
-    if(idLbl) idLbl.innerText = currentSystemId;
-    var nameIpt = document.getElementById('set-my-display-name-main');
-    if(nameIpt) nameIpt.value = currentUserName;
-    
-    // システムの最新データを強制取得
-    fetchPatientData();
-    setTimeout(function(){ fetchAdmissionSchedule(); }, 3000);
-    
-    // ToDo通知と監視の開始 (Vol.12)
-    setTimeout(function(){ 
-        checkMyTodos(); 
-        startDeadlineTimer();
-    }, 2000);
+
+    // ★重い処理（ToDo表示やカルテへのアクセス）を一瞬遅らせて、フリーズを回避する
+    setTimeout(function() {
+        renderTodos();
+        yrInit(); // ログイン確定後に自IDの設定をUIへ再ロード
+        
+        // 設定画面の初期表示を更新
+        var idLbl = document.getElementById('set-current-id-label-main');
+        if(idLbl) idLbl.innerText = currentSystemId;
+        var nameIpt = document.getElementById('set-my-display-name-main');
+        if(nameIpt) nameIpt.value = currentUserName;
+        
+        // システムの最新データを強制取得
+        fetchPatientData();
+        setTimeout(function(){ fetchAdmissionSchedule(); }, 3000);
+        
+        // ToDo通知と監視の開始 (Vol.12)
+        setTimeout(function(){ 
+            checkMyTodos(); 
+            startDeadlineTimer();
+        }, 2000);
+    }, 50);
 }
 
 function updateUIMode() {
@@ -3830,11 +3833,9 @@ function updateMemo(id, val, element) {
             }
         }
     }
-    if (typeof DataManager !== "undefined") {
-        DataManager.appendTransaction("UPDATE_PATIENT_MEMO", {
-            patientId: id, wardCode: currentWard, value: val
-        });
-    }
+    
+    // ★ここにあった if (typeof DataManager !== "undefined") { ... } の伝票発行ブロックをまるごと削除します
+    // （入力完了時の finalizeMemo 関数側に任せるため）
 }
 
 function updatePersonalMemoHeight(element) {
@@ -6891,6 +6892,7 @@ function removeClass(el, className) {
         // ==========================================
         // タブ③: テキスト整理 (マクロ) 処理本体
         // ==========================================
+        var macroSaveTimer = null; // ★この行を追加
         function yrRunMacro() {
             var rawInput = document.getElementById('macroInput').value;
             if (!rawInput) {
@@ -6901,7 +6903,12 @@ function removeClass(el, className) {
             // 新設した共通処理を呼び出す
             var text = processMacroText(rawInput);
             document.getElementById('macroOutput').value = text;
-            saveMacroHistory(rawInput, text);
+            
+            // ★修正: 重たいファイル保存を1秒遅らせて画面のフリーズを防ぐ
+            clearTimeout(macroSaveTimer);
+            macroSaveTimer = setTimeout(function() {
+                saveMacroHistory(rawInput, text);
+            }, 1000);
             
             // 薬管1判定パネル更新
             var panel = document.getElementById('macro-tokuyaku-panel');
