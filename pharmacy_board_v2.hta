@@ -5629,7 +5629,8 @@ function toggleHistoryDetail(pId, rowIndex) {
     h.push('<div style="margin-top:8px; display:flex; align-items:flex-start; gap:10px;">');
     h.push('  <span style="font-size:11px; font-weight:bold; color:#0d6efd; background:#e1f5fe; padding:2px 6px; border-radius:3px;">個人メモ</span>');
     var pMemoDisabled = isEditMode ? "" : "disabled";
-    var pMemoChange = isEditMode ? 'onkeyup="updatePersonalMemoDebounced(\'' + escapeHtml(pId) + '\', this.value, this)"' : "";
+    // ★修正: onchange="finalizePersonalMemo(...)" を追加して、入力完了時に確実に保存と伝票発行を行わせる
+    var pMemoChange = isEditMode ? 'onchange="finalizePersonalMemo(\'' + escapeHtml(pId) + '\', this)" onkeyup="updatePersonalMemoDebounced(\'' + escapeHtml(pId) + '\', this.value, this)"' : "";
     h.push('  <div style="flex:1;">');
     h.push('    <textarea ' + pMemoDisabled + ' ' + pMemoChange + ' style="width:100%; height:40px; font-size:11px; padding:2px; border:1px dashed #b3d7ff; background:#f0fbff;" placeholder="自分専用のメモを入力...">' + escapeHtml(myMemo) + '</textarea>');
     h.push('  </div>');
@@ -5645,7 +5646,6 @@ function toggleHistoryDetail(pId, rowIndex) {
 
 function updateHistoryMemo(pId, newVal) {
     var arc = findPatientById(pId);
-    
     // 見つからない場合は退院アーカイブ側に作成
     if (!arc) {
         if (!appData.dischargedArchive || (appData.dischargedArchive instanceof Array)) {
@@ -5657,14 +5657,21 @@ function updateHistoryMemo(pId, newVal) {
         arc = appData.dischargedArchive[pId];
     }
     arc.memo = newVal;
-    
     // 編集者リストの更新 (重複防止)
     if (!arc.memoAuthors) arc.memoAuthors = [];
     var found = false;
     for (var i = 0; i < arc.memoAuthors.length; i++) {
-        if (arc.memoAuthors[i] === currentUserName) { found = true; break; }
+        if (arc.memoAuthors[i] === currentUserName) { found = true;
+            break; }
     }
     if (!found) arc.memoAuthors.push(currentUserName);
+    
+    // ★追加: 退室患者のメモでも確実に伝票（トランザクション）を発行する
+    if (typeof DataManager !== "undefined") {
+        DataManager.appendTransaction("UPDATE_PATIENT_MEMO", {
+            patientId: pId, wardCode: currentWard, value: newVal
+        });
+    }
     
     autoSave();
 }
