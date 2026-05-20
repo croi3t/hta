@@ -597,7 +597,7 @@ function generateAbbreviation() {}
                     <th width="45" class="sortable" onclick="sortPatients('room')">病室 <span class="sort-icon">↕</span></th>
                     <th width="35" class="sortable" onclick="sortPatients('daysInHosp')">在院 <span class="sort-icon">↕</span></th>
                     <th width="65" style="padding: 0;">
-                        <div id="btn-fetch-surgery" class="hide-on-print" onclick="SurgeryFetcher.updateAllSurgeries()" style="display:none; background:#fce4ec; color:#c2185b; font-size:10px; padding:2px 0; cursor:pointer; border-bottom:1px solid #f8bbd0; font-weight:bold;" title="手術情報を一括取得します">✂️ 手術情報取得</div>
+                        <div id="btn-fetch-surgery" class="hide-on-print" onclick="SurgeryFetcher.updateAllSurgeries()" style="display:none; background:#fce4ec; color:#c2185b; font-size:10px; padding:2px 0; cursor:pointer; border-bottom:1px solid #f8bbd0; font-weight:bold;" title="手術情報を一括取得します">✂️ 手術取得</div>
                         
                         <div class="hide-on-print" onclick="updateAllBloodDates()" style="background:#d1ecf1; color:#0c5460; font-size:10px; padding:2px 0; cursor:pointer; border-bottom:1px solid #bee5eb;" title="表示中の全患者の採血日を一括取得します">[採血] 全体取得</div>
                         <div onclick="sortPatients('bloodDate')" style="cursor:pointer; padding:2px 0;" title="採血日でソート">採血日 <span class="sort-icon">↕</span></div>
@@ -3512,45 +3512,48 @@ function renderPatients() {
         tr.push('<div style="color:#0d6efd; font-weight:bold; border-bottom:1px dotted #eee;">' + escapeHtml(p.dept || '') + '</div>');
         tr.push('<div style="color:#555;">' + escapeHtml(p.doctor || '') + '</div>');
         tr.push('</td>');
-        tr.push('<td>' + escapeHtml(p.disease || '') + '</td>');
+        tr.push('<td style="padding:2px 4px; vertical-align:top;">');
+        tr.push('<div style="color:#2c3e50; font-weight:bold;' + (p.surgeryProcedure ? 'border-bottom:1px dotted #eee; padding-bottom:2px; margin-bottom:2px;' : '') + '">' + escapeHtml(p.disease || '') + '</div>');
+        if (currentWard === "51") {
+            if (p.surgeryDate === "なし") {
+                tr.push('<div class="surgery-proc-text" style="color:#999; font-size:11px; font-style:italic;">術：なし</div>');
+            } else if (p.surgeryProcedure) {
+                tr.push('<div class="surgery-proc-text" style="color:#c2185b; font-size:11px; font-weight:bold; word-break:break-all;" title="術式: ' + escapeHtml(p.surgeryProcedure) + '">✂️ ' + escapeHtml(p.surgeryProcedure) + '</div>');
+            } else {
+                tr.push('<div class="surgery-proc-text" style="color:#bbb; font-size:11px; font-style:italic;">(術式未取得)</div>');
+            }
+        }
+        tr.push('</td>');
+        
         tr.push('<td style="text-align:center; font-size:12px; font-weight:bold;">' + escapeHtml(p.room || '') + '</td>');
-        // 術後日数の計算ロジック
+        
         var hospDaysHtml = escapeHtml(p.daysInHosp || "-");
         var surgeryInfoHtml = "";
-        
-        if (p.surgeryDate) {
+        if (p.surgeryDate && p.surgeryDate !== "なし" && p.surgeryDate !== "-") {
             var today = new Date();
             today.setHours(0,0,0,0);
             var sDate = new Date(p.surgeryDate);
             sDate.setHours(0,0,0,0);
             var diffDays = Math.floor((today.getTime() - sDate.getTime()) / (1000 * 3600 * 24));
             
-            var postOpText = "";
-            if (diffDays === 0) postOpText = "術当日";
-            else if (diffDays > 0) postOpText = "術後" + diffDays + "日";
-            else postOpText = "術前" + Math.abs(diffDays) + "日";
-            
-            // 在院日数の下に赤字で術後日数を追加
+            var postOpText = (diffDays === 0) ? "術当日" : (diffDays > 0 ? "術後" + diffDays + "日" : "術前" + Math.abs(diffDays) + "日");
             hospDaysHtml += '<br><span style="color:#c62828; font-weight:bold; font-size:10px;">' + postOpText + '</span>';
             
-            // 情報共有メモにバッジを追加するためのHTMLを生成
             var epiBadge = p.surgeryHasEpi ? ' <span style="background:#dc3545; color:#fff; padding:0 3px; border-radius:2px;">エピ有</span>' : '';
             surgeryInfoHtml = '<div style="font-size:10px; color:#c2185b; background:#fce4ec; border:1px solid #f8bbd0; border-radius:3px; padding:2px; margin-bottom:2px;" title="病名: ' + escapeHtml(p.surgeryDisease) + '\n術式: ' + escapeHtml(p.surgeryProcedure) + '\n麻酔: ' + escapeHtml(p.surgeryAnesthesia) + '">✂️術: ' + escapeHtml(p.surgeryDate) + epiBadge + '</div>';
         }
-
         tr.push('<td style="text-align:center; font-size:12px; line-height:1.2;">' + hospDaysHtml + '</td>');
+
         tr.push('<td class="blood-date-cell" style="padding:0; width:65px;">' + fetchBtnHtml + dateTextHtml + '</td>');
-        
         var st1 = '<td class="status-cell ' + statClass + '" style="' + statUnderline + '" ';
         var st2 = 'onmousedown="startDragStatus(event, \'' + escapeHtml(p.id) + '\')" ' + clickEvent + '>';
         tr.push(st1 + st2 + statText + authorHtml + '</td>');
         
-        // ★修正: 処方列の色(#fd7e14)と強調列の色(#e74c3c)、サイズ(20px)を復元
         tr.push('<td style="text-align:center; font-size:20px; color:#fd7e14; ' + chkBg + '" class="chk-toggle ' + chkClass + '" ' + chkEvent + '>' + chkText + '</td>');
         tr.push('<td style="text-align:center; font-size:20px; font-weight:bold; color:#e74c3c;" class="alert-toggle ' + aClass + '" ' + alertEvent + '>' + escapeHtml(aText) + '</td>');
         
         tr.push('<td class="' + hlClass + '" style="padding:4px;">');
-        tr.push(surgeryInfoHtml); // ★ここで先ほど作った手術バッジを挿入
+        tr.push(surgeryInfoHtml); // ★メモ欄の上に手術バッジを挿入
         var ta1 = '<textarea rows="1" ' + memoDisabled + ' ' + memoChangeShared;
         var ta2 = ' placeholder="【共有】メモ..." style="min-height:24px; padding:2px; font-size:12px; width:100%;">';
         tr.push(ta1 + ta2 + escapeHtml(p.memo) + '</textarea>');

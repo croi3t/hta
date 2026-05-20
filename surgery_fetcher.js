@@ -1,5 +1,5 @@
 // =========================================================
-// 5A病棟専用：手術情報スクレイピングモジュール
+// 5A病棟専用：手術情報スクレイピングモジュール (完全版)
 // js/surgery_fetcher.js
 // =========================================================
 
@@ -24,6 +24,12 @@ var SurgeryFetcher = {
         var idsToFetch = [];
         for (var i = 0; i < list.length; i++) {
             idsToFetch.push(list[i].id);
+            var tr = document.getElementById("tr-patient-" + list[i].id);
+            if (tr) {
+                // 主病名の下にある術式テキストを一時的に「待機中」にする
+                var opEl = tr.querySelector(".surgery-proc-text");
+                if (opEl) { opEl.innerText = "待機中..."; opEl.style.color = "#999"; }
+            }
         }
 
         var totalCount = idsToFetch.length;
@@ -50,9 +56,16 @@ var SurgeryFetcher = {
                 return;
             }
 
+            var tr = document.getElementById("tr-patient-" + patient.id);
+            if (tr) {
+                var opEl = tr.querySelector(".surgery-proc-text");
+                if (opEl) { opEl.innerText = "取得中..."; opEl.style.color = "#0d6efd"; }
+            }
+
             SurgeryFetcher.fetchSingle(patient, function() {
-                renderPatients(); // 1件終わるごとに画面を更新して術後日数を表示
-                setTimeout(processNext, 200);
+                var trUpdate = document.getElementById("tr-patient-" + patient.id);
+                if (trUpdate) { renderPatients(); }
+                setTimeout(processNext, 150);
             });
         }
         processNext();
@@ -69,14 +82,12 @@ var SurgeryFetcher = {
         var dd = ("0" + today.getDate()).slice(-2);
         var kijunDate = yyyy + "/" + mm + "/" + dd;
 
-        // ★修正: 在院日数から今回の入院日を計算し、取得範囲(range_date)を動的に決定する
         var days = parseInt(p.daysInHosp, 10);
-        var rangeDays = 20; // データの入っていない初期状態や不明時はデフォルト20日前までとする
+        var rangeDays = 20; 
         if (!isNaN(days) && days > 0) {
-            rangeDays = days + 3; // 入院前日の検査指示なども漏らさず拾えるよう「在院日数 + 3日」とする
+            rangeDays = days + 3; 
         }
 
-        // URLの range_date 部分に計算した日数を動的に埋め込む
         var url = "http://10.5.71.21:8082/karte/karte.php?kanja_id=" + p.id + 
                   "&user_id=" + userId + 
                   "&order_kind_code_str=0091,1091&kijun_date=" + kijunDate + 
@@ -105,7 +116,11 @@ var SurgeryFetcher = {
         };
 
         var fallbackTimer = setTimeout(function() {
-            if (!isDone) { cleanupAndCallback(); }
+            if (!isDone) { 
+                p.surgeryDate = "-";
+                p.surgeryProcedure = "タイムアウト";
+                cleanupAndCallback(); 
+            }
         }, 180000);
 
         iframe.onload = function() {
@@ -143,38 +158,48 @@ var SurgeryFetcher = {
                     var procedure = extract(/術式：([\s\S]*?)体位：/);
                     var anesthesia = extract(/麻酔法：([\s\S]*?)(?=\n[^\s　]+：|\n【|$)/);
 
+                    // ★修正: 「手術開始時刻：」または「実施日：」から直接日付を狙い撃ち
                     var surgDateStr = "";
-                    var dateMatch = allText.match(/(?:手術日|実施日)[：\s]*(\d{4})[\/年](\d{1,2})[\/月](\d{1,2})/);
-                    if (!dateMatch) {
-                        dateMatch = allText.match(/(\d{4})[\/年](\d{1,2})[\/月](\d{1,2})/);
-                    }
+                    var dateMatch = allText.match(/(?:手術開始時刻|実施日)[：\s]*(\d{4})[\/年](\d{1,2})[\/月](\d{1,2})/);
+                    
                     if (dateMatch) {
                         surgDateStr = dateMatch[1] + '/' + ('0'+dateMatch[2]).slice(-2) + '/' + ('0'+dateMatch[3]).slice(-2);
                     }
 
-                    if (surgDateStr || procedure) {
-                        p.surgeryDate = surgDateStr;
+                    // ★修正: 手術情報が抽出できなかった場合は「術：なし」として扱う
+                    if (!surgDateStr && !procedure) {
+                        p.surgeryDate = "なし";
+                        p.surgeryDisease = "";
+                        p.surgeryProcedure = "";
+                        p.surgeryAnesthesia = "";
+                        p.surgeryHasEpi = false;
+                    } else {
+                        p.surgeryDate = surgDateStr || "不明";
                         p.surgeryDisease = disease;
-                        p.surgeryProcedure = procedure;
+                        p.surgeryProcedure = procedure || "情報なし";
                         p.surgeryAnesthesia = anesthesia;
                         
                         var hasEpi = (anesthesia.indexOf("硬膜外") !== -1 || anesthesia.indexOf("エピ") !== -1 || anesthesia.toUpperCase().indexOf("EPI") !== -1);
                         p.surgeryHasEpi = hasEpi;
-
-                        if (typeof DataManager !== "undefined") {
-                            DataManager.appendTransaction("UPDATE_SURGERY_INFO", {
-                                patientId: p.id,
-                                wardCode: currentWard,
-                                surgeryDate: p.surgeryDate,
-                                surgeryDisease: p.surgeryDisease,
-                                surgeryProcedure: p.surgeryProcedure,
-                                surgeryAnesthesia: p.surgeryAnesthesia,
-                                surgeryHasEpi: p.surgeryHasEpi
-                            });
-                        }
                     }
 
-                } catch(e) {}
+                    // 伝票(Transaction)の発行
+                    if (typeof DataManager !== "undefined") {
+                        DataManager.appendTransaction("UPDATE_SURGERY_INFO", {
+                            patientId: p.id,
+                            wardCode: currentWard,
+                            surgeryDate: p.surgeryDate,
+                            surgeryDisease: p.surgeryDisease,
+                            surgeryProcedure: p.surgeryProcedure,
+                            surgeryAnesthesia: p.surgeryAnesthesia,
+                            surgeryHasEpi: p.surgeryHasEpi
+                        });
+                    }
+
+                } catch(e) {
+                    p.surgeryDate = "-";
+                    p.surgeryProcedure = "解析エラー";
+                }
                 
                 clearTimeout(fallbackTimer);
                 autoSave(); 
