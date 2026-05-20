@@ -158,15 +158,41 @@ var SurgeryFetcher = {
                     var procedure = extract(/術式：([\s\S]*?)体位：/);
                     var anesthesia = extract(/麻酔法：([\s\S]*?)(?=\n[^\s　]+：|\n【|$)/);
 
-                    // ★修正: 「手術開始時刻：」または「実施日：」から直接日付を狙い撃ち
+                    // ★追加: 術式から不要な「加算」や「器材」の情報を削除する
+                    if (procedure) {
+                        // 「器材：」または「器材キット：」があれば、それ以降をすべて切り捨てる
+                        var kizaiIdx = procedure.indexOf("器材：");
+                        if (kizaiIdx !== -1) procedure = procedure.substring(0, kizaiIdx);
+                        var kitIdx = procedure.indexOf("器材キット：");
+                        if (kitIdx !== -1) procedure = procedure.substring(0, kitIdx);
+
+                        // 改行ごとに判定し、「加算」が含まれる行を削除する
+                        var procLines = procedure.split('\n');
+                        var cleanProc = [];
+                        for (var i = 0; i < procLines.length; i++) {
+                            var line = procLines[i].trim();
+                            if (!line) continue;
+                            if (line.indexOf("加算") !== -1) continue; // 「加算」が含まれれば無視
+                            cleanProc.push(line);
+                        }
+                        // 残った術式を半角スペース区切りで一行にまとめる
+                        procedure = cleanProc.join(' ');
+                    }
+
+                    // ★修正: 手術開始時刻が空欄の場合に備え、様々な見出し表記に対応
                     var surgDateStr = "";
-                    var dateMatch = allText.match(/(?:手術開始時刻|実施日)[：\s]*(\d{4})[\/年](\d{1,2})[\/月](\d{1,2})/);
+                    var dateMatch = allText.match(/(?:手術日|実施日|手術開始時刻|手術予定日)[：\s]*(\d{4})[\/年](\d{1,2})[\/月](\d{1,2})/);
+                    
+                    if (!dateMatch) {
+                        // 保険: システムの初期日付(2010年など)を弾くため、「202X年」に限定して本文から日付を拾う
+                        dateMatch = allText.match(/(202\d)[\/年](\d{1,2})[\/月](\d{1,2})/);
+                    }
                     
                     if (dateMatch) {
                         surgDateStr = dateMatch[1] + '/' + ('0'+dateMatch[2]).slice(-2) + '/' + ('0'+dateMatch[3]).slice(-2);
                     }
 
-                    // ★修正: 手術情報が抽出できなかった場合は「術：なし」として扱う
+                    // 手術情報が抽出できなかった場合は「術：なし」として扱う
                     if (!surgDateStr && !procedure) {
                         p.surgeryDate = "なし";
                         p.surgeryDisease = "";
