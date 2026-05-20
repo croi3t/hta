@@ -239,6 +239,15 @@ var DataManager = (function() {
                 }
 
                 switch (op) {
+                    case "UPDATE_SURGERY_INFO":
+                        if (p) {
+                            p.surgeryDate = data.surgeryDate;
+                            p.surgeryDisease = data.surgeryDisease;
+                            p.surgeryProcedure = data.surgeryProcedure;
+                            p.surgeryAnesthesia = data.surgeryAnesthesia;
+                            p.surgeryHasEpi = data.surgeryHasEpi;
+                        }
+                        break;
                     case "UPDATE_PATIENT_MEMO":
                         if (p) { p.memo = data.value; this._updateMemoAuthors(p, uName); }
                         break;
