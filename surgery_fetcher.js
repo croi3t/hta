@@ -138,28 +138,35 @@ var SurgeryFetcher = {
                         return m ? m[1].replace(/[\r\n]+/g, ' ').trim() : "";
                     };
 
-                    // ★修正: 「体位：」が無い場合でも次の見出し（麻酔法や執刀医など）で止まるようにする
+                    // 1. 各項目の抽出（「見出し」をキーにして、次の見出しまたは改行で止める）
                     var disease = extract(/病名：([\s\S]*?)術式：/);
-                    var procedure = extract(/術式：([\s\S]*?)(?=\n[^\s　]+：|\n【|$)/);
-                    var anesthesia = extract(/麻酔法：([\s\S]*?)(?=\n[^\s　]+：|\n【|$)/);
-
-                    // ★追加: 術式から不要な情報を削除
+                    
+                    // ★修正: 術式は「術式：」の後ろから、「体位：」「麻酔法：」または「出血量：」が出現するまでとする
+                    var procedure = extract(/術式：([\s\S]*?)(?=\n[^\s　]+：|\n【|体位：|麻酔法：|出血量：|$)/);
+                    
+                    // 2. 術式から不要な「加算」や「器材」を徹底排除
                     if (procedure) {
-                        var kizaiIdx = procedure.indexOf("器材：");
-                        if (kizaiIdx !== -1) procedure = procedure.substring(0, kizaiIdx);
-                        var kitIdx = procedure.indexOf("器材キット：");
-                        if (kitIdx !== -1) procedure = procedure.substring(0, kitIdx);
+                        // 複数行になったものを一時的にスペースで繋ぐ
+                        procedure = procedure.replace(/[\r\n]+/g, ' ');
 
-                        var procLines = procedure.split('\n');
-                        var cleanProc = [];
-                        for (var i = 0; i < procLines.length; i++) {
-                            var line = procLines[i].trim();
-                            if (!line) continue;
-                            if (line.indexOf("加算") !== -1) continue; 
-                            cleanProc.push(line);
+                        // ★ピンポイント削除: 「加算」「器材」「器材キット」等の不要ワードを除去
+                        var removeKeywords = [
+                            /画像等手術支援加算.*?\(.*?\)/g,
+                            /画像等手術支援加算/g,
+                            /器材：.*$/g,
+                            /器材キット：.*$/g
+                        ];
+                        for (var i = 0; i < removeKeywords.length; i++) {
+                            procedure = procedure.replace(removeKeywords[i], '');
                         }
-                        procedure = cleanProc.join(' ');
+                        procedure = procedure.trim();
                     }
+
+                    // 3. 麻酔法の抽出（「麻酔法：」から次の見出しまで）
+                    var anesthesia = extract(/麻酔法：([\s\S]*?)(?=\n[^\s　]+：|\n【|体位：|出血量：|$)/);
+                    
+                    // 4. 体位などの余計な文字列が術式に残っていないか最終クリーンアップ
+                    procedure = procedure.replace(/(体位：|麻酔法：|出血量：).*$/g, '').trim();
 
                     // 日付の取得（より厳格に）
                     var surgDateStr = "";
