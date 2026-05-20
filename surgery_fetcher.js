@@ -67,13 +67,20 @@ var SurgeryFetcher = {
         var yyyy = today.getFullYear();
         var mm = ("0" + (today.getMonth() + 1)).slice(-2);
         var dd = ("0" + today.getDate()).slice(-2);
-        var kijunDate = yyyy + "/" + mm + "/" + dd; // 当日を基準日とする
+        var kijunDate = yyyy + "/" + mm + "/" + dd;
 
-        // ご指定いただいた抽出用URL
+        // ★修正: 在院日数から今回の入院日を計算し、取得範囲(range_date)を動的に決定する
+        var days = parseInt(p.daysInHosp, 10);
+        var rangeDays = 20; // データの入っていない初期状態や不明時はデフォルト20日前までとする
+        if (!isNaN(days) && days > 0) {
+            rangeDays = days + 3; // 入院前日の検査指示なども漏らさず拾えるよう「在院日数 + 3日」とする
+        }
+
+        // URLの range_date 部分に計算した日数を動的に埋め込む
         var url = "http://10.5.71.21:8082/karte/karte.php?kanja_id=" + p.id + 
                   "&user_id=" + userId + 
                   "&order_kind_code_str=0091,1091&kijun_date=" + kijunDate + 
-                  "&range_date=20/7/1/1&disp_selectsection=0000021&disp_selectukind=1,2,3&document_code=700360003,730360001&multi_kind=1#top" +
+                  "&range_date=" + rangeDays + "/7/1/1&disp_selectsection=0000021&disp_selectukind=1,2,3&document_code=700360003,730360001&multi_kind=1#top" +
                   "&_nocache=" + new Date().getTime();
 
         var iframeId = "surgery-fetch-iframe-" + p.id;
@@ -99,7 +106,7 @@ var SurgeryFetcher = {
 
         var fallbackTimer = setTimeout(function() {
             if (!isDone) { cleanupAndCallback(); }
-        }, 180000); // 3分タイムアウト
+        }, 180000);
 
         iframe.onload = function() {
             setTimeout(function() {
@@ -112,7 +119,7 @@ var SurgeryFetcher = {
                         if (!currentDoc) return;
                         try {
                             if (currentDoc.body && currentDoc.body.innerText) {
-                                allText += "\n" + currentDoc.body.innerText; // 改行を保持して結合
+                                allText += "\n" + currentDoc.body.innerText;
                             }
                         } catch(e) {}
                         var frames = currentDoc.getElementsByTagName("frame");
@@ -127,43 +134,33 @@ var SurgeryFetcher = {
                     
                     collectText(doc);
 
-                    // --- 正規表現による抽出ロジック ---
                     var extract = function(regex) {
                         var m = allText.match(regex);
-                        // マッチしたら、改行をスペースに変換して余分な空白を消す
                         return m ? m[1].replace(/[\r\n]+/g, ' ').trim() : "";
                     };
 
-                    // 病名： ～ 術式： の間
                     var disease = extract(/病名：([\s\S]*?)術式：/);
-                    // 術式： ～ 体位： の間（複数行対応）
                     var procedure = extract(/術式：([\s\S]*?)体位：/);
-                    // 麻酔法： ～ （次の行が「何かの見出し（○○：）」や【 】で始まるまで）
                     var anesthesia = extract(/麻酔法：([\s\S]*?)(?=\n[^\s　]+：|\n【|$)/);
 
-                    // 手術日の抽出（YYYY/MM/DD または YYYY年M月D日）
                     var surgDateStr = "";
                     var dateMatch = allText.match(/(?:手術日|実施日)[：\s]*(\d{4})[\/年](\d{1,2})[\/月](\d{1,2})/);
                     if (!dateMatch) {
-                        // 見出しがなければ、文書内の最初に出てくるそれっぽい日付を拾う
                         dateMatch = allText.match(/(\d{4})[\/年](\d{1,2})[\/月](\d{1,2})/);
                     }
                     if (dateMatch) {
                         surgDateStr = dateMatch[1] + '/' + ('0'+dateMatch[2]).slice(-2) + '/' + ('0'+dateMatch[3]).slice(-2);
                     }
 
-                    // データが1つでも取れれば保存
                     if (surgDateStr || procedure) {
                         p.surgeryDate = surgDateStr;
                         p.surgeryDisease = disease;
                         p.surgeryProcedure = procedure;
                         p.surgeryAnesthesia = anesthesia;
                         
-                        // 硬膜外麻酔（エピ）の有無を判定
                         var hasEpi = (anesthesia.indexOf("硬膜外") !== -1 || anesthesia.indexOf("エピ") !== -1 || anesthesia.toUpperCase().indexOf("EPI") !== -1);
                         p.surgeryHasEpi = hasEpi;
 
-                        // 伝票(Transaction)の発行
                         if (typeof DataManager !== "undefined") {
                             DataManager.appendTransaction("UPDATE_SURGERY_INFO", {
                                 patientId: p.id,

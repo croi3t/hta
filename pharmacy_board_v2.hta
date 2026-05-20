@@ -590,7 +590,10 @@ function generateAbbreviation() {}
                         <div style="cursor:pointer; border-bottom:1px dotted #ccc; padding-bottom:2px; margin-bottom:2px;" onclick="sortPatients('dept')" title="診療科でソート">診療科 <span class="sort-icon">↕</span></div>
                         <div style="cursor:pointer;" onclick="sortPatients('doctor')" title="主治医でソート">主治医 <span class="sort-icon">↕</span></div>
                     </th>
-                    <th width="120" class="sortable" onclick="sortPatients('disease')">主病名 <span class="sort-icon">↕</span></th>
+                    <th width="150" style="padding: 2px;">
+                        <div style="cursor:pointer; border-bottom:1px dotted #ccc; padding-bottom:2px; margin-bottom:2px;" onclick="sortPatients('disease')" title="主病名でソート">主病名 <span class="sort-icon">↕</span></div>
+                        <div style="font-size:10px; color:#c2185b; font-weight:bold;">[5A専用] 術式</div>
+                    </th>
                     <th width="45" class="sortable" onclick="sortPatients('room')">病室 <span class="sort-icon">↕</span></th>
                     <th width="35" class="sortable" onclick="sortPatients('daysInHosp')">在院 <span class="sort-icon">↕</span></th>
                     <th width="65" style="padding: 0;">
