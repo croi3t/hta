@@ -592,7 +592,7 @@ function generateAbbreviation() {}
                     </th>
                     <th width="150" style="padding: 2px;">
                         <div style="cursor:pointer; border-bottom:1px dotted #ccc; padding-bottom:2px; margin-bottom:2px;" onclick="sortPatients('disease')" title="主病名でソート">主病名 <span class="sort-icon">↕</span></div>
-                        <div style="font-size:10px; color:#c2185b; font-weight:bold;">[5A専用] 術式</div>
+                        <div id="header-surgery-proc" style="display:none; font-size:10px; color:#c2185b; font-weight:bold;">術式</div>
                     </th>
                     <th width="45" class="sortable" onclick="sortPatients('room')">病室 <span class="sort-icon">↕</span></th>
                     <th width="35" class="sortable" onclick="sortPatients('daysInHosp')">在院 <span class="sort-icon">↕</span></th>
@@ -3583,10 +3583,14 @@ function renderPatients() {
     if (container) container.scrollTop = scrollTop;
     window.scrollTo(scrollX, scrollY);
     
-    // ★追加: 5A病棟の時だけ手術取得ボタンを表示する
+    // ★追加: 5A病棟の時だけ手術取得ボタンと「術式」ヘッダーを表示する
     var btnSurg = document.getElementById("btn-fetch-surgery");
     if (btnSurg) {
         btnSurg.style.display = (currentWard === "51") ? "block" : "none";
+    }
+    var hdrSurg = document.getElementById("header-surgery-proc");
+    if (hdrSurg) {
+        hdrSurg.style.display = (currentWard === "51") ? "block" : "none";
     }
 }
 
