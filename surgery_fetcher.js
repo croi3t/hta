@@ -1,22 +1,19 @@
 // =========================================================
-// 5A病棟専用：手術情報スクレイピングモジュール (完全版)
+// 5A病棟専用：手術情報スクレイピングモジュール (改訂版)
 // js/surgery_fetcher.js
 // =========================================================
 
 var SurgeryFetcher = {
-    
-    // 全件取得のメインループ
     updateAllSurgeries: function() {
         if (!isEditMode) { alert("編集モード時のみ実行可能です。"); return; }
         if (currentWard !== "51") { alert("この機能は5A病棟専用です。"); return; }
         
         var list = getCurrentPatientsList();
         if (list.length === 0) { alert("更新対象の患者がいません。"); return; }
-        
         if (!confirm("表示中の全患者(" + list.length + "名)の手術記録を検索・取得しますか？\n(直列処理のため画面は固まりません)")) return;
 
         var btn = document.getElementById("btn-fetch-surgery");
-        var originalText = btn ? btn.innerText : "✂️ 手術情報取得";
+        var originalText = btn ? btn.innerText : "✂️ 手術取得";
         if (btn) { btn.style.pointerEvents = "none"; btn.innerText = "準備中..."; }
 
         window.isSurgeryFetching = true;
@@ -26,7 +23,6 @@ var SurgeryFetcher = {
             idsToFetch.push(list[i].id);
             var tr = document.getElementById("tr-patient-" + list[i].id);
             if (tr) {
-                // 主病名の下にある術式テキストを一時的に「待機中」にする
                 var opEl = tr.querySelector(".surgery-proc-text");
                 if (opEl) { opEl.innerText = "待機中..."; opEl.style.color = "#999"; }
             }
@@ -40,7 +36,7 @@ var SurgeryFetcher = {
                 window.isSurgeryFetching = false;
                 if (btn) { btn.style.pointerEvents = "auto"; btn.innerText = originalText; }
                 renderPatients();
-                saveData(false); // 即時保存
+                saveData(false); 
                 alert("全件の手術情報の取得が完了しました。");
                 return;
             }
@@ -50,11 +46,7 @@ var SurgeryFetcher = {
             var patient = findPatientById(targetId);
             
             if (btn) btn.innerText = "残: " + (totalCount - index + 1);
-            
-            if (!patient) {
-                setTimeout(processNext, 50);
-                return;
-            }
+            if (!patient) { setTimeout(processNext, 50); return; }
 
             var tr = document.getElementById("tr-patient-" + patient.id);
             if (tr) {
@@ -64,29 +56,22 @@ var SurgeryFetcher = {
 
             SurgeryFetcher.fetchSingle(patient, function() {
                 var trUpdate = document.getElementById("tr-patient-" + patient.id);
-                if (trUpdate) { renderPatients(); }
+                if (trUpdate) renderPatients();
                 setTimeout(processNext, 150);
             });
         }
         processNext();
     },
 
-    // 1件分のスクレイピング処理
     fetchSingle: function(p, callback) {
         if (!p || !p.id) { callback(); return; }
         
         var userId = currentSystemId || "16622";
         var today = new Date();
-        var yyyy = today.getFullYear();
-        var mm = ("0" + (today.getMonth() + 1)).slice(-2);
-        var dd = ("0" + today.getDate()).slice(-2);
-        var kijunDate = yyyy + "/" + mm + "/" + dd;
+        var kijunDate = today.getFullYear() + "/" + ("0" + (today.getMonth() + 1)).slice(-2) + "/" + ("0" + today.getDate()).slice(-2);
 
         var days = parseInt(p.daysInHosp, 10);
-        var rangeDays = 20; 
-        if (!isNaN(days) && days > 0) {
-            rangeDays = days + 3; 
-        }
+        var rangeDays = (!isNaN(days) && days > 0) ? (days + 3) : 20;
 
         var url = "http://10.5.71.21:8082/karte/karte.php?kanja_id=" + p.id + 
                   "&user_id=" + userId + 
@@ -146,7 +131,6 @@ var SurgeryFetcher = {
                             try { collectText(iframes[k].contentWindow.document); } catch(e){}
                         }
                     }
-                    
                     collectText(doc);
 
                     var extract = function(regex) {
@@ -154,74 +138,93 @@ var SurgeryFetcher = {
                         return m ? m[1].replace(/[\r\n]+/g, ' ').trim() : "";
                     };
 
+                    // ★修正: 「体位：」が無い場合でも次の見出し（麻酔法や執刀医など）で止まるようにする
                     var disease = extract(/病名：([\s\S]*?)術式：/);
-                    var procedure = extract(/術式：([\s\S]*?)体位：/);
+                    var procedure = extract(/術式：([\s\S]*?)(?=\n[^\s　]+：|\n【|$)/);
                     var anesthesia = extract(/麻酔法：([\s\S]*?)(?=\n[^\s　]+：|\n【|$)/);
 
-                    // ★追加: 術式から不要な「加算」や「器材」の情報を削除する
+                    // ★追加: 術式から不要な情報を削除
                     if (procedure) {
-                        // 「器材：」または「器材キット：」があれば、それ以降をすべて切り捨てる
                         var kizaiIdx = procedure.indexOf("器材：");
                         if (kizaiIdx !== -1) procedure = procedure.substring(0, kizaiIdx);
                         var kitIdx = procedure.indexOf("器材キット：");
                         if (kitIdx !== -1) procedure = procedure.substring(0, kitIdx);
 
-                        // 改行ごとに判定し、「加算」が含まれる行を削除する
                         var procLines = procedure.split('\n');
                         var cleanProc = [];
                         for (var i = 0; i < procLines.length; i++) {
                             var line = procLines[i].trim();
                             if (!line) continue;
-                            if (line.indexOf("加算") !== -1) continue; // 「加算」が含まれれば無視
+                            if (line.indexOf("加算") !== -1) continue; 
                             cleanProc.push(line);
                         }
-                        // 残った術式を半角スペース区切りで一行にまとめる
                         procedure = cleanProc.join(' ');
                     }
 
-                    // ★修正: 手術開始時刻が空欄の場合に備え、様々な見出し表記に対応
+                    // 日付の取得（より厳格に）
                     var surgDateStr = "";
-                    var dateMatch = allText.match(/(?:手術日|実施日|手術開始時刻|手術予定日)[：\s]*(\d{4})[\/年](\d{1,2})[\/月](\d{1,2})/);
-                    
-                    if (!dateMatch) {
-                        // 保険: システムの初期日付(2010年など)を弾くため、「202X年」に限定して本文から日付を拾う
-                        dateMatch = allText.match(/(202\d)[\/年](\d{1,2})[\/月](\d{1,2})/);
-                    }
-                    
+                    var dateMatch = allText.match(/(?:手術開始時刻|手術日|実施日)[：\s]*(\d{4})[\/年](\d{1,2})[\/月](\d{1,2})/);
                     if (dateMatch) {
                         surgDateStr = dateMatch[1] + '/' + ('0'+dateMatch[2]).slice(-2) + '/' + ('0'+dateMatch[3]).slice(-2);
                     }
 
-                    // 手術情報が抽出できなかった場合は「術：なし」として扱う
+                    // ★追加: 在院日数から「今回の入院期間」を計算し、逸脱する過去の手術日を弾く
+                    var isValidDate = true;
+                    if (surgDateStr) {
+                        var sDate = new Date(surgDateStr);
+                        sDate.setHours(0,0,0,0);
+                        var aDate = new Date(today.getTime());
+                        if (!isNaN(days) && days > 0) {
+                            aDate.setDate(today.getDate() - (days + 3)); // 余裕を3日持たせる
+                        } else {
+                            aDate.setDate(today.getDate() - 30);
+                        }
+                        aDate.setHours(0,0,0,0);
+                        var tDate = new Date(today.getTime());
+                        tDate.setDate(tDate.getDate() + 30); // 未来の予定も許可
+
+                        if (sDate < aDate || sDate > tDate) {
+                            isValidDate = false; 
+                        }
+                    }
+                    if (!isValidDate) surgDateStr = ""; // 期間外なら空にする
+
+                    // ★修正: 共有いただいた術式リストに基づく厳密なリクシアナ適応判定
+                    var lixianaRegex = /(人工関節置換術|人工関節再置換術|人工骨頭挿入術|骨折観血的手術|観血的整復固定術|人工関節全置換|TKA|THA|BHA)/i;
+                    var hipKneeRegex = /(股|膝|大腿)/i; // 股関節・膝関節・大腿骨に関連するか
+                    
+                    var isLixiana = false;
+                    // 術式または病名に含まれ、かつ股・膝・大腿のキーワードがある場合
+                    if ((procedure && lixianaRegex.test(procedure) && hipKneeRegex.test(procedure)) || 
+                        (disease && lixianaRegex.test(disease) && hipKneeRegex.test(disease))) {
+                        isLixiana = true;
+                    }
+
+                    // 手術情報が空、または期間外の場合は「なし」とする
                     if (!surgDateStr && !procedure) {
                         p.surgeryDate = "なし";
                         p.surgeryDisease = "";
                         p.surgeryProcedure = "";
                         p.surgeryAnesthesia = "";
                         p.surgeryHasEpi = false;
+                        p.surgeryLixiana = false;
                     } else {
                         p.surgeryDate = surgDateStr || "不明";
                         p.surgeryDisease = disease;
                         p.surgeryProcedure = procedure || "情報なし";
                         p.surgeryAnesthesia = anesthesia;
-                        
-                        var hasEpi = (anesthesia.indexOf("硬膜外") !== -1 || anesthesia.indexOf("エピ") !== -1 || anesthesia.toUpperCase().indexOf("EPI") !== -1);
-                        p.surgeryHasEpi = hasEpi;
+                        p.surgeryHasEpi = (anesthesia.indexOf("硬膜外") !== -1 || anesthesia.indexOf("エピ") !== -1 || anesthesia.toUpperCase().indexOf("EPI") !== -1);
+                        p.surgeryLixiana = isLixiana;
                     }
 
-                    // 伝票(Transaction)の発行
                     if (typeof DataManager !== "undefined") {
                         DataManager.appendTransaction("UPDATE_SURGERY_INFO", {
-                            patientId: p.id,
-                            wardCode: currentWard,
-                            surgeryDate: p.surgeryDate,
-                            surgeryDisease: p.surgeryDisease,
-                            surgeryProcedure: p.surgeryProcedure,
-                            surgeryAnesthesia: p.surgeryAnesthesia,
-                            surgeryHasEpi: p.surgeryHasEpi
+                            patientId: p.id, wardCode: currentWard, surgeryDate: p.surgeryDate,
+                            surgeryDisease: p.surgeryDisease, surgeryProcedure: p.surgeryProcedure,
+                            surgeryAnesthesia: p.surgeryAnesthesia, surgeryHasEpi: p.surgeryHasEpi,
+                            surgeryLixiana: p.surgeryLixiana
                         });
                     }
-
                 } catch(e) {
                     p.surgeryDate = "-";
                     p.surgeryProcedure = "解析エラー";
@@ -232,12 +235,6 @@ var SurgeryFetcher = {
                 cleanupAndCallback();
             }, 1500); 
         };
-        
-        try {
-            iframe.src = url;
-        } catch(e) {
-            clearTimeout(fallbackTimer);
-            cleanupAndCallback();
-        }
+        try { iframe.src = url; } catch(e) { clearTimeout(fallbackTimer); cleanupAndCallback(); }
     }
 };

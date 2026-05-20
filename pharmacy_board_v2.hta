@@ -3111,7 +3111,10 @@ function openKarteLink(type, kanjaId) {
             url = baseUrl + 'karte.php?kanja_id=' + kanjaId + '&user_id=' + userId + '&order_search_flg=1&order_search_code=4&order_search_name=#top';
             break;
         case 'ope_record':
-            url = baseUrl + 'jyoken_disp/jyoken_disp_reference.php?kanja_id=' + kanjaId + '&user_id=' + userId + '&section_code=0000023&order_kind_code_str=0091,1091&document_code=300360001,400430002,630000003,700360003,730360001&multi_kind=1';
+            var pTarget = findPatientById(kanjaId);
+            var hospDays = pTarget ? parseInt(pTarget.daysInHosp, 10) : 0;
+            var rDays = (!isNaN(hospDays) && hospDays > 0) ? (hospDays + 3) : 20;
+            url = baseUrl + 'karte.php?kanja_id=' + kanjaId + '&user_id=' + userId + '&order_kind_code_str=0091,1091&kijun_date=' + todayStr + '&range_date=' + rDays + '/7/1/1&disp_selectsection=0000021&disp_selectukind=1,2,3&document_code=700360003,730360001&multi_kind=1#top';
             break;
 
     }
@@ -3540,7 +3543,10 @@ function renderPatients() {
             hospDaysHtml += '<br><span style="color:#c62828; font-weight:bold; font-size:10px;">' + postOpText + '</span>';
             
             var epiBadge = p.surgeryHasEpi ? ' <span style="background:#dc3545; color:#fff; padding:0 3px; border-radius:2px;">エピ有</span>' : '';
-            surgeryInfoHtml = '<div style="font-size:10px; color:#c2185b; background:#fce4ec; border:1px solid #f8bbd0; border-radius:3px; padding:2px; margin-bottom:2px;" title="病名: ' + escapeHtml(p.surgeryDisease) + '\n術式: ' + escapeHtml(p.surgeryProcedure) + '\n麻酔: ' + escapeHtml(p.surgeryAnesthesia) + '">✂️術: ' + escapeHtml(p.surgeryDate) + epiBadge + '</div>';
+            // ★追加: リクシアナ適応バッジ
+            var lixBadge = p.surgeryLixiana ? ' <span style="background:#ff9800; color:#fff; padding:0 3px; border-radius:2px; font-weight:bold;" title="リクシアナ（エドキサバン）適応手術">💊EDO</span>' : '';
+            
+            surgeryInfoHtml = '<div style="font-size:10px; color:#c2185b; background:#fce4ec; border:1px solid #f8bbd0; border-radius:3px; padding:2px; margin-bottom:2px;" title="病名: ' + escapeHtml(p.surgeryDisease) + '\n術式: ' + escapeHtml(p.surgeryProcedure) + '\n麻酔: ' + escapeHtml(p.surgeryAnesthesia) + '">✂️術: ' + escapeHtml(p.surgeryDate) + epiBadge + lixBadge + '</div>';
         }
         tr.push('<td style="text-align:center; font-size:12px; line-height:1.2;">' + hospDaysHtml + '</td>');
 
