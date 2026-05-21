@@ -487,6 +487,9 @@
 
     /* インラインスタイル(style="font-size:...")を強制上書き */
     body.font-large span[style*="font-size"], body.font-large div[style*="font-size"], body.font-large td[style*="font-size"] { font-size: 16px !important; }
+    /* メモタグ */
+    .memo-tag { color: #c2185b !important; font-weight: bold; }
+
 </style>
 <script type="text/javascript">
 // ============================================================
@@ -555,8 +558,9 @@ function generateAbbreviation() {}
             <div class="sub-tabs" id="sub-tabs-container">
                 <!-- 動的に生成されます -->
             </div>
-            <div id="add-ward-btn-container" style="margin-left:5px;">
+            <div id="add-ward-btn-container" style="margin-left:5px; display:flex; align-items:center;">
                 <button class="btn" style="background:#eee; color:#333; padding:2px 8px; font-size:16px; border-radius:4px;" onclick="showAddWardModal()" title="表示する病棟を追加">+</button>
+                <button class="btn" style="background:#fff; color:#3498db; border:1px solid #3498db; padding:2px 8px; font-size:12px; border-radius:4px; margin-left:5px;" onclick="createNewCustomTab()">+カスタムタブ作成</button>
             </div>
             <div>
                 <button class="btn" style="background-color:#2ecc71; color:white; margin-right:5px; padding: 6px 15px; font-size: 13px; font-weight: bold; border-radius: 6px;" onclick="exportToExcel()" title="現在の一覧をExcelに出力してレイアウト調整や印刷を行います">&#128221; Excelへ出力(印刷用)</button>
@@ -584,6 +588,7 @@ function generateAbbreviation() {}
         <table id="tbl-patients">
             <thead>
                 <tr>
+                    <th width="25" class="hide-on-print" style="text-align:center;"><input type="checkbox" onclick="toggleAllPatientSelect(this)" title="全選択/解除"></th>
                     <th width="60" class="sortable" onclick="sortPatients('id')">患者ID <span class="sort-icon">↕</span></th>
                     <th width="110" class="sortable" onclick="sortPatients('name')">氏名 <span class="sort-icon">↕</span></th>
                     <th width="85" class="hide-on-print" style="padding: 2px;">
@@ -610,7 +615,7 @@ function generateAbbreviation() {}
                 </tr>
             </thead>
             <tbody id="tbody-patients">
-                <tr><td colspan="11" align="center">設定タブで病棟を登録し、「システム更新」を実行してください。</td></tr>
+                <tr><td colspan="12" align="center">設定タブで病棟を登録し、「システム更新」を実行してください。</td></tr>
             </tbody>
         </table>
 
@@ -1540,6 +1545,69 @@ function findPatientById(id) {
     return null;
 }
 
+// メモ欄でのタグサジェスト用関数
+function showTagSuggest(textarea, event) {
+    if (event && (event.key === "Shift" || event.key === "Control" || event.key === "Alt" || (event.keyCode >= 37 && event.keyCode <= 40))) return;
+    
+    var val = textarea.value;
+    var cursor = textarea.selectionStart;
+    if (typeof cursor !== 'number') return;
+    var textBefore = val.substring(0, cursor);
+    var match = textBefore.match(/#([^\s#]*)$/);
+
+    var suggestBox = document.getElementById("tag-suggest-box");
+    if (!suggestBox) {
+        suggestBox = document.createElement("div");
+        suggestBox.id = "tag-suggest-box";
+        suggestBox.style.position = "absolute";
+        suggestBox.style.zIndex = "9999";
+        suggestBox.style.background = "#fff";
+        suggestBox.style.border = "1px solid #0d6efd";
+        suggestBox.style.boxShadow = "0 2px 8px rgba(0,0,0,0.2)";
+        suggestBox.style.padding = "4px";
+        suggestBox.style.borderRadius = "4px";
+        suggestBox.style.display = "none";
+        document.body.appendChild(suggestBox);
+    }
+
+    if (match) {
+        var prefix = match[1];
+        var tags = ["#NST", "#ICT", "#緩和", "#術後", "#リクシアナ"];
+        var suggestions = tags.filter(function(t) { return t.indexOf("#" + prefix) === 0; });
+        
+        if (suggestions.length > 0) {
+            var rect = textarea.getBoundingClientRect();
+            suggestBox.style.top = (rect.bottom + window.scrollY - 25) + "px";
+            suggestBox.style.left = (rect.left + window.scrollX + 15) + "px";
+            
+            var html = "";
+            for (var i = 0; i < suggestions.length; i++) {
+                html += '<div style="cursor:pointer; padding:4px 8px; color:#0d6efd; font-size:12px; font-weight:bold; border-bottom:1px dotted #ccc;" onmouseover="this.style.background=\'#e1f5fe\'" onmouseout="this.style.background=\'transparent\'" onclick="insertTagSuggest(this, \'' + suggestions[i] + '\')">' + suggestions[i] + '</div>';
+            }
+            suggestBox.innerHTML = html;
+            suggestBox.activeTextarea = textarea;
+            suggestBox.matchStart = cursor - match[0].length;
+            suggestBox.matchEnd = cursor;
+            suggestBox.style.display = "block";
+            return;
+        }
+    }
+    suggestBox.style.display = "none";
+}
+
+function insertTagSuggest(elem, tag) {
+    var suggestBox = document.getElementById("tag-suggest-box");
+    if (suggestBox && suggestBox.activeTextarea) {
+        var ta = suggestBox.activeTextarea;
+        var val = ta.value;
+        ta.value = val.substring(0, suggestBox.matchStart) + tag + " " + val.substring(suggestBox.matchEnd);
+        suggestBox.style.display = "none";
+        ta.focus();
+        if (ta.onkeyup) ta.onkeyup({key: 'Enter', keyCode: 13});
+        else if (ta.onchange) ta.onchange();
+    }
+}
+
 var updateMemoDebounced = debounce(function(id, val, element) {
     updateMemo(id, val, element);
     // autoSave(); ←これを削除（カクつきの元凶）
@@ -2425,8 +2493,8 @@ function renderKarteLinks() {
     	var pname = escapeHtml(p.name);
     	var pMemos = (p && typeof p === 'object' && p.personalMemos) ? p.personalMemos : {};
     	var myMemo = (pMemos && currentSystemId) ? (pMemos[currentSystemId] || "") : "";
-    	var memoChangeShared = isEditMode ? 'onchange="finalizeMemo(\'' + pid + '\', this)" onkeyup="updateMemoDebounced(\'' + pid + '\', this.value, this)"' : '';
-    	var memoChangePersonal = isEditMode ? 'onchange="finalizePersonalMemo(\'' + pid + '\', this)" onkeyup="updatePersonalMemoDebounced(\'' + pid + '\', this.value, this)"' : '';
+    	var memoChangeShared = isEditMode ? 'onchange="finalizeMemo(\'' + pid + '\', this)" onkeyup="updateMemoDebounced(\'' + pid + '\', this.value, this); showTagSuggest(this, event);"' : '';
+    	var memoChangePersonal = isEditMode ? 'onchange="finalizePersonalMemo(\'' + pid + '\', this)" onkeyup="updatePersonalMemoDebounced(\'' + pid + '\', this.value, this); showTagSuggest(this, event);"' : '';
 
     	// ハイライト判定（患者共有メモに基づく）
     	var isHighlight = false;
@@ -3412,7 +3480,7 @@ function renderPatients() {
     var list = getCurrentPatientsList();
     
     if(!list || list.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="11" align="center">該当病棟の患者データがありません。</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="12" align="center">該当病棟の患者データがありません。</td></tr>';
         return;
     }
     
@@ -3472,11 +3540,11 @@ function renderPatients() {
 
         var memoDisabled = isEditMode ? '' : 'disabled="disabled"';
         var mcs1 = 'onchange="finalizeMemo(\'' + escapeHtml(p.id) + '\', this)" ';
-        var mcs2 = 'onkeyup="updateMemoDebounced(\'' + escapeHtml(p.id) + '\', this.value, this)"';
+        var mcs2 = 'onkeyup="updateMemoDebounced(\'' + escapeHtml(p.id) + '\', this.value, this); showTagSuggest(this, event);"';
         var memoChangeShared = isEditMode ? mcs1 + mcs2 : '';
         
         var mcp1 = 'onchange="finalizePersonalMemo(\'' + escapeHtml(p.id) + '\', this)" ';
-        var mcp2 = 'onkeyup="updatePersonalMemoDebounced(\'' + escapeHtml(p.id) + '\', this.value, this)"';
+        var mcp2 = 'onkeyup="updatePersonalMemoDebounced(\'' + escapeHtml(p.id) + '\', this.value, this); showTagSuggest(this, event);"';
         var memoChangePersonal = isEditMode ? mcp1 + mcp2 : '';
         
         var memoAuthorHtml = '';
@@ -3509,6 +3577,7 @@ function renderPatients() {
 
         var tr = [];
         tr.push('<tr id="tr-patient-' + escapeHtml(p.id) + '">');
+        tr.push('<td class="hide-on-print" style="text-align:center;"><input type="checkbox" class="pat-select" value="'+escapeHtml(p.id)+'"></td>');
         tr.push('<td>' + escapeHtml(p.id) + '</td>');
         tr.push('<td>' + escapeHtml(p.name) + '</td>');
         tr.push('<td class="hide-on-print" style="font-size:11px; padding:2px 4px;">');
@@ -3560,14 +3629,29 @@ function renderPatients() {
         
         tr.push('<td class="' + hlClass + '" style="padding:4px;">');
         tr.push(surgeryInfoHtml); // ★メモ欄の上に手術バッジを挿入
-        var ta1 = '<textarea rows="1" ' + memoDisabled + ' ' + memoChangeShared;
-        var ta2 = ' placeholder="【共有】メモ..." style="min-height:24px; padding:2px; font-size:12px; width:100%;">';
-        tr.push(ta1 + ta2 + escapeHtml(p.memo) + '</textarea>');
         
+        // 共有メモ
+        var sharedMemoContent = escapeHtml(p.memo || "");
+        var displaySharedMemo = sharedMemoContent.replace(/(#[^\s　#]+)/g, '<span class="memo-tag">$1</span>');
+        
+        tr.push('<div class="memo-wrap" style="position:relative;">');
+        tr.push('<div class="memo-display" style="font-size:12px; padding:2px; min-height:24px; white-space:pre-wrap; cursor:text; word-break:break-all;" onclick="if(isEditMode){this.style.display=\'none\'; this.nextSibling.style.display=\'block\'; this.nextSibling.focus(); this.nextSibling.style.height=\'auto\'; this.nextSibling.style.height=this.nextSibling.scrollHeight+\'px\';}">' + (displaySharedMemo || '<span style="color:#999;">【共有】メモ...</span>') + '</div>');
+        var ta1 = '<textarea rows="1" ' + memoDisabled + ' ' + memoChangeShared;
+        var ta2 = ' placeholder="【共有】メモ..." style="display:none; min-height:24px; padding:2px; font-size:12px; width:100%;" onblur="this.style.display=\'none\'; this.previousSibling.style.display=\'block\'; this.previousSibling.innerHTML = escapeHtml(this.value || \'\').replace(/(#[^\\s　#]+)/g, \'<span class=\\\'memo-tag\\\'>$1</span>\') || \'<span style=\\\'color:#999;\\\'>【共有】メモ...</span>\';">';
+        tr.push(ta1 + ta2 + sharedMemoContent + '</textarea>');
+        tr.push('</div>');
+        
+        // 個人メモ
+        var myMemoContent = escapeHtml(myMemo || "");
+        var myDisplayMemo = myMemoContent.replace(/(#[^\s　#]+)/g, '<span class="memo-tag">$1</span>');
+        
+        tr.push('<div class="memo-wrap hide-on-print" style="position:relative; margin-top:2px;">');
+        tr.push('<div class="memo-display" style="font-size:12px; padding:2px; min-height:24px; white-space:pre-wrap; cursor:text; background:#e8f4f8; word-break:break-all;" onclick="if(isEditMode){this.style.display=\'none\'; this.nextSibling.style.display=\'block\'; this.nextSibling.focus(); this.nextSibling.style.height=\'auto\'; this.nextSibling.style.height=this.nextSibling.scrollHeight+\'px\';}">' + (myDisplayMemo || '<span style="color:#999;">【個人】メモ...</span>') + '</div>');
         var ta3 = '<textarea rows="1" ' + memoDisabled + ' ' + memoChangePersonal;
-        var ta4 = ' class="hide-on-print" placeholder="【個人】メモ..." ';
-        var ta5 = 'style="min-height:24px; padding:2px; font-size:12px; background:#e8f4f8; width:100%; margin-top:2px;">';
-        tr.push(ta3 + ta4 + ta5 + escapeHtml(myMemo) + '</textarea>');
+        var ta4 = ' placeholder="【個人】メモ..." ';
+        var ta5 = 'style="display:none; min-height:24px; padding:2px; font-size:12px; background:#e8f4f8; width:100%;" onblur="this.style.display=\'none\'; this.previousSibling.style.display=\'block\'; this.previousSibling.innerHTML = escapeHtml(this.value || \'\').replace(/(#[^\\s　#]+)/g, \'<span class=\\\'memo-tag\\\'>$1</span>\') || \'<span style=\\\'color:#999;\\\'>【個人】メモ...</span>\';">';
+        tr.push(ta3 + ta4 + ta5 + myMemoContent + '</textarea>');
+        tr.push('</div>');
         tr.push('</td>');
         
         tr.push('<td class="hide-on-print ' + hlClass + '" style="font-size:10px; color:#666;">' + memoAuthorHtml + '</td>');
@@ -5668,7 +5752,7 @@ function toggleHistoryDetail(pId, rowIndex) {
     h.push('    <td align="center" style="color:#e74c3c; font-size:14px; font-weight:bold;" class="alert-toggle ' + aClass + '">' + escapeHtml(aText) + '</td>');
     
     var memoDisabled = isEditMode ? "" : "disabled";
-    var memoChange = isEditMode ? 'onchange="updateHistoryMemo(\'' + escapeHtml(pId) + '\', this.value)"' : "";
+    var memoChange = isEditMode ? 'onchange="updateHistoryMemo(\'' + escapeHtml(pId) + '\', this.value)" onkeyup="showTagSuggest(this, event);"' : "";
     h.push('    <td><textarea ' + memoDisabled + ' ' + memoChange + ' style="width:100%; height:40px; font-size:11px; padding:2px; border:1px solid #ddd; background:#f9f9f9;" placeholder="メモを入力...">' + escapeHtml(arc.memo || "") + '</textarea></td>');
     h.push('  </tr></tbody>');
     h.push('</table>');
@@ -5680,7 +5764,7 @@ function toggleHistoryDetail(pId, rowIndex) {
     h.push('  <span style="font-size:11px; font-weight:bold; color:#0d6efd; background:#e1f5fe; padding:2px 6px; border-radius:3px;">個人メモ</span>');
     var pMemoDisabled = isEditMode ? "" : "disabled";
     // ★修正: onchange="finalizePersonalMemo(...)" を追加して、入力完了時に確実に保存と伝票発行を行わせる
-    var pMemoChange = isEditMode ? 'onchange="finalizePersonalMemo(\'' + escapeHtml(pId) + '\', this)" onkeyup="updatePersonalMemoDebounced(\'' + escapeHtml(pId) + '\', this.value, this)"' : "";
+    var pMemoChange = isEditMode ? 'onchange="finalizePersonalMemo(\'' + escapeHtml(pId) + '\', this)" onkeyup="updatePersonalMemoDebounced(\'' + escapeHtml(pId) + '\', this.value, this); showTagSuggest(this, event);"' : "";
     h.push('  <div style="flex:1;">');
     h.push('    <textarea ' + pMemoDisabled + ' ' + pMemoChange + ' style="width:100%; height:40px; font-size:11px; padding:2px; border:1px dashed #b3d7ff; background:#f0fbff;" placeholder="自分専用のメモを入力...">' + escapeHtml(myMemo) + '</textarea>');
     h.push('  </div>');
