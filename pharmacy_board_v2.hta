@@ -5240,14 +5240,22 @@ function updateAdmissionMemo(idx, val, el) {
 
 function finalizeAdmissionMemo(idx, el) {
     if (idx >= admissionPatients.length) return;
-    admissionPatients[idx].memo = el.value;
+    var p = admissionPatients[idx];
+    p.memo = el.value;
     if (el.value && currentUserName) {
-        if (!admissionPatients[idx].memoAuthors) admissionPatients[idx].memoAuthors = [];
-        if (admissionPatients[idx].memoAuthors.indexOf(currentUserName) === -1) {
-            admissionPatients[idx].memoAuthors.push(currentUserName);
+        if (!p.memoAuthors) p.memoAuthors = [];
+        if (p.memoAuthors.indexOf(currentUserName) === -1) {
+            p.memoAuthors.unshift(currentUserName);
         }
     }
     appData.admissionSchedule = admissionPatients;
+    
+    // ★追加: トランザクションの発行
+    if (typeof DataManager !== "undefined") {
+        DataManager.appendTransaction("UPDATE_ADMISSION_MEMO", {
+            patientId: p.id, value: p.memo
+        });
+    }
     autoSave();
 }
 
@@ -9176,20 +9184,33 @@ function getAvailableTags() {
     return sortedTags;
 }
 
+// カスタムタブ作成用モーダル（フリー入力と全件リスト表示）
 function createNewCustomTab() {
     var tags = getAvailableTags();
-    if (tags.length === 0) {
-        alert("現在、いずれの患者のメモにもタグが登録されていません。\nまずはメモ欄に #タグ名 を入力してください。");
-        return;
-    }
     
-    var html = '<div style="background:white; padding:20px; border-radius:8px; width:320px;">';
-    html += '<h3 style="margin-top:0;">タブにするタグを選択</h3><div style="max-height:300px; overflow-y:auto; margin-bottom:15px;">';
-    for (var i = 0; i < tags.length; i++) {
-        html += '<div style="padding:10px; border-bottom:1px solid #eee; cursor:pointer; display:flex; justify-content:space-between;" onmouseover="this.style.background=\'#f0f0f0\'" onmouseout="this.style.background=\'white\'" onclick="addCustomTabFromModal(\'' + escapeHtml(tags[i].tag) + '\')">';
-        html += '<span class="memo-tag">' + escapeHtml(tags[i].tag) + '</span> <span style="font-size:11px; color:#999;">' + tags[i].count + '名</span></div>';
+    var html = '<div style="background:white; padding:20px; border-radius:8px; width:350px;">';
+    html += '<h3 style="margin-top:0; font-size:16px;">タブにするタグを選択・入力</h3>';
+    
+    // ★フリー入力エリア
+    html += '<div style="display:flex; gap:5px; margin-bottom:15px;">';
+    html += '<input type="text" id="ipt-custom-tag-manual" placeholder="例: #緩和" style="flex:1; padding:6px; border:1px solid #ccc; border-radius:3px;" onkeypress="if(event.keyCode===13){ var v=this.value; if(v) addCustomTabFromModal(v); }">';
+    html += '<button class="btn" style="background:#0d6efd;" onclick="var v = document.getElementById(\'ipt-custom-tag-manual\').value; if(v) addCustomTabFromModal(v);">追加</button>';
+    html += '</div>';
+
+    // ★実績リストエリア (スクロールで全件確認可能)
+    html += '<div style="font-size:12px; color:#666; margin-bottom:5px;">▼ 現在の患者に使用されているタグ (' + tags.length + '件)</div>';
+    html += '<div style="max-height:250px; overflow-y:auto; border:1px solid #eee; border-radius:3px; margin-bottom:15px;">';
+    
+    if (tags.length === 0) {
+        html += '<div style="padding:10px; color:#999; text-align:center;">実績のあるタグがありません</div>';
+    } else {
+        for (var i = 0; i < tags.length; i++) {
+            html += '<div style="padding:8px 10px; border-bottom:1px solid #eee; cursor:pointer; display:flex; justify-content:space-between; align-items:center;" onmouseover="this.style.background=\'#f0f0f0\'" onmouseout="this.style.background=\'white\'" onclick="addCustomTabFromModal(\'' + escapeHtml(tags[i].tag) + '\')">';
+            html += '<span class="memo-tag">' + escapeHtml(tags[i].tag) + '</span> <span style="font-size:11px; color:#999;">' + tags[i].count + '名</span></div>';
+        }
     }
-    html += '</div><button class="btn" onclick="closeCustomTabModal()" style="width:100%; background:#ccc; color:#333;">キャンセル</button></div>';
+    html += '</div>';
+    html += '<button class="btn" onclick="closeCustomTabModal()" style="width:100%; background:#ccc; color:#333;">キャンセル</button></div>';
     
     var modal = document.createElement("div");
     modal.id = "modal-add-custom-tab";
@@ -9200,6 +9221,9 @@ function createNewCustomTab() {
     modal.style.zIndex = "3000";
     modal.innerHTML = html;
     document.body.appendChild(modal);
+    
+    // 開いた瞬間にフリー入力欄にカーソルを合わせる
+    setTimeout(function(){ var el = document.getElementById('ipt-custom-tag-manual'); if(el) el.focus(); }, 100);
 }
 
 function closeCustomTabModal() {
@@ -9209,6 +9233,10 @@ function closeCustomTabModal() {
 
 function addCustomTabFromModal(tagName) {
     closeCustomTabModal();
+    if (!tagName || tagName.trim() === "") return;
+    tagName = tagName.trim();
+    if (tagName.indexOf("#") !== 0) tagName = "#" + tagName; // #がなければ自動付与
+    
     if (!appData.settings.customTabs) appData.settings.customTabs = [];
     if (appData.settings.customTabs.indexOf(tagName) === -1) {
         appData.settings.customTabs.push(tagName);
@@ -9253,10 +9281,10 @@ function showTagSuggest(textarea, event) {
     if (match) {
         var prefix = match[1];
         
-        // ★修正: ハードコードではなく、実際の使用実績上位5つを取得
+        // ★修正: ハードコードではなく、実際の使用実績上位15つを取得
         var sortedTags = getAvailableTags();
         var tags = [];
-        for (var t = 0; t < Math.min(5, sortedTags.length); t++) {
+        for (var t = 0; t < Math.min(15, sortedTags.length); t++) {
             tags.push(sortedTags[t].tag);
         }
         

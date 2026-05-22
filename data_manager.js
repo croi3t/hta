@@ -239,6 +239,17 @@ var DataManager = (function() {
                 }
 
                 switch (op) {
+                    case "UPDATE_ADMISSION_MEMO":
+                        if (appData.admissionSchedule) {
+                            for (var a = 0; a < appData.admissionSchedule.length; a++) {
+                                if (String(appData.admissionSchedule[a].id) === String(data.patientId)) {
+                                    appData.admissionSchedule[a].memo = data.value;
+                                    this._updateMemoAuthors(appData.admissionSchedule[a], uName);
+                                    break;
+                                }
+                            }
+                        }
+                        break;
                     case "UPDATE_SURGERY_INFO":
                         if (p) {
                             p.surgeryDate = data.surgeryDate;
@@ -246,6 +257,7 @@ var DataManager = (function() {
                             p.surgeryProcedure = data.surgeryProcedure;
                             p.surgeryAnesthesia = data.surgeryAnesthesia;
                             p.surgeryHasEpi = data.surgeryHasEpi;
+                            p.surgeryLixiana = data.surgeryLixiana; // ★この1行を追加
                         }
                         break;
                     case "UPDATE_PATIENT_MEMO":
