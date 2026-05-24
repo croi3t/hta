@@ -489,7 +489,19 @@
     body.font-large span[style*="font-size"], body.font-large div[style*="font-size"], body.font-large td[style*="font-size"] { font-size: 16px !important; }
     /* 退院はオレンジのまま、タグは青に設定 */
     .status-discharge { color: #fd7e14; } 
-    .memo-tag { color: #007bff !important; font-weight: bold; } /* 青色に変更 */
+    /* タグのミニバッジ化（コンパクト表示） */
+    .memo-tag { 
+        display: inline-block;
+        background-color: #e3f2fd; /* 淡い青色の背景 */
+        color: #0d47a1 !important; /* 濃い青色の文字 */
+        border: 1px solid #bbdefb; /* 薄い青の枠線 */
+        border-radius: 4px;        /* 角を丸くする */
+        padding: 1px 4px;          /* 文字の周りの余白 */
+        margin: 1px 3px 1px 0;     /* バッジ同士の隙間 */
+        font-size: 10px;           /* 少し小さめの文字 */
+        font-weight: bold;
+        line-height: 1.2;
+    }
 
 </style>
 <script type="text/javascript">
@@ -2414,7 +2426,7 @@ function loadData(manual) {
         appData.settings.activeWardCodes = [].concat(appData.settings.userWards[currentSystemId]);
     }
     
-    renderWardTabs(); 
+    if (typeof renderCustomTabsUI !== "undefined") renderCustomTabsUI(); else renderWardTabs(); 
     renderPatients(); 
     renderTodos();
     renderHistory();
@@ -2929,7 +2941,7 @@ function doLogin() {
     }
     
     // ★先に基本の画面だけを描画して見せる
-    renderWardTabs();
+    if (typeof renderCustomTabsUI !== "undefined") renderCustomTabsUI(); else renderWardTabs();
     renderPatients();
     updateUIMode();
 
@@ -3523,7 +3535,20 @@ function renderPatients() {
         if (!p || typeof p !== 'object') continue;
         if (!p.id) continue;
         
-        if (typeof currentFilterTag !== 'undefined' && currentFilterTag && (p.memo || "").indexOf(currentFilterTag) === -1) continue;
+        // ★修正: カスタムタブ(タグ検索)選択時の条件分岐（全病棟から抽出）
+        if (typeof currentFilterTag !== 'undefined' && currentFilterTag !== "") {
+            var targetMemo = "";
+            if (currentFilterScope === "personal") {
+                // 個人メモからのみ検索
+                targetMemo = ((p.personalMemos && p.personalMemos[currentSystemId]) ? p.personalMemos[currentSystemId] : "");
+            } else {
+                // 共有メモから検索
+                targetMemo = (p.memo || "");
+            }
+            if (targetMemo.indexOf(currentFilterTag) === -1) {
+                continue; // 該当しなければスキップ
+            }
+        }
         
         var isHighlight = false;
         if (p.memo) {
@@ -9113,50 +9138,62 @@ function toggleAllPatientsSelect(checked) {
     for (var i = 0; i < checkboxes.length; i++) checkboxes[i].checked = checked;
 }
 
-// ★追加：カスタムタブを動的に生成する関数
+// カスタムタブの状態を保持する変数
+var currentFilterTag = ""; 
+var currentFilterScope = "all"; // "all" または "personal"
+
+// カスタムタブと病棟タブを統合して描画する関数（バグ修正版）
 function renderCustomTabsUI() {
     var container = document.getElementById("sub-tabs-container");
     if (!container) return;
     
-    // まず基本の病棟タブを描画
-    renderWardTabs();
+    // 基本の病棟タブを描画
+    var activeCodes = (appData.settings && appData.settings.activeWardCodes) || ["99"];
+    var html = "";
+    for (var i = 0; i < activeCodes.length; i++) {
+        var code = activeCodes[i];
+        var name = getWardName(code);
+        var activeClass = (code === currentWard && currentFilterTag === "") ? " active" : "";
+        html += '<div class="sub-tab' + activeClass + '" style="position:relative; padding-right:25px;" onclick="currentFilterTag=\'\'; switchWard(\'' + code + '\')">' + name + '</div>';
+    }
+    container.innerHTML = html;
     
-    // その横に保存されているカスタムタブを追加
+    // その横にカスタムタグタブを追加
     var customTabs = (appData.settings && appData.settings.customTabs) || [];
     for (var i = 0; i < customTabs.length; i++) {
-        var tName = customTabs[i];
+        var tabObj = customTabs[i];
+        // 過去の互換性のため文字列だったらオブジェクトに変換
+        if (typeof tabObj === "string") { tabObj = { tag: tabObj, scope: "all" }; }
+        
+        var tName = tabObj.tag;
+        var tScope = tabObj.scope || "all";
+        var scopeLabel = (tScope === "personal") ? "(個人)" : "";
+        
         var btn = document.createElement("div");
-        var isActive = (currentFilterTag === tName) ? " active" : "";
+        var isActive = (currentFilterTag === tName && currentFilterScope === tScope) ? " active" : "";
         btn.className = "sub-tab" + isActive;
-        btn.style.backgroundColor = (currentFilterTag === tName) ? "#17a2b8" : "#fff";
-        btn.style.color = (currentFilterTag === tName) ? "white" : "#17a2b8";
-        btn.style.borderColor = "#17a2b8";
-        btn.style.display = "inline-flex";
-        btn.style.alignItems = "center";
         
-        btn.innerHTML = escapeHtml(tName) + ' <span style="margin-left:5px;cursor:pointer;color:' + ((currentFilterTag === tName) ? '#fff' : '#ccc') + ';" onclick="event.stopPropagation(); removeCustomTab(\'' + escapeHtml(tName) + '\')">×</span>';
+        // スコープに応じてタブの色をわずかに変えて区別
+        if (tScope === "personal") {
+            btn.style.cssText = "position:relative; padding-right:25px; background-color:#e8f4f8; color:#007bff; border-color:#007bff;";
+        } else {
+            btn.style.cssText = "position:relative; padding-right:25px; background-color:#fce4ec; color:#c2185b; border-color:#f8bbd0;";
+        }
         
-        btn.onclick = (function(tag) {
-            return function() {
-                filterByTag(tag);
+        btn.innerHTML = escapeHtml(tName) + '<span style="font-size:9px; font-weight:normal; opacity:0.7;">' + scopeLabel + '</span>' +
+            '<span class="tab-close-btn" onclick="event.stopPropagation(); removeCustomTab(\'' + escapeHtml(tName) + '\', \'' + tScope + '\')" ' +
+            'style="position:absolute; right:5px; top:50%; margin-top:-8px; font-size:10px; cursor:pointer;">&times;</span>';
+        
+        (function(tag, scope) {
+            btn.onclick = function() {
+                currentFilterTag = tag;
+                currentFilterScope = scope;
+                renderCustomTabsUI();
+                renderPatients();
             };
-        })(tName);
+        })(tName, tScope);
         
         container.appendChild(btn);
-    }
-}
-
-function removeCustomTab(tagName) {
-    if (!confirm("タブ「" + tagName + "」を削除しますか？\n(※タグが付いた患者のメモ自体は消えません)")) return;
-    if (appData.settings && appData.settings.customTabs) {
-        var idx = appData.settings.customTabs.indexOf(tagName);
-        if (idx !== -1) {
-            appData.settings.customTabs.splice(idx, 1);
-            if (currentFilterTag === tagName) currentFilterTag = "";
-            autoSave();
-            renderCustomTabsUI();
-            renderPatients();
-        }
     }
 }
 
@@ -9184,46 +9221,50 @@ function getAvailableTags() {
     return sortedTags;
 }
 
-// カスタムタブ作成用モーダル（フリー入力と全件リスト表示）
+// モーダルから全体/個人を選んでタブを作成
 function createNewCustomTab() {
     var tags = getAvailableTags();
     
-    var html = '<div style="background:white; padding:20px; border-radius:8px; width:350px;">';
-    html += '<h3 style="margin-top:0; font-size:16px;">タブにするタグを選択・入力</h3>';
+    var html = '<div style="background:white; padding:20px; border-radius:8px; width:360px; box-shadow: 0 4px 15px rgba(0,0,0,0.2);">';
+    html += '<h3 style="margin-top:0; font-size:15px; border-bottom:2px solid #0d6efd; padding-bottom:5px;">抽出タブの新規作成</h3>';
     
-    // ★フリー入力エリア
+    // ★検索範囲の選択（ラジオボタン）
+    html += '<div style="margin-bottom:12px; background:#f8f9fa; padding:8px; border-radius:4px; font-size:12px;">';
+    html += '<b>🔍 検索するメモの範囲:</b><br>';
+    html += '<label style="cursor:pointer; margin-right:15px;"><input type="radio" name="rad-tag-scope" value="all" checked> 全員の共有メモ</label>';
+    html += '<label style="cursor:pointer;"><input type="radio" name="rad-tag-scope" value="personal"> 自分の個人メモ</label>';
+    html += '</div>';
+    
+    // フリー入力エリア
     html += '<div style="display:flex; gap:5px; margin-bottom:15px;">';
-    html += '<input type="text" id="ipt-custom-tag-manual" placeholder="例: #緩和" style="flex:1; padding:6px; border:1px solid #ccc; border-radius:3px;" onkeypress="if(event.keyCode===13){ var v=this.value; if(v) addCustomTabFromModal(v); }">';
-    html += '<button class="btn" style="background:#0d6efd;" onclick="var v = document.getElementById(\'ipt-custom-tag-manual\').value; if(v) addCustomTabFromModal(v);">追加</button>';
+    html += '<input type="text" id="ipt-custom-tag-manual" placeholder="新タグを自由入力 (例: #NST)" style="flex:1; padding:6px; border:1px solid #ccc; border-radius:3px; font-size:12px;">';
+    html += '<button class="btn" style="background:#0d6efd; padding:4px 12px;" onclick="var v=document.getElementById(\'ipt-custom-tag-manual\').value; var s=document.querySelector(\'input[name=\\.\'rad-tag-scope\\.\']:checked\').value; if(v) addCustomTabFromModal(v, s);">追加</button>';
     html += '</div>';
 
-    // ★実績リストエリア (スクロールで全件確認可能)
-    html += '<div style="font-size:12px; color:#666; margin-bottom:5px;">▼ 現在の患者に使用されているタグ (' + tags.length + '件)</div>';
-    html += '<div style="max-height:250px; overflow-y:auto; border:1px solid #eee; border-radius:3px; margin-bottom:15px;">';
+    // 実績リストエリア
+    html += '<div style="font-size:11px; color:#666; margin-bottom:4px;">▼ 現在使用されているタグ一覧 (クリックで選択)</div>';
+    html += '<div style="max-height:180px; overflow-y:auto; border:1px solid #eee; border-radius:3px; margin-bottom:15px; background:#fff;">';
     
     if (tags.length === 0) {
-        html += '<div style="padding:10px; color:#999; text-align:center;">実績のあるタグがありません</div>';
+        html += '<div style="padding:10px; color:#999; text-align:center; font-size:12px;">使用中のタグがありません</div>';
     } else {
         for (var i = 0; i < tags.length; i++) {
-            html += '<div style="padding:8px 10px; border-bottom:1px solid #eee; cursor:pointer; display:flex; justify-content:space-between; align-items:center;" onmouseover="this.style.background=\'#f0f0f0\'" onmouseout="this.style.background=\'white\'" onclick="addCustomTabFromModal(\'' + escapeHtml(tags[i].tag) + '\')">';
-            html += '<span class="memo-tag">' + escapeHtml(tags[i].tag) + '</span> <span style="font-size:11px; color:#999;">' + tags[i].count + '名</span></div>';
+            html += '<div style="padding:6px 10px; border-bottom:1px solid #eee; cursor:pointer; display:flex; justify-content:space-between; align-items:center; font-size:12px;" onmouseover="this.style.background=\'#f0f0f0\'" onmouseout="this.style.background=\'white\'" onclick="var s=document.querySelector(\'input[name=\'rad-tag-scope\']:checked\').value; addCustomTabFromModal(\'' + escapeHtml(tags[i].tag) + '\', s)">';
+            html += '<span class="memo-tag" style="color:#007bff;">' + escapeHtml(tags[i].tag) + '</span> <span style="font-size:10px; color:#999;">共用含む件数: ' + tags[i].count + '名</span></div>';
         }
     }
     html += '</div>';
-    html += '<button class="btn" onclick="closeCustomTabModal()" style="width:100%; background:#ccc; color:#333;">キャンセル</button></div>';
+    html += '<button class="btn" onclick="closeCustomTabModal()" style="width:100%; background:#ccc; color:#333; padding:5px 0;">キャンセル</button></div>';
+    
+    // 文字列置換のバグ防止エスケープ処理
+    html = html.replace(/\'\rad-tag-scope\'/g, '"rad-tag-scope"').replace(/\\.\'/g, '"');
     
     var modal = document.createElement("div");
     modal.id = "modal-add-custom-tab";
-    modal.style.position = "fixed";
-    modal.style.top = "0"; modal.style.left = "0"; modal.style.width = "100%"; modal.style.height = "100%";
-    modal.style.background = "rgba(0,0,0,0.5)";
-    modal.style.display = "flex"; modal.style.justifyContent = "center"; modal.style.alignItems = "center";
-    modal.style.zIndex = "3000";
+    modal.style.cssText = "position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); display:flex; justify-content:center; align-items:center; z-index:3000;";
     modal.innerHTML = html;
     document.body.appendChild(modal);
-    
-    // 開いた瞬間にフリー入力欄にカーソルを合わせる
-    setTimeout(function(){ var el = document.getElementById('ipt-custom-tag-manual'); if(el) el.focus(); }, 100);
+    setTimeout(function(){ document.getElementById('ipt-custom-tag-manual').focus(); }, 100);
 }
 
 function closeCustomTabModal() {
@@ -9231,18 +9272,43 @@ function closeCustomTabModal() {
     if (modal) modal.parentNode.removeChild(modal);
 }
 
-function addCustomTabFromModal(tagName) {
+function addCustomTabFromModal(tagName, scope) {
     closeCustomTabModal();
     if (!tagName || tagName.trim() === "") return;
     tagName = tagName.trim();
-    if (tagName.indexOf("#") !== 0) tagName = "#" + tagName; // #がなければ自動付与
+    if (tagName.indexOf("#") !== 0) tagName = "#" + tagName; 
     
     if (!appData.settings.customTabs) appData.settings.customTabs = [];
-    if (appData.settings.customTabs.indexOf(tagName) === -1) {
-        appData.settings.customTabs.push(tagName);
+    
+    // 重複チェック (タグ名とスコープの両方が一致するか)
+    var isDuplicate = false;
+    for (var i = 0; i < appData.settings.customTabs.length; i++) {
+        var t = appData.settings.customTabs[i];
+        if (typeof t === "object" && t.tag === tagName && t.scope === scope) isDuplicate = true;
+    }
+    
+    if (!isDuplicate) {
+        appData.settings.customTabs.push({ tag: tagName, scope: scope });
         autoSave();
     }
     currentFilterTag = tagName;
+    currentFilterScope = scope;
+    renderCustomTabsUI();
+    renderPatients();
+}
+
+function removeCustomTab(tagName, scope) {
+    if (!confirm("タブ「" + tagName + "」を削除しますか？")) return;
+    if (appData.settings && appData.settings.customTabs) {
+        for (var i = 0; i < appData.settings.customTabs.length; i++) {
+            var t = appData.settings.customTabs[i];
+            if (t.tag === tagName && t.scope === scope) {
+                appData.settings.customTabs.splice(i, 1);
+                autoSave(); break;
+            }
+        }
+    }
+    if (currentFilterTag === tagName && currentFilterScope === scope) { currentFilterTag = ""; }
     renderCustomTabsUI();
     renderPatients();
 }
