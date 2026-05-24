@@ -9146,7 +9146,7 @@ function toggleAllPatientsSelect(checked) {
 var currentFilterTag = ""; 
 var currentFilterScope = "all"; // "all" または "personal"
 
-// カスタムタブと病棟タブを統合して描画する関数（バグ修正版）
+// ★修正: ログイン中のユーザー専用のカスタムタブのみを描画する
 function renderCustomTabsUI() {
     var container = document.getElementById("sub-tabs-container");
     if (!container) return;
@@ -9162,11 +9162,16 @@ function renderCustomTabsUI() {
     }
     container.innerHTML = html;
     
-    // その横にカスタムタグタブを追加
-    var customTabs = (appData.settings && appData.settings.customTabs) || [];
+    // 未ログイン時は個人用カスタムタブの読み込みをスキップして終了
+    if (!currentSystemId) return;
+    
+    // ★修正: ログインユーザー個人のカスタムタブ配列を安全に取得
+    if (!appData.settings.userCustomTabs) appData.settings.userCustomTabs = {};
+    if (!appData.settings.userCustomTabs[currentSystemId]) appData.settings.userCustomTabs[currentSystemId] = [];
+    var customTabs = appData.settings.userCustomTabs[currentSystemId];
+    
     for (var i = 0; i < customTabs.length; i++) {
         var tabObj = customTabs[i];
-        // 過去の互換性のため文字列だったらオブジェクトに変換
         if (typeof tabObj === "string") { tabObj = { tag: tabObj, scope: "all" }; }
         
         var tName = tabObj.tag;
@@ -9177,7 +9182,6 @@ function renderCustomTabsUI() {
         var isActive = (currentFilterTag === tName && currentFilterScope === tScope) ? " active" : "";
         btn.className = "sub-tab" + isActive;
         
-        // スコープに応じてタブの色をわずかに変えて区別
         if (tScope === "personal") {
             btn.style.cssText = "position:relative; padding-right:25px; background-color:#e8f4f8; color:#007bff; border-color:#007bff;";
         } else {
@@ -9225,24 +9229,24 @@ function getAvailableTags() {
     return sortedTags;
 }
 
-// モーダルから全体/個人を選んでタブを作成
+// モーダルから全体/個人を選んでタブを作成（エラー修正版）
 function createNewCustomTab() {
     var tags = getAvailableTags();
     
     var html = '<div style="background:white; padding:20px; border-radius:8px; width:360px; box-shadow: 0 4px 15px rgba(0,0,0,0.2);">';
     html += '<h3 style="margin-top:0; font-size:15px; border-bottom:2px solid #0d6efd; padding-bottom:5px;">抽出タブの新規作成</h3>';
     
-    // ★検索範囲の選択（ラジオボタン）
+    // ラジオボタンにIDを付与して安全に判定できるようにする
     html += '<div style="margin-bottom:12px; background:#f8f9fa; padding:8px; border-radius:4px; font-size:12px;">';
     html += '<b>🔍 検索するメモの範囲:</b><br>';
-    html += '<label style="cursor:pointer; margin-right:15px;"><input type="radio" name="rad-tag-scope" value="all" checked> 全員の共有メモ</label>';
-    html += '<label style="cursor:pointer;"><input type="radio" name="rad-tag-scope" value="personal"> 自分の個人メモ</label>';
+    html += '<label style="cursor:pointer; margin-right:15px;"><input type="radio" name="rad-tag-scope" id="rad-scope-all" value="all" checked> 全員の共有メモ</label>';
+    html += '<label style="cursor:pointer;"><input type="radio" name="rad-tag-scope" id="rad-scope-personal" value="personal"> 自分の個人メモ</label>';
     html += '</div>';
     
     // フリー入力エリア
     html += '<div style="display:flex; gap:5px; margin-bottom:15px;">';
-    html += '<input type="text" id="ipt-custom-tag-manual" placeholder="新タグを自由入力 (例: #NST)" style="flex:1; padding:6px; border:1px solid #ccc; border-radius:3px; font-size:12px;">';
-    html += '<button class="btn" style="background:#0d6efd; padding:4px 12px;" onclick="var v=document.getElementById(\'ipt-custom-tag-manual\').value; var s=document.querySelector(\'input[name=\\.\'rad-tag-scope\\.\']:checked\').value; if(v) addCustomTabFromModal(v, s);">追加</button>';
+    html += '<input type="text" id="ipt-custom-tag-manual" placeholder="新タグを自由入力 (例: #NST)" style="flex:1; padding:6px; border:1px solid #ccc; border-radius:3px; font-size:12px;" onkeypress="if(event.keyCode===13){ var v=this.value; if(v) addCustomTabFromModal(v); }">';
+    html += '<button class="btn" style="background:#0d6efd; padding:4px 12px;" onclick="var v=document.getElementById(\'ipt-custom-tag-manual\').value; if(v) addCustomTabFromModal(v);">追加</button>';
     html += '</div>';
 
     // 実績リストエリア
@@ -9253,15 +9257,13 @@ function createNewCustomTab() {
         html += '<div style="padding:10px; color:#999; text-align:center; font-size:12px;">使用中のタグがありません</div>';
     } else {
         for (var i = 0; i < tags.length; i++) {
-            html += '<div style="padding:6px 10px; border-bottom:1px solid #eee; cursor:pointer; display:flex; justify-content:space-between; align-items:center; font-size:12px;" onmouseover="this.style.background=\'#f0f0f0\'" onmouseout="this.style.background=\'white\'" onclick="var s=document.querySelector(\'input[name=\'rad-tag-scope\']:checked\').value; addCustomTabFromModal(\'' + escapeHtml(tags[i].tag) + '\', s)">';
+            // onclickの中の複雑な処理を削除し、タグ名だけを関数に渡す
+            html += '<div style="padding:6px 10px; border-bottom:1px solid #eee; cursor:pointer; display:flex; justify-content:space-between; align-items:center; font-size:12px;" onmouseover="this.style.background=\'#f0f0f0\'" onmouseout="this.style.background=\'white\'" onclick="addCustomTabFromModal(\'' + escapeHtml(tags[i].tag) + '\')">';
             html += '<span class="memo-tag" style="color:#007bff;">' + escapeHtml(tags[i].tag) + '</span> <span style="font-size:10px; color:#999;">共用含む件数: ' + tags[i].count + '名</span></div>';
         }
     }
     html += '</div>';
     html += '<button class="btn" onclick="closeCustomTabModal()" style="width:100%; background:#ccc; color:#333; padding:5px 0;">キャンセル</button></div>';
-    
-    // 文字列置換のバグ防止エスケープ処理
-    html = html.replace(/\'\rad-tag-scope\'/g, '"rad-tag-scope"').replace(/\\.\'/g, '"');
     
     var modal = document.createElement("div");
     modal.id = "modal-add-custom-tab";
@@ -9276,23 +9278,38 @@ function closeCustomTabModal() {
     if (modal) modal.parentNode.removeChild(modal);
 }
 
-function addCustomTabFromModal(tagName, scope) {
+// モーダルからの呼び出しを受け取る関数（エラー修正版）
+function addCustomTabFromModal(tagName) {
+    // スコープの判定は、HTMLの組み立て時ではなくここで直接HTML要素を読み取って行う
+    var scope = "all";
+    var radPersonal = document.getElementById("rad-scope-personal");
+    if (radPersonal && radPersonal.checked) {
+        scope = "personal";
+    }
+    
     closeCustomTabModal();
     if (!tagName || tagName.trim() === "") return;
     tagName = tagName.trim();
     if (tagName.indexOf("#") !== 0) tagName = "#" + tagName; 
     
-    if (!appData.settings.customTabs) appData.settings.customTabs = [];
+    if (!currentSystemId) {
+        alert("タブを追加するにはログインしてください。");
+        return;
+    }
+    
+    if (!appData.settings.userCustomTabs) appData.settings.userCustomTabs = {};
+    if (!appData.settings.userCustomTabs[currentSystemId]) appData.settings.userCustomTabs[currentSystemId] = [];
+    var userTabs = appData.settings.userCustomTabs[currentSystemId];
     
     // 重複チェック (タグ名とスコープの両方が一致するか)
     var isDuplicate = false;
-    for (var i = 0; i < appData.settings.customTabs.length; i++) {
-        var t = appData.settings.customTabs[i];
-        if (typeof t === "object" && t.tag === tagName && t.scope === scope) isDuplicate = true;
+    for (var i = 0; i < userTabs.length; i++) {
+        var t = userTabs[i];
+        if (t && typeof t === "object" && t.tag === tagName && t.scope === scope) isDuplicate = true;
     }
     
     if (!isDuplicate) {
-        appData.settings.customTabs.push({ tag: tagName, scope: scope });
+        userTabs.push({ tag: tagName, scope: scope });
         autoSave();
     }
     currentFilterTag = tagName;
@@ -9301,14 +9318,18 @@ function addCustomTabFromModal(tagName, scope) {
     renderPatients();
 }
 
+// ★修正: タブの削除対象をユーザー個人の領域に変更
 function removeCustomTab(tagName, scope) {
     if (!confirm("タブ「" + tagName + "」を削除しますか？")) return;
-    if (appData.settings && appData.settings.customTabs) {
-        for (var i = 0; i < appData.settings.customTabs.length; i++) {
-            var t = appData.settings.customTabs[i];
-            if (t.tag === tagName && t.scope === scope) {
-                appData.settings.customTabs.splice(i, 1);
-                autoSave(); break;
+    
+    if (currentSystemId && appData.settings && appData.settings.userCustomTabs && appData.settings.userCustomTabs[currentSystemId]) {
+        var userTabs = appData.settings.userCustomTabs[currentSystemId];
+        for (var i = 0; i < userTabs.length; i++) {
+            var t = userTabs[i];
+            if (t && t.tag === tagName && t.scope === scope) {
+                userTabs.splice(i, 1);
+                autoSave(); 
+                break;
             }
         }
     }
