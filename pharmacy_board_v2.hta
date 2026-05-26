@@ -841,7 +841,7 @@ function generateAbbreviation() {}
                         <span style="border-left:1px solid #ccc; height:16px; margin:0 2px;"></span>
                         <button class="editor-btn" onclick="formatDoc('removeFormat')" title="書式のクリア" style="color:#d35400;">🧹</button>
                     </div>
-                    <div id="note-editor-rich" contenteditable="true" style="flex-grow:1; overflow-y:auto; overflow-x:hidden; font-size:13px; padding:10px; border:1px solid #ccc; border-radius:3px; outline:none; font-family:inherit; background:#fff; word-wrap:break-word; word-break:break-all; width:100%; box-sizing:border-box;" onkeyup="saveCurrentNoteLater()" onblur="saveCurrentNoteLater()"></div>
+                    <div id="note-editor-rich" contenteditable="true" style="flex-grow:1; overflow-y:auto; overflow-x:hidden; font-size:13px; padding:10px; border:1px solid #ccc; border-radius:3px; outline:none; font-family:inherit; background:#fff; word-wrap:break-word; word-break:break-all; width:100%; box-sizing:border-box;" onkeyup="saveCurrentNoteLater(false)" onblur="saveCurrentNoteLater(true)"></div>
                     <textarea id="note-content" style="display:none;"></textarea>
                 </div>
             </div>
@@ -1663,9 +1663,16 @@ function formatDoc(sCmd, sValue) {
 }
 
 var noteSaveTimer = null;
-function saveCurrentNoteLater() {
+function saveCurrentNoteLater(isBlur) {
     clearTimeout(noteSaveTimer);
-    noteSaveTimer = setTimeout(saveCurrentNote, 800);
+    if (isBlur === true) {
+        saveCurrentNote(false); // フォーカスが外れたら直ちに完全保存
+    } else {
+        // タイピング中は1.5秒待ってから「差分のみ(isTyping=true)」を同期する
+        noteSaveTimer = setTimeout(function() {
+            saveCurrentNote(true);
+        }, 1500); 
+    }
 }
 
 // 病棟共有タブのフォントサイズ変更（全体ベース）
@@ -2737,7 +2744,7 @@ function addNewNote() {
     if(titleEl) titleEl.focus();
 }
 
-function saveCurrentNote() {
+function saveCurrentNote(isTyping) {
     if(!isEditMode || selectedNoteId === null) return;
     var titleVal = document.getElementById("note-title").value;
     var richEditor = document.getElementById("note-editor-rich");
@@ -2761,7 +2768,7 @@ function saveCurrentNote() {
     }
     if (!isChanged) return;
 
-    // ★追加: トランザクションの発行
+    // ★追加: トランザクションの発行（これだけで他パソコンへのリアルタイム同期は完了します）
     if (typeof DataManager !== "undefined") {
         DataManager.appendTransaction("UPDATE_NOTE", {
             wardCode: currentWard, id: selectedNoteId, title: titleVal,
@@ -2775,7 +2782,11 @@ function saveCurrentNote() {
         var metaEl = document.getElementById("note-meta");
         if (metaEl) metaEl.innerText = "最終更新: " + currentUserName + " (" + getTodayString() + " " + getTimeString() + ")";
     }
-    autoSave();
+    
+    // ★激重対策: タイピング中の一時保存（isTyping=true）の時は、重い全ファイル上書き(autoSave)をスキップする
+    if (isTyping !== true) {
+        autoSave();
+    }
 }
 
 function deleteCurrentNote() {
@@ -2792,9 +2803,7 @@ function deleteCurrentNote() {
     renderNotes(); autoSave();
 }
 
-function formatDoc(sCmd, sValue) {
-    document.execCommand(sCmd, false, sValue);
-}
+// formatDoc removed as requested
 
 function changeSharedFontSize() {
     var size = document.getElementById("sel-fontsize").value;
