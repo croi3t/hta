@@ -6636,13 +6636,14 @@ function removeClass(el, className) {
             
             for (var i = 0; i < lines.length; i++) {
                 var rawLine = lines[i];
+                
+                // ★根本修正: 判定の邪魔になる（向）（麻）（先）（後）（般）等を一番最初に行から完全に消し去る
+                rawLine = rawLine.replace(/^([\s　]*)[（\(](向|麻|劇|毒|劇・向|毒・向|向・劇|先|後|般)[）\)]\s*/, '$1');
+                
                 var line = rawLine.replace(/^[\s　]+/, '');
                 if (!line) continue;
                 
                 var drugMatch = null;
-                
-                // ★追加: 判定前に（向）（麻）等の接頭辞を無視した文字列を用意
-                var lineForPatternC = line.replace(/^[（\(](向|麻|劇|毒|劇・向|毒・向|向・劇|先|後)[）\)]\s*/, '');
                 
                 // パターA: （持参薬）薬品名 数量T【...】（薬歴作成タブの元データ形式）
                 if (/^（持参薬）/.test(line)) {
@@ -6650,17 +6651,15 @@ function removeClass(el, className) {
                 }
                 // パターンB: テキスト整理済みの形式 - "数字) 薬品名数量 数量T 分X..." or "薬品名数量 数量T 分X..."
                 else if (/^\d+\)\s*/.test(line)) {
-                    // "4) メトホルミン250mg 2T 分2 朝夕食後" → "メトホルミン250mg"
                     var cleaned = line.replace(/^\d+\)\s*/, '');
-                    // 数量+単位の前までを薬品名とする
                     drugMatch = cleaned.replace(/\s+\d+[TＴ錠ｶCＣ包ml管本枚袋g]+.*$/i, '').trim();
                     if (!drugMatch) drugMatch = cleaned.replace(/\s+分\d.*$/, '').replace(/\s+\d+.*$/, '').trim();
                 }
                 // パターンC: Rp行なしで直接薬品名（テキスト整理済みでRp番号なし）
-                // ★修正: 先頭の（向）等を除外した lineForPatternC を使って判定する
-                else if (/^[^\s（【Rp分◆◇▼■☆※]/.test(lineForPatternC) && /\d+[TＴ錠ｶCＣ包ml管本枚袋g]+/i.test(lineForPatternC)) {
-                    drugMatch = lineForPatternC.replace(/\s+\d+[TＴ錠ｶCＣ包ml管本枚袋g]+.*$/i, '').trim();
-                    if (!drugMatch) drugMatch = lineForPatternC.replace(/\s+\d+.*$/, '').trim();
+                // 薬品名 + 数量 + 用法のパターン
+                else if (/^[^\s（【Rp分◆◇▼■☆※]/.test(line) && /\d+[TＴ錠ｶCＣ包ml管本枚袋g]+/i.test(line)) {
+                    drugMatch = line.replace(/\s+\d+[TＴ錠ｶCＣ包ml管本枚袋g]+.*$/i, '').trim();
+                    if (!drugMatch) drugMatch = line.replace(/\s+\d+.*$/, '').trim();
                 }
                 // パターンD: 薬歴作成タブのRp行の次行にある薬品名行
                 // "　　薬品名錠XX 数量T ..."のパターン（先頭がスペースインデント）
@@ -6705,6 +6704,7 @@ function removeClass(el, className) {
                 drugMatch = drugMatch.replace(/^★+/, '').replace(/^[（(]要[^）)]*[）)]/, '').replace(/\s*[【\[][^】\]]*[】\]]/g, '').replace(/^[\s　]+/, '');
                 
                 // 接頭語の除去（麻、向、劇、毒、各種メーカー名など）
+                // ※先頭で既に消しているのでここは保険としての処理になります
                 drugMatch = drugMatch.replace(/^（(向|麻|劇|毒|劇・向|毒・向|向・劇)）/, '');
                 drugMatch = drugMatch.replace(/^\((向|麻|劇|毒|劇・向|毒・向|向・劇)\)/, '');
                 drugMatch = drugMatch.replace(/^(ツムラ|ﾂﾑﾗ|クラシエ|ｸﾗｼｴ|オースギ|ｵｰｽｷﾞ|コタロー|ｺﾀﾛｰ|JG|フソー|ﾌｿｰ|ファイザー|ﾌｧｲｻﾞｰ|マイラン|ﾏｲﾗﾝ|サワイ|ｻﾜｲ|トーワ|ﾄｰﾜ|テバ|ﾃﾊﾞ|アメル|ｱﾒﾙ|日医工|ＮＰ|NP|武田|タケダ|ﾀｹﾀﾞ|明治|Meiji|ﾒｲｼﾞ)/i, '');
