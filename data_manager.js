@@ -67,6 +67,8 @@ var DataManager = (function() {
         return null;
     }
 
+    var _lastTx = { op: "", id: "", val: "" };
+
     return {
         appData: {},
 
@@ -144,6 +146,21 @@ var DataManager = (function() {
             var txDir = this.getTxDir();
             if (!txDir) return false;
 
+            // 1. 重複ガード（前回と全く同じなら無視）
+            var patientId = payload.patientId || payload.id || "none";
+            var value = payload.value;
+            
+            // 操作名・ID・値が同じなら無視
+            if (_lastTx.op === op && _lastTx.id === patientId && _lastTx.val === value) {
+                return true; // 重複につきスキップ
+            }
+            _lastTx = { op: op, id: patientId, val: value };
+
+            // 3. メモリ上のappDataへの反映 (UI側で漏れている場合への保険)
+            if (typeof appData !== 'undefined') {
+                this._applyDelta(appData, op, payload, window.currentUserName);
+            }
+
             var ts = new Date().getTime();
             var rand = Math.floor(Math.random() * 0x10000).toString(16);
             var txId = ts + "_" + (window.currentSystemId || "unknown") + "_" + rand;
@@ -158,6 +175,7 @@ var DataManager = (function() {
             };
 
             var filePath = fso.BuildPath(txDir, "tx_" + txId + ".json");
+            // 2. 差分ファイルの書き出し
             return saveFile(filePath, stringifyData(txData));
         },
 
