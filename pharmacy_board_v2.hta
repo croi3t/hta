@@ -2446,14 +2446,17 @@ function loadData(manual) {
     if(elTime) elTime.innerText = "[同期完了: " + getTimeString() + "]";
 }
 
-// 削除されていたautoSave関数を安全なラッパーラッパーとして再定義
+// ★修正: 日常操作での重いフル保存を廃止（トランザクション同期のみで動作させる）
 var autoSaveTimer = null;
 function autoSave(force) {
-    if (!isEditMode && !force) return;
-    clearTimeout(autoSaveTimer);
-    autoSaveTimer = setTimeout(function() { 
-        saveData(false); 
-    }, 2000); // 2秒に戻す
+    if (!isEditMode) return;
+    // タブの追加など、どうしてもフル保存が必要な場合(force === true)のみ実行
+    if (force === true) {
+        clearTimeout(autoSaveTimer);
+        autoSaveTimer = setTimeout(function() { 
+            saveData(false); 
+        }, 1000);
+    }
 }
 
 function renderHistory() {
@@ -3268,7 +3271,7 @@ function updateMyDisplayNameMain() {
     if(lbl) lbl.innerText = currentUserName + " (ログイン中)";
     
     alert("表示名を「" + newName + "」に更新しました。");
-    autoSave();
+    autoSave(true);
 }
 
 // ---------- 服薬指導履歴Excelファイルからの介入状況取込 ----------
@@ -5979,40 +5982,24 @@ function exportToExcel() {
                 removeClass(cell, "hide-on-print");
             }
             
-            // Textarea (共有メモ・個人メモ) の抽出
+// ★修正: Textarea(編集用)は削除し、表示用の memo-display をそのまま活かす
             var tas = cell.getElementsByTagName("textarea");
-            if(tas.length > 0) {
-                var combinedVal = "";
-                // メモ欄のセル自体がハイライト対象かどうかの判定用
-                var isCellHighlighted = (cell.style.backgroundColor !== "");
-                
-                for(var j=0; j<tas.length; j++) {
-                    var val = tas[j].value || "";
-                    if (val === tas[j].getAttribute("placeholder")) val = "";
-                    
-                    var replacementDiv = document.createElement("div");
-                    if (val !== "") {
-                        var text = val.replace(/\n/g, "<br>");
-                        if (j >= 1) { // 個人メモ (2つ目以降)
-                            replacementDiv.style.backgroundColor = "#e8f4f8";
-                            replacementDiv.innerHTML = text;
-                        } else {
-                            if(isCellHighlighted) {
-                                replacementDiv.style.backgroundColor = highlightColor;
-                            }
-                            replacementDiv.innerHTML = text;
-                        }
-                    } else {
-                        replacementDiv.innerHTML = "";
-                    }
-                    tas[j].parentNode.replaceChild(replacementDiv, tas[j]);
-                    j--; // 要素が置き換わってリストが縮むためデクリメント
+            while(tas.length > 0) {
+                tas[0].parentNode.removeChild(tas[0]);
+            }
+            
+            // ハイライト行の背景色を表示用メモにも適用する
+            var displays = cell.querySelectorAll('.memo-display');
+            for(var d=0; d<displays.length; d++){
+                if (displays[d].style.backgroundColor === "" && cell.style.backgroundColor !== "") {
+                    displays[d].style.backgroundColor = cell.style.backgroundColor;
                 }
             }
         }
         
         // ボタン等の不要要素除去
-        var hideElems = cloneTable.querySelectorAll('.hide-on-print:not(.chk-toggle), .sort-icon, .karte-btn');
+        // ★修正: 個人メモのラッパー(.memo-wrap)が印刷除外クラスで消されないように除外指定を追加
+        var hideElems = cloneTable.querySelectorAll('.hide-on-print:not(.chk-toggle):not(.memo-wrap), .sort-icon, .karte-btn, .tab-close-btn');
         for(var i = 0; i < hideElems.length; i++) {
             if (hideElems[i].parentNode) hideElems[i].parentNode.removeChild(hideElems[i]);
         }
@@ -9322,7 +9309,7 @@ function addCustomTabFromModal(tagName) {
     
     if (!isDuplicate) {
         userTabs.push({ tag: tagName, scope: scope });
-        autoSave();
+        autoSave(true);
     }
     currentFilterTag = tagName;
     currentFilterScope = scope;
@@ -9340,7 +9327,7 @@ function removeCustomTab(tagName, scope) {
             var t = userTabs[i];
             if (t && t.tag === tagName && t.scope === scope) {
                 userTabs.splice(i, 1);
-                autoSave(); 
+                autoSave(true); 
                 break;
             }
         }
