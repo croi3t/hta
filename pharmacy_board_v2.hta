@@ -3747,63 +3747,29 @@ function toggleAlertLevel(id) {
     var p = findPatientById(id);
     if(!p) return;
     p.alertLevel = ((p.alertLevel || 0) + 1) % 3;
-    var aLevel = p.alertLevel;
-    var aText = aLevel === 1 ? "？" : (aLevel === 2 ? "！" : "");
-    var aClass = aLevel === 1 ? "alert-question" : (aLevel === 2 ? "alert-exclamation" : "alert-none");
 
-    var trId = "tr-patient-" + p.id;
-    var tr = document.getElementById(trId);
-    if (tr) {
-        var td = tr.querySelector(".alert-toggle");
-        if (td) { td.className = "alert-toggle " + aClass; td.innerText = aText; }
-    }
-    // ★追加: トランザクションの発行
     if (typeof DataManager !== "undefined") {
         DataManager.appendTransaction("TOGGLE_ALERT", {
             patientId: id, wardCode: currentWard, value: p.alertLevel
         });
     }
-
+    renderPatients();
 }
 
 function toggleStatus(id) {
     if(!isEditMode) return;
     var p = findPatientById(id);
     if(!p) return;
+    
     p.status = ((p.status || 0) + 1) % 4;
     p.statusAuthor = p.status === 0 ? "" : currentUserName;
 
-    // ★追加: 介入状況変更のトランザクション発行
     if (typeof DataManager !== "undefined") {
         DataManager.appendTransaction("TOGGLE_STATUS", {
             patientId: id, wardCode: currentWard, value: p.status, author: p.statusAuthor
         });
     }
-
-    var trId = "tr-patient-" + p.id;
-    var tr = document.getElementById(trId);
-    if (tr) {
-        var td = tr.querySelector(".status-cell");
-        if (td) {
-            var statIdx = p.status;
-            var statClass = STATUS_CLASSES[statIdx];
-            var rawStatText = STATUS_TEXTS[statIdx];
-            var statText = rawStatText === "(未設定)" ? "未" : (rawStatText === "介入予定" ? "予定" : (rawStatText === "指導済" ? "指導" : "記録"));
-            
-            var authorHtml = p.statusAuthor ? '<br><span class="status-author">' + escapeHtml(p.statusAuthor) + '</span>' : '';
-            var statUnderline = (statIdx === 1 || statIdx === 2) ? 'text-decoration:underline;' : '';
-            
-            td.className = "status-cell " + statClass;
-            td.style.cssText = statUnderline;
-            td.innerHTML = statText + authorHtml;
-        }
-    }
-    if (typeof DataManager !== "undefined") {
-        DataManager.appendTransaction("TOGGLE_STATUS", {
-            patientId: id, wardCode: currentWard, value: p.status, author: p.statusAuthor
-        });
-    }
-
+    renderPatients();
 }
 
 // ---------- 介入者ドラッグ選択機能 (Vol.11) ----------
@@ -3978,35 +3944,12 @@ function togglePrescriptionCheck(id) {
     if(typeof currentVal === "boolean") currentVal = currentVal ? 2 : 0;
     p.chkPrescription = (currentVal + 1) % 3;
 
-    // ★追加: 処方チェックのトランザクション発行
     if (typeof DataManager !== "undefined") {
         DataManager.appendTransaction("TOGGLE_PRESCRIPTION", {
             patientId: id, wardCode: currentWard, value: p.chkPrescription
         });
     }
-
-    var trId = "tr-patient-" + p.id;
-    var tr = document.getElementById(trId);
-    if (tr) {
-        var td = tr.querySelector(".chk-toggle");
-        if (td) {
-            var val = p.chkPrescription;
-            if(val === 1) {
-                td.className = "chk-toggle status-chk-half"; td.innerHTML = "&#9744;"; td.style.backgroundColor = "#ffe8a1";
-            } else if(val === 2) {
-                td.className = "chk-toggle status-chk-on"; td.innerHTML = "&#10004;"; td.style.backgroundColor = "";
-            } else {
-                td.className = "chk-toggle"; td.innerHTML = ""; td.style.backgroundColor = "";
-            }
-        }
-    }
-    // ★追加: トランザクションの発行
-    if (typeof DataManager !== "undefined") {
-        DataManager.appendTransaction("TOGGLE_PRESCRIPTION", {
-            patientId: id, wardCode: currentWard, value: p.chkPrescription
-        });
-    }
-
+    renderPatients();
 }
 
 function updateMemo(id, val, element) {
