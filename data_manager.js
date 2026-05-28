@@ -146,37 +146,29 @@ var DataManager = (function() {
             var txDir = this.getTxDir();
             if (!txDir) return false;
 
-            // 1. 重複ガード（前回と全く同じなら無視）
-            var patientId = payload.patientId || payload.id || "none";
-            var value = payload.value;
-            
-            // 操作名・ID・値が同じなら無視
-            if (_lastTx.op === op && _lastTx.id === patientId && _lastTx.val === value) {
-                return true; // 重複につきスキップ
-            }
-            _lastTx = { op: op, id: patientId, val: value };
+            // 1. 重複ガード
+            var currentTxDataStr = stringifyData({ op: op, data: payload });
+            if (this._lastTxDataStr === currentTxDataStr) return true;
+            this._lastTxDataStr = currentTxDataStr;
 
-            // 3. メモリ上のappDataへの反映 (UI側で漏れている場合への保険)
+            // (UI側で漏れている場合への保険としてローカルにも適用)
             if (typeof appData !== 'undefined') {
                 this._applyDelta(appData, op, payload, window.currentUserName);
             }
 
+            // 2. トランザクションファイル作成
             var ts = new Date().getTime();
-            var rand = Math.floor(Math.random() * 0x10000).toString(16);
-            var txId = ts + "_" + (window.currentSystemId || "unknown") + "_" + rand;
-            
-            var txData = {
-                txId: txId,
-                ts: ts,
-                uId: window.currentSystemId,
-                uName: window.currentUserName,
-                op: op,
-                data: payload
-            };
+            var txId = ts + "_" + (window.currentSystemId || "unknown") + "_" + Math.floor(Math.random() * 0x10000).toString(16);
+            var txData = { txId: txId, ts: ts, uId: window.currentSystemId, uName: window.currentUserName, op: op, data: payload };
+            saveFile(fso.BuildPath(txDir, "tx_" + txId + ".json"), stringifyData(txData));
 
-            var filePath = fso.BuildPath(txDir, "tx_" + txId + ".json");
-            // 2. 差分ファイルの書き出し
-            return saveFile(filePath, stringifyData(txData));
+            // 3. ★新機能：トランザクション発行の瞬間に「マージ」を実行
+            // 現在メモリにある appData を最新のTx込みで即座にマスターへ書き込む
+            if (typeof window.appData !== "undefined") {
+                this.saveAll(window.appData); 
+            }
+            
+            return true;
         },
 
         replayTransactions: function(appData) {
