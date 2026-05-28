@@ -68,6 +68,18 @@ var DataManager = (function() {
     }
 
     var _lastTx = { op: "", id: "", val: "" };
+    var _lastSavedDataHash = "";
+    
+    function getHash(obj) {
+        var str = stringifyData(obj);
+        var hash = 0;
+        if (!str) return hash;
+        for (var i = 0; i < str.length; i++) {
+            hash = ((hash << 5) - hash) + str.charCodeAt(i);
+            hash |= 0;
+        }
+        return hash;
+    }
 
     return {
         appData: {},
@@ -549,6 +561,13 @@ var DataManager = (function() {
             merged.settings.announcement = merged.announcement;
 
             if (merged.settings.yrSettings) delete merged.settings.yrSettings;
+
+            // ★最適化：ハッシュ値をチェックし、内容が同じならファイル書き込みをスキップ
+            var currentHash = getHash(merged);
+            if (currentHash === _lastSavedDataHash) {
+                return merged; // 変更なし！何もしない（これが一番速い）
+            }
+            _lastSavedDataHash = currentHash;
 
             var patObj = { 
                 patients: merged.patients, 
