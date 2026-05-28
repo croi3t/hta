@@ -4088,14 +4088,11 @@ function finalizeMemo(id, element) {
     // 1. メモリを即時更新
     p.memo = val;
 
-    // 2. トランザクション発行
+    // 2. トランザクションファイルを作成する（これは非常に軽いので即時実行）
     if (typeof DataManager !== "undefined") {
         DataManager.appendTransaction("UPDATE_PATIENT_MEMO", {
             patientId: id, wardCode: currentWard, value: val
         });
-        
-        // ★ここが重要：トランザクション発行後、明示的にマスターを更新させる
-        DataManager.saveAll(appData); 
     }
 
     // 3. 画面再描画（UIの完全同期）
