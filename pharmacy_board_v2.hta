@@ -1364,7 +1364,7 @@ function generateAbbreviation() {}
 <script src="js/surgery_fetcher.js" charset="utf-8"></script>
 <script>
 // ---------- グローバル変数と初期設定 ----------
-var SHARED_DATA_PATH = "Z:\\reiwa\\test\\data"; // 優先される共有データの保存先
+var SHARED_DATA_PATH = "Z:\\reiwa\\data"; // 優先される共有データの保存先
 var ACTUAL_DATA_PATH = "";         // 実際に解決されたパス（表示用）
 
 function getUNCPath(drivePath) {
@@ -1626,7 +1626,7 @@ function insertTagSuggest(elem, tag) {
 
 var updateMemoDebounced = debounce(function(id, val, element) {
     updateMemo(id, val, element);
-    // autoSave(); ←これを削除（カクつきの元凶）
+    //  ←これを削除（カクつきの元凶）
 }, 500);
 
 var updatePersonalMemoDebounced = debounce(function(id, val, element) {
@@ -1643,12 +1643,12 @@ var updatePersonalMemoDebounced = debounce(function(id, val, element) {
     // ★ここにあった if (typeof DataManager !== "undefined") { ... } の伝票発行ブロックをまるごと削除します
     // （入力完了時の finalizePersonalMemo 関数側に任せるため）
     
-    // autoSave(); ←これを削除
+    //  ←これを削除
 }, 500);
 
 var updateAdmissionMemoDebounced = debounce(function(idx, val, el) {
     updateAdmissionMemo(idx, val, el);
-    // autoSave(); ←これを削除
+    //  ←これを削除
 }, 500);
 
 // ---------- UI切り替え制御 ----------
@@ -1848,7 +1848,7 @@ function addWard(code) {
     appData.settings.activeWardCodes.push(code);
     closeAddWardModal();
     currentWard = code;
-    // autoSave() を呼ばない: セッション中の一時追加のみ
+    //  を呼ばない: セッション中の一時追加のみ
     renderWardTabs();
     if (typeof TodoUI !== "undefined") TodoUI.renderSubTabs(); // ToDoタブも同期
     if (document.getElementById("tab-patients").className.indexOf("active") !== -1) renderPatients();
@@ -1865,7 +1865,7 @@ function removeWard(code) {
     }
     appData.settings.activeWardCodes = newCodes;
     if (currentWard === code) currentWard = newCodes[0];
-    autoSave();
+
     renderWardTabs();
     if (typeof TodoUI !== "undefined") TodoUI.renderSubTabs(); // ToDoタブも同期
     if (document.getElementById("tab-patients").className.indexOf("active") !== -1) renderPatients();
@@ -2446,18 +2446,6 @@ function loadData(manual) {
     if(elTime) elTime.innerText = "[同期完了: " + getTimeString() + "]";
 }
 
-// ★修正: 日常操作での重いフル保存を廃止（トランザクション同期のみで動作させる）
-var autoSaveTimer = null;
-function autoSave(force) {
-    if (!isEditMode) return;
-    // タブの追加など、どうしてもフル保存が必要な場合(force === true)のみ実行
-    if (force === true) {
-        clearTimeout(autoSaveTimer);
-        autoSaveTimer = setTimeout(function() { 
-            saveData(false); 
-        }, 1000);
-    }
-}
 
 function renderHistory() {
     var tbody = document.getElementById("tbody-history");
@@ -2742,7 +2730,7 @@ function addNewNote() {
     notes.unshift(newNote);
     selectedNoteId = newId;
     renderNotes();
-    autoSave();
+
     var titleEl = document.getElementById("note-title");
     if(titleEl) titleEl.focus();
 }
@@ -2788,7 +2776,7 @@ function saveCurrentNote(isTyping) {
     
     // ★激重対策: タイピング中の一時保存（isTyping=true）の時は、重い全ファイル上書き(autoSave)をスキップする
     if (isTyping !== true) {
-        autoSave();
+
     }
 }
 
@@ -2803,7 +2791,7 @@ function deleteCurrentNote() {
         }
     }
     selectedNoteId = null;
-    renderNotes(); autoSave();
+    renderNotes(); 
 }
 
 // formatDoc removed as requested
@@ -2826,7 +2814,7 @@ function toggleTodo(id) {
     for(var i=0; i<todos.length; i++) {
         if(todos[i].id === id) { todos[i].done = !todos[i].done; break; }
     }
-    renderTodos(); autoSave();
+    renderTodos(); 
 }
 
 function deleteTodo(id) {
@@ -2835,7 +2823,7 @@ function deleteTodo(id) {
     for(var i=0; i<todos.length; i++) {
         if(todos[i].id === id) { todos[i].deleted = true; break; }
     }
-    renderTodos(); autoSave();
+    renderTodos(); 
 }
 
 function openKarteLink(type, pid) {
@@ -2935,7 +2923,7 @@ function doLogin() {
     appData.users = appData.settings.users; // 同期
     if (uName !== "") {
         appData.settings.users[sysId] = uName;
-        autoSave();
+
     } else if (appData.settings.users[sysId]) {
         uName = appData.settings.users[sysId];
     }
@@ -3092,7 +3080,7 @@ function editAnnouncement() {
         appData.settings.announcement = msg;
         
         updateAnnouncementUI();
-        autoSave();
+
     }
 }
 
@@ -3278,7 +3266,7 @@ function updateMyDisplayNameMain() {
     if(lbl) lbl.innerText = currentUserName + " (ログイン中)";
     
     alert("表示名を「" + newName + "」に更新しました。");
-    autoSave(true);
+
 }
 
 // ---------- 服薬指導履歴Excelファイルからの介入状況取込 ----------
@@ -3775,7 +3763,7 @@ function toggleAlertLevel(id) {
             patientId: id, wardCode: currentWard, value: p.alertLevel
         });
     }
-    autoSave();
+
 }
 
 function toggleStatus(id) {
@@ -3815,7 +3803,7 @@ function toggleStatus(id) {
             patientId: id, wardCode: currentWard, value: p.status, author: p.statusAuthor
         });
     }
-    autoSave();
+
 }
 
 // ---------- 介入者ドラッグ選択機能 (Vol.11) ----------
@@ -3950,8 +3938,7 @@ function selectUserStatus(id, userName) {
     if(userName === "") p.status = 0;
     
     renderPatients();
-    autoSave();
-    
+
     var menu = document.getElementById("user-select-menu");
     if(menu) menu.style.display = "none";
 }
@@ -4019,7 +4006,7 @@ function togglePrescriptionCheck(id) {
             patientId: id, wardCode: currentWard, value: p.chkPrescription
         });
     }
-    autoSave();
+
 }
 
 function updateMemo(id, val, element) {
@@ -4076,7 +4063,7 @@ function finalizePersonalMemo(id, element) {
             patientId: id, wardCode: currentWard, userId: currentSystemId, value: val
         });
     }
-    autoSave();
+
 }
 
 function finalizeMemo(id, element) {
@@ -4111,7 +4098,7 @@ function resetAllStatus() {
                 list[i].statusAuthor = "";
             }
             renderPatients();
-            autoSave();
+
             alert("介入状況のリセットが完了しました。");
         }
     }
@@ -4127,7 +4114,7 @@ function resetAllPrescriptionChecks() {
             list[i].chkPrescription = 0;
         }
         renderPatients();
-        autoSave();
+
         alert("処方確認のチェックをクリアしました。");
     }
 }
@@ -4344,7 +4331,7 @@ function fetchBloodDateForPatient(patientId) {
     
     fetchSingleBloodDate(p, function() {
         renderPatients();
-        autoSave();
+
     });
 }
 
@@ -4564,8 +4551,7 @@ function fetchSingleBloodDate(p, callback) {
                 var cell = tr.querySelector('.blood-date-cell');
                 if (cell && p.bloodDetail) cell.title = '採血詳細: ' + escapeHtml(p.bloodDetail) + ' (クリックで手動修正)';
             }
-            
-            autoSave(); 
+
             cleanupAndCallback();
         }, 1500); 
     };
@@ -4831,8 +4817,7 @@ function processFetchedPatients(newPatients, wardName) {
         
         renderPatients();
         renderHistory(); // 履歴タブの更新
-        autoSave();
-        
+
         var msg = wardName + " のリストを更新しました。(" + mergedList.length + "件)";
         if(historyAdded > 0) msg += " ※退室/追加の変動がありました (履歴タブ参照)";
         
@@ -5049,7 +5034,7 @@ function parseBloodDateFromDoc(doc, patientId) {
         var cell = tr.querySelector('.blood-date-cell');
         if (cell && p.bloodDetail) cell.title = '採血詳細: ' + escapeHtml(p.bloodDetail) + ' (クリックで手動修正)';
     }
-    autoSave();
+
 }
 
 
@@ -5139,7 +5124,7 @@ function parseAdmissionHtml(doc) {
         admissionPatients = newAdmissions;
         appData.admissionSchedule = newAdmissions;
         renderAdmissionSchedule();
-        autoSave();
+
     } catch(e) {
         // パースエラーはサイレントに
     }
@@ -5222,7 +5207,7 @@ function toggleAdmissionStatus(idx) {
         });
     }
     renderAdmissionSchedule();
-    autoSave();
+
 }
 
 function toggleAdmissionAlert(idx) {
@@ -5238,7 +5223,7 @@ function toggleAdmissionAlert(idx) {
         });
     }
     renderAdmissionSchedule();
-    autoSave();
+
 }
 
 // changeBloodDate: IDベースに変更 (手動入力。DOM直接更新)
@@ -5274,7 +5259,7 @@ function changeBloodDate(patientId) {
             var cell = tr.querySelector('.blood-date-cell');
             if (cell) cell.title = 'クリックで採血日を手動修正';
         }
-        autoSave();
+
     }
 }
 
@@ -5285,7 +5270,7 @@ function changeAdmissionBloodDate(index) {
     if (newVal !== null) {
         p.bloodDate = newVal;
         renderAdmissionSchedule();
-        autoSave();
+
     }
 }
 
@@ -5313,7 +5298,7 @@ function finalizeAdmissionMemo(idx, el) {
             patientId: p.id, value: p.memo
         });
     }
-    autoSave();
+
 }
 
 function editTodo(index) {
@@ -5466,7 +5451,7 @@ function startDeadlineTimer() {
                     t.alerted = true; // 了解
                     delete snoozeList[t.id];
                     
-                    // ★修正：autoSave()の遅延を許さず、アラート直後に強制即時保存！
+                    // ★修正：の遅延を許さず、アラート直後に強制即時保存！
                     saveData(false); 
                     
                 } else {
@@ -5485,7 +5470,7 @@ function startDeadlineTimer() {
                 alert("【タスク完了のお知らせ】\n\n「" + t.text + "」\nが完了されました。");
                 t.doneAlerted = true;
                 
-                // ★修正：autoSave()の遅延を許さず、アラート直後に強制即時保存！
+                // ★修正：の遅延を許さず、アラート直後に強制即時保存！
                 saveData(false);
             }
         }
@@ -5893,8 +5878,7 @@ function updateHistoryMemo(pId, newVal) {
             patientId: pId, wardCode: currentWard, value: newVal
         });
     }
-    
-    autoSave();
+
 }
 
 // ---------- トランザクション履歴からの緊急復元ロジック (Vol.15) ----------
@@ -9325,7 +9309,7 @@ function addCustomTabFromModal(tagName) {
     
     if (!isDuplicate) {
         userTabs.push({ tag: tagName, scope: scope });
-        autoSave(true);
+
     }
     currentFilterTag = tagName;
     currentFilterScope = scope;
@@ -9343,7 +9327,7 @@ function removeCustomTab(tagName, scope) {
             var t = userTabs[i];
             if (t && t.tag === tagName && t.scope === scope) {
                 userTabs.splice(i, 1);
-                autoSave(true); 
+
                 break;
             }
         }
@@ -9451,6 +9435,7 @@ function insertTagSuggest(elem, tag) {
 <div id="tag-suggest-box" style="position:absolute; background:#fff; border:1px solid #ccc; display:none; z-index:999; padding:5px;"></div>
 </body>
 </html>
+
 
 
 
