@@ -4089,23 +4089,17 @@ function finalizeMemo(id, element) {
     p.memo = val;
 
     // 2. トランザクション発行
-    // (※この中で data_manager の _applyDelta が走り、_updateMemoAuthors も自動的に処理されます)
     if (typeof DataManager !== "undefined") {
         DataManager.appendTransaction("UPDATE_PATIENT_MEMO", {
             patientId: id, wardCode: currentWard, value: val
         });
+        
+        // ★ここが重要：トランザクション発行後、明示的にマスターを更新させる
+        DataManager.saveAll(appData); 
     }
 
-    // 3. UIの即時反映（更新履歴の表示更新含む）
-    var tdMemo = element.parentNode;
-    if (tdMemo && tdMemo.tagName && tdMemo.tagName.toLowerCase() === 'td') {
-        var tdHistory = tdMemo.nextSibling;
-        if (tdHistory) {
-            tdHistory.innerHTML = escapeHtml(p.memoAuthors ? p.memoAuthors.join(" / ") : "");
-        }
-    }
-    
-    // autoSaveを呼ばない（代わりにDataManagerのトランザクションが保存を担うため）
+    // 3. 画面再描画（UIの完全同期）
+    renderPatients();
 }
 
 function resetAllStatus() {

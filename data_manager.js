@@ -460,8 +460,13 @@ var DataManager = (function() {
         saveAll: function(myData) {
             if (!initFSO()) return myData;
             
+            // 1. 最新のディスク状態を読み込む
             var diskData = this.loadAll(); 
-            this.replayTransactions(myData);
+            
+            // 2. ★超重要: 読み込んだ後に、未適用のトランザクションを必ず自データ(myData)に適用する
+            this.replayTransactions(myData); 
+            
+            // 3. その上でマージする（最新のトランザクションが反映されたmyDataで上書き）
             var merged = this._mergeAndSave(myData, diskData);
             
             // ★追加: 保存のタイミングでバックアップを確認・実行
