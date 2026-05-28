@@ -174,11 +174,10 @@ var DataManager = (function() {
             var txData = { txId: txId, ts: ts, uId: window.currentSystemId, uName: window.currentUserName, op: op, data: payload };
             saveFile(fso.BuildPath(txDir, "tx_" + txId + ".json"), stringifyData(txData));
 
-            // 3. ★新機能：トランザクション発行の瞬間に「マージ」を実行
-            // 現在メモリにある appData を最新のTx込みで即座にマスターへ書き込む
-            if (typeof window.appData !== "undefined") {
-                this.saveAll(window.appData); 
-            }
+            // 3. saveAll is removed for performance
+            // if (typeof window.appData !== "undefined") {
+            //     this.saveAll(window.appData); 
+            // }
             
             return true;
         },
