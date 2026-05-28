@@ -2875,12 +2875,19 @@ window.onload = function() {
         var tabNotes = document.getElementById('tab-notes');
         var isNotesActive = tabNotes && tabNotes.className.indexOf('active') !== -1;
 
-        // ★未保存チェックのロックを廃止！
+        // ★修正: データの読み込みだけでなく、マージ済みの最新データを適用する
+        if (typeof DataManager !== "undefined") {
+            // トランザクションを適用して appData を最新にする
+            var updated = DataManager.replayTransactions(appData);
+            
+            // ★ここが重要: 差分があった場合、マスターファイル自体を最新化するためにsaveAllを呼ぶ
+            if (updated) {
+                DataManager.saveAll(appData);
+            }
+        }
+
         // 自分が文字を打っている最中、または採血取得中でなければ、1分間隔で画面を更新する
         if (isTyping || isYakurekiActive || isNotesActive || window.isBloodFetching) {
-            if (typeof DataManager !== "undefined") {
-                DataManager.replayTransactions(appData);
-            }
             var elTime = document.getElementById("last-local-update-time");
             if (elTime) {
                 var reason = window.isBloodFetching ? "採血取得中" : "編集中";
@@ -4077,38 +4084,28 @@ function finalizeMemo(id, element) {
     var p = findPatientById(id);
     var val = element.value;
     if(!p) return;
+    
+    // 1. メモリを即時更新
     p.memo = val;
 
-    if(val.trim() !== "") {
-        var newAuthor = currentUserName + " (" + getTodayString().slice(5) + " " + getTimeString() + ")";
-        if (!p.memoAuthors) p.memoAuthors = [];
-        if (p.memoAuthors.length > 0 && p.memoAuthors[0].indexOf(currentUserName) === 0) {
-            p.memoAuthors[0] = newAuthor;
-        } else {
-            p.memoAuthors.unshift(newAuthor);
-        }
-        if (p.memoAuthors.length > 3) p.memoAuthors = p.memoAuthors.slice(0, 3);
-        p.memoAuthor = newAuthor;
-    } else {
-        p.memoAuthors = [];
-        p.memoAuthor = "";
-    }
-
-    var tdMemo = element.parentNode;
-    if (tdMemo && tdMemo.tagName && tdMemo.tagName.toLowerCase() === 'td') {
-        var tdHistory = tdMemo.nextSibling;
-        if (tdHistory) {
-            var historyText = p.memoAuthors && p.memoAuthors.length > 0 ? escapeHtml(p.memoAuthors.join(" / ")) : "";
-            tdHistory.innerHTML = historyText;
-        }
-    }
-    // ★追加: トランザクションの発行
+    // 2. トランザクション発行
+    // (※この中で data_manager の _applyDelta が走り、_updateMemoAuthors も自動的に処理されます)
     if (typeof DataManager !== "undefined") {
         DataManager.appendTransaction("UPDATE_PATIENT_MEMO", {
             patientId: id, wardCode: currentWard, value: val
         });
     }
-    autoSave();
+
+    // 3. UIの即時反映（更新履歴の表示更新含む）
+    var tdMemo = element.parentNode;
+    if (tdMemo && tdMemo.tagName && tdMemo.tagName.toLowerCase() === 'td') {
+        var tdHistory = tdMemo.nextSibling;
+        if (tdHistory) {
+            tdHistory.innerHTML = escapeHtml(p.memoAuthors ? p.memoAuthors.join(" / ") : "");
+        }
+    }
+    
+    // autoSaveを呼ばない（代わりにDataManagerのトランザクションが保存を担うため）
 }
 
 function resetAllStatus() {
