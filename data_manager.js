@@ -460,7 +460,7 @@ var DataManager = (function() {
             } catch(e) {}
         },
 
-        saveAll: function(myData) {
+        saveAll: function(myData, forceSave) {
             if (!initFSO()) return myData;
             
             // 1. 最新のディスク状態を読み込む
@@ -470,7 +470,7 @@ var DataManager = (function() {
             this.replayTransactions(myData); 
             
             // 3. その上でマージする（最新のトランザクションが反映されたmyDataで上書き）
-            var merged = this._mergeAndSave(myData, diskData);
+            var merged = this._mergeAndSave(myData, diskData, forceSave);
             
             // ★追加: 保存のタイミングでバックアップを確認・実行
             this._checkAndCreateBackup(merged);
@@ -480,7 +480,7 @@ var DataManager = (function() {
             return merged; 
         },
 
-        _mergeAndSave: function(myData, diskData) {
+        _mergeAndSave: function(myData, diskData, forceSave) {
             var merged = {};
 
             merged.patients = myData.patients || {};
@@ -563,7 +563,7 @@ var DataManager = (function() {
 
             // ★最適化：ハッシュ値をチェックし、内容が同じならファイル書き込みをスキップ
             var currentHash = getHash(merged);
-            if (currentHash === _lastSavedDataHash) {
+            if (!forceSave && currentHash === _lastSavedDataHash) {
                 return merged; // 変更なし！何もしない（これが一番速い）
             }
             _lastSavedDataHash = currentHash;

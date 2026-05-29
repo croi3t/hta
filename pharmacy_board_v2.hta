@@ -2848,44 +2848,18 @@ window.onload = function() {
     
     // 定期更新タイマー (1分ごとに共有データを再ロード)
     setInterval(function() {
-        var activeEl = document.activeElement;
-        // カーソルが入力枠にあるか（文字入力中か）を判定
-        var isTyping = activeEl && (
-            activeEl.tagName === 'TEXTAREA' || 
-            activeEl.tagName === 'INPUT' || 
-            activeEl.isContentEditable === true || 
-            activeEl.getAttribute('contenteditable') === 'true' ||
-            activeEl.id === 'note-editor-rich'
-        );
-
-        var tabYakureki = document.getElementById('tab-yakureki');
-        var isYakurekiActive = tabYakureki && tabYakureki.className.indexOf('active') !== -1;
-        var tabNotes = document.getElementById('tab-notes');
-        var isNotesActive = tabNotes && tabNotes.className.indexOf('active') !== -1;
-
-        // ★修正: データの読み込みだけでなく、マージ済みの最新データを適用する
-        if (typeof DataManager !== "undefined") {
-            // トランザクションを適用して appData を最新にする
-            var updated = DataManager.replayTransactions(appData);
-            
-            // ★ここが重要: 差分があった場合、マスターファイル自体を最新化するためにsaveAllを呼ぶ
-            if (updated) {
-                DataManager.saveAll(appData);
-            }
+    if (typeof DataManager !== "undefined") {
+        // 1. 他のPCのトランザクションを読み込んで appData に適用
+        var updated = DataManager.replayTransactions(appData);
+        
+        // 2. 変更があった場合、強制的に保存(forceSave=true)してマスターを更新
+        if (updated) {
+            DataManager.saveAll(appData, true); // true を渡すことで強制更新
         }
-
-        // 自分が文字を打っている最中、または採血取得中でなければ、1分間隔で画面を更新する
-        if (isTyping || isYakurekiActive || isNotesActive || window.isBloodFetching) {
-            var elTime = document.getElementById("last-local-update-time");
-            if (elTime) {
-                var reason = window.isBloodFetching ? "採血取得中" : "編集中";
-                elTime.innerText = "[" + reason + "のため自動更新 一時停止]";
-            }
-            return;
-        }
-
-        loadData(false); 
-    }, 60000);
+    }
+    // 3. 画面の再描画（最新のデータ状態を表示）
+    loadData(false);
+}, 60000);
 };
 
 // ---------- ログイン制御 ----------
@@ -4078,8 +4052,18 @@ function resetAllStatus() {
     if(confirm("【警告】\n表示中の病棟の「介入状況」をすべてリセット（初期化）します。\n※マーク(！/？)および共有メモは保持されます。\n\n本当によろしいですか？")) {
         if(confirm("最終確認です。本当に一括リセットを実行してよろしいですか？")) {
             for(var i=0; i<list.length; i++) {
-                list[i].status = 0;
-                list[i].statusAuthor = "";
+                if (list[i].status !== 0) {
+                    list[i].status = 0;
+                    list[i].statusAuthor = "";
+                    if (typeof DataManager !== "undefined") {
+                        DataManager.appendTransaction("TOGGLE_STATUS", {
+                            patientId: list[i].id, 
+                            wardCode: currentWard, 
+                            value: 0,
+                            author: ""
+                        });
+                    }
+                }
             }
             renderPatients();
 
@@ -4095,7 +4079,16 @@ function resetAllPrescriptionChecks() {
     
     if(confirm("表示中の病棟の「処方」確認状態（✔・☐）をすべて解除してよろしいですか？")) {
         for(var i=0; i<list.length; i++) {
-            list[i].chkPrescription = 0;
+            if (list[i].chkPrescription) {
+                list[i].chkPrescription = false;
+                if (typeof DataManager !== "undefined") {
+                    DataManager.appendTransaction("TOGGLE_PRESCRIPTION", {
+                        patientId: list[i].id, 
+                        wardCode: currentWard, 
+                        value: false
+                    });
+                }
+            }
         }
         renderPatients();
 
