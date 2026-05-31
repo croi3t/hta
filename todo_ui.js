@@ -47,6 +47,7 @@ var TodoUI = {
                 tbodyDeleted.innerHTML = "";
             }
         }
+        this.updateTabColor();
     },
 
     renderSubTabs: function() {
@@ -108,6 +109,17 @@ var TodoUI = {
     generateActiveRowHtml: function(t) {
         var checked = t.done ? "checked" : "";
         var rowStyle = "";
+        
+        var isAssignedToMe = false;
+        var isRead = false;
+        if (typeof currentSystemId !== "undefined" && typeof currentUserName !== "undefined") {
+            isAssignedToMe = (t.assignee === currentSystemId || t.assignee === currentUserName);
+            isRead = t.readBy && (t.readBy.indexOf(currentSystemId) !== -1 || t.readBy.indexOf(currentUserName) !== -1);
+            if (isAssignedToMe && !isRead && !t.done) {
+                rowStyle = "background-color: #fff9c4;";
+            }
+        }
+
         var deadlineInfo = "";
         
         if (t.deadline) {
@@ -257,6 +269,7 @@ var TodoUI = {
 
     editTodo: function(id) {
         if (!isEditMode) return;
+        this.markTodoRead(id);
         var t = null;
         var todos = DataManager.appData.todos || [];
         for (var i = 0; i < todos.length; i++) {
@@ -394,6 +407,55 @@ var TodoUI = {
             }
             lbl.innerText = "[" + this.pendingDeadline + "]";
             lbl.style.display = "inline";
+        }
+    },
+
+    markTodoRead: function(id) {
+        if (typeof DataManager === "undefined" || !DataManager.appData.todos) return;
+        var t = null;
+        for (var i = 0; i < DataManager.appData.todos.length; i++) {
+            if (String(DataManager.appData.todos[i].id) === String(id)) {
+                t = DataManager.appData.todos[i];
+                break;
+            }
+        }
+        if (!t) return;
+        
+        if (typeof currentSystemId !== "undefined") {
+            var userId = currentSystemId;
+            var isAssignedToMe = (t.assignee === currentSystemId || t.assignee === currentUserName);
+            var isRead = t.readBy && (t.readBy.indexOf(userId) !== -1 || t.readBy.indexOf(currentUserName) !== -1);
+            
+            if (isAssignedToMe && !isRead) {
+                DataManager.appendTransaction("MARK_TODO_READ", {
+                    id: id,
+                    userId: userId
+                });
+                this.render();
+            }
+        }
+    },
+
+    updateTabColor: function() {
+        if (typeof DataManager === "undefined" || !DataManager.appData.todos) return;
+        if (typeof currentSystemId === "undefined" || typeof currentUserName === "undefined") return;
+
+        var hasUnread = DataManager.appData.todos.some(function(t) {
+            if (t.done || t.deleted || t.hardDeleted || t.archived) return false;
+            var isAssignedToMe = (t.assignee === currentSystemId || t.assignee === currentUserName);
+            var isRead = t.readBy && (t.readBy.indexOf(currentSystemId) !== -1 || t.readBy.indexOf(currentUserName) !== -1);
+            return isAssignedToMe && !isRead;
+        });
+
+        var tabBtn = document.getElementById("tab-btn-todo");
+        if (tabBtn) {
+            if (hasUnread) {
+                tabBtn.style.color = "#d9534f";
+                tabBtn.style.fontWeight = "bold";
+            } else {
+                tabBtn.style.color = "";
+                tabBtn.style.fontWeight = "";
+            }
         }
     }
 };

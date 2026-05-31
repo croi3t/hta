@@ -334,10 +334,17 @@ var DataManager = (function() {
                         }
                         if (!exists) {
                             appData.todos.push(data);
-                            // ★追加: 他PCから自分宛に新規ToDoが追加されたら通知
-                            if (typeof currentUserName !== "undefined" && data.assignee && (data.assignee === currentUserName || (typeof currentSystemId !== "undefined" && data.assignee === currentSystemId)) && uName !== currentUserName) {
-                                if (typeof showGhostNotification === "function") {
-                                    showGhostNotification("💡 あなた宛の新規ToDo: " + data.text);
+                        }
+                        break;
+                    case "MARK_TODO_READ":
+                        if (appData.todos) {
+                            for (var k = 0; k < appData.todos.length; k++) {
+                                if (String(appData.todos[k].id) === String(data.id)) {
+                                    if (!appData.todos[k].readBy) appData.todos[k].readBy = [];
+                                    if (appData.todos[k].readBy.indexOf(data.userId) === -1) {
+                                        appData.todos[k].readBy.push(data.userId);
+                                    }
+                                    break;
                                 }
                             }
                         }
