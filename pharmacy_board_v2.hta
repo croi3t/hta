@@ -951,8 +951,8 @@ function generateAbbreviation() {}
                     <li><a class="yr-nav-link" onclick="yrSwitchTab('yr-tab-data', this)">手動貼付け用</a></li>
                     <li><a class="yr-nav-link" onclick="yrSwitchTab('yr-tab-macro', this)" style="background-color: #fff3cd; border-color: #ffecb5; color: #664d03;">テキスト整理 (マクロ)</a></li>
                     <li id="yr-tab-abbr-btn"><a class="yr-nav-link" onclick="yrSwitchTab('yr-tab-abbr', this)" style="background-color:#e8f5e9; border-color:#c8e6c9; color:#2e7d32;">処方略称</a></li>
-                    <li id="yr-tab-med-adj-btn"><a class="yr-nav-link" onclick="yrSwitchTab('yr-tab-med-adj', this)" style="background-color:#fce4ec; border-color:#f8bbd0; color:#c2185b;">薬剤調整加算</a></li>
-                    <li id="yr-tab-med-adj-2026-btn" style="display:none;"><a class="yr-nav-link" onclick="yrSwitchTab('yr-tab-med-adj-2026', this)" style="background-color:#fce4ec; border-color:#f8bbd0; color:#c2185b; font-weight:bold;">✨ 薬剤調整加算(26年改定版)</a></li>
+                    <li id="yr-tab-med-adj-btn" style="display:none;"><a class="yr-nav-link" onclick="yrSwitchTab('yr-tab-med-adj', this)" style="background-color:#fce4ec; border-color:#f8bbd0; color:#c2185b;">薬剤調整加算</a></li>
+                    <li id="yr-tab-med-adj-2026-btn"><a class="yr-nav-link" onclick="yrSwitchTab('yr-tab-med-adj-2026', this)" style="background-color:#fce4ec; border-color:#f8bbd0; color:#c2185b; font-weight:bold;">✨ 薬剤調整加算(26年改定版)</a></li>
                     <li><a class="yr-nav-link" onclick="yrSwitchTab('yr-tab-settings', this)">ツール設定</a></li>
                 </ul>
             </div>
@@ -8802,23 +8802,61 @@ var medAdjState2026 = { input: [], output: [] };
 var manualMedAdjLinks2026 = {};
 
 function searchPatientForMedAdj2026() {
-    var q = document.getElementById("ipt-med-adj-patient-search-2026").value.trim().toLowerCase();
-    var resEl = document.getElementById("med-adj-patient-result-2026");
-    if(!q) { resEl.innerText = ""; return; }
-    var list = getCurrentPatientsList();
-    var found = null;
-    for(var i=0; i<list.length; i++){
-        if(list[i].id.indexOf(q)!==-1 || list[i].name.toLowerCase().indexOf(q)!==-1){
-            found = list[i]; break;
-        }
+    var query = document.getElementById('ipt-med-adj-patient-search-2026').value.trim();
+    var resultArea = document.getElementById('med-adj-patient-result-2026');
+    if (!query) {
+        resultArea.innerHTML = "";
+        return;
     }
-    if(found) {
-        resEl.innerHTML = "🎯 <b style='color:#c2185b;'>" + escapeHtml(found.name) + "</b> (" + found.id + ") が見つかりました";
-        var txt = found.memo || "";
-        document.getElementById("med-adj-in-2026").value = txt;
-        calcMedAdj2026();
+
+    var bestMatch = null;
+    var patients = DataManager.appData.patients || {};
+    // 全病棟を横断検索
+    for (var wardId in patients) {
+        var list = patients[wardId];
+        if (!list) continue;
+        for (var i = 0; i < list.length; i++) {
+            var p = list[i];
+            // 比較用にIDと氏名を正規化
+            var normPid = (p.id || "").replace(/^0+/, "");
+            var normQuery = query.replace(/^0+/, "");
+            var normPname = (p.name || "").replace(/[\s　]/g, "");
+            var normQname = query.replace(/[\s　]/g, "");
+            if (normPid === normQuery || (normPname.indexOf(normQname) !== -1)) {
+                bestMatch = p;
+                if (normPid === normQuery) break; // ID完全一致なら即終了
+            }
+        }
+        if (bestMatch && bestMatch.id === query) break;
+    }
+
+    if (bestMatch) {
+        var days = parseInt(bestMatch.daysInHosp, 10);
+        if (isNaN(days)) {
+            resultArea.innerHTML = "<b>" + escapeHtml(bestMatch.name) + "</b> (在院日数不明)";
+            return;
+        }
+
+        var today = new Date();
+        today.setHours(0,0,0,0);
+        // 入院日 = 今日 - (在院日数 - 1)
+        var admitDate = new Date(today.getTime());
+        admitDate.setDate(today.getDate() - (days - 1));
+        
+        // 基準日 = 入院日 - 28日
+        var baseDate = new Date(admitDate.getTime());
+        baseDate.setDate(admitDate.getDate() - 28);
+        
+        function fmt(d) {
+            return (d.getMonth() + 1) + "/" + d.getDate();
+        }
+
+        resultArea.innerHTML = "<span style='color:#2980b9; font-weight:bold;'>" + escapeHtml(bestMatch.name) + "</span> さん " +
+                               "入:" + fmt(admitDate) + " <span style='color:#666;'>(在院" + days + "日)</span> → " +
+                               "<b>28日前: <span style='color:#e74c3c;'>" + fmt(baseDate) + "</span></b> " +
+                               "<span style='font-size:11px; color:#666;'>(" + fmt(baseDate) + "より以前から使用している薬が対象です)</span>";
     } else {
-        resEl.innerText = "❌ 見つかりませんでした";
+        resultArea.innerHTML = "<span style='color:#999;'>見つかりませんでした</span>";
     }
 }
 
