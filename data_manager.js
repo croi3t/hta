@@ -163,16 +163,23 @@ var DataManager = (function() {
             if (this._lastTxDataStr === currentTxDataStr) return true;
             this._lastTxDataStr = currentTxDataStr;
 
-            // (UI側で漏れている場合への保険としてローカルにも適用)
-            if (typeof appData !== 'undefined') {
-                this._applyDelta(appData, op, payload, window.currentUserName);
-            }
-
             // 2. トランザクションファイル作成
             var ts = new Date().getTime();
             var txId = ts + "_" + (window.currentSystemId || "unknown") + "_" + Math.floor(Math.random() * 0x10000).toString(16);
+
+            // (UI側で漏れている場合への保険としてローカルにも適用)
+            if (typeof appData !== 'undefined') {
+                this._applyDelta(appData, op, payload, window.currentUserName);
+                // ★修正: ローカル適用時に自分のトランザクションIDも記録しておく
+                if (!appData.appliedTxIds) appData.appliedTxIds = [];
+                appData.appliedTxIds.push(txId); 
+            }
+
             var txData = { txId: txId, ts: ts, uId: window.currentSystemId, uName: window.currentUserName, op: op, data: payload };
             saveFile(fso.BuildPath(txDir, "tx_" + txId + ".json"), stringifyData(txData));
+
+            // ★追加: 「自分の未保存の変更がある」というフラグを立てる
+            this.hasLocalChanges = true;
 
             // 3. saveAll is removed for performance
             // if (typeof window.appData !== "undefined") {
@@ -234,10 +241,10 @@ var DataManager = (function() {
                 var raw = loadFile(targets[i].path);
                 var tx = parseData(raw);
                 if (tx) {
-                    if (tx.uId !== window.currentSystemId) {
-                        this._applyDelta(appData, tx.op, tx.data, tx.uName);
-                        updatedCount++;
-                    }
+                    // ★修正: tx.uId !== window.currentSystemId という「自分を無視する制限」を削除！
+                    // 誰のトランザクションであれ、未適用なら必ず適用する
+                    this._applyDelta(appData, tx.op, tx.data, tx.uName);
+                    updatedCount++;
                 }
                 appData.appliedTxIds.push(targets[i].id);
                 if (targets[i].ts > maxTs) maxTs = targets[i].ts;

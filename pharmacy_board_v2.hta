@@ -2866,15 +2866,16 @@ window.onload = function() {
     // 定期更新タイマー (1分ごとに共有データを再ロード)
     setInterval(function() {
     if (typeof DataManager !== "undefined") {
-        // 1. 他のPCのトランザクションを読み込んで appData に適用
+        // 1. 未適用のトランザクションを読み込んで appData に適用
         var updated = DataManager.replayTransactions(appData);
         
-        // 2. 変更があった場合、強制的に保存(forceSave=true)してマスターを更新
-        if (updated) {
-            DataManager.saveAll(appData, true); // true を渡すことで強制更新
+        // 2. 他人の更新(updated)があるか、自分の未保存の変更(hasLocalChanges)がある場合のみ保存
+        if (updated || DataManager.hasLocalChanges) {
+            DataManager.saveAll(appData, true); // マスターを更新
+            DataManager.hasLocalChanges = false; // 保存したらフラグをリセット
         }
     }
-    // 3. 画面の再描画（最新のデータ状態を表示）
+    // 3. 画面の再描画
     loadData(false);
 }, 60000);
 };
