@@ -3393,16 +3393,18 @@ function doExcelImport() {
                 for (var r = 2; r <= lastRow; r++) {
                     var pid = ws.Cells(r, 1).Value;
                     if (!pid) continue;
-                    pid = String(pid).replace(/[\s\r\n]/g, '');
+                    
+                    // ★追加: JUST Calc対策として末尾の「.0」を削除し、確実に文字列として扱う
+                    pid = String(pid).replace(/\.0$/, '').replace(/[\s\r\n]/g, '');
+                    
                     // 数値の場合は整数化
                     if (!isNaN(pid)) pid = String(parseInt(pid, 10));
-                    
                     // 記号行(○●□■◇◆△▲☆等)をスキップ
                     if (/^[○●□■◇◆△▲☆★]$/.test(pid)) break;
-                    
                     // 今週の列に◆があるかチェック
                     for (var ci = 0; ci < weekDateCols.length; ci++) {
                         var cellValue = ws.Cells(r, weekDateCols[ci]).Value;
+                        // ★追加: 値を確実に文字列にしてから判定する
                         if (cellValue && String(cellValue).indexOf('◆') !== -1) {
                             patientsWithMark[pid] = true;
                             break;
@@ -3485,6 +3487,14 @@ function parseExcelDate(val) {
         var yr = new Date().getFullYear();
         return new Date(yr, parseInt(m2[1],10)-1, parseInt(m2[2],10));
     }
+    
+    // ★追加: JUST Calc対策「○月○日」形式の処理
+    var m3 = s.match(/(\d{1,2})月(\d{1,2})日/);
+    if (m3) {
+        var yr = new Date().getFullYear();
+        return new Date(yr, parseInt(m3[1],10)-1, parseInt(m3[2],10));
+    }
+    
     return null;
 }
 
@@ -6031,19 +6041,30 @@ function exportToExcel() {
         
         var outputHTML = "<table border='1'>" + cloneTable.innerHTML + "</table>";
         
-        // ▼▼▼ ここから書き換え ▼▼▼
-        // ★修正1: 単なるテキストではなく、「HTMLの表」としてクリップボードにコピーさせる（JUST Calc対策）
+        // ★修正: JUST Calcでも表として認識させるためにHTML要素としてコピーする
         var div = document.createElement("div");
         div.style.position = "absolute";
         div.style.left = "-9999px";
         div.innerHTML = outputHTML;
         document.body.appendChild(div);
         
-        var range = document.body.createTextRange();
-        range.moveToElementText(div);
-        range.select();
-        document.execCommand("Copy");
-        document.selection.empty();
+        // ★修正: 新旧環境でエラーが出ない安全なコピー処理
+        if (document.body.createTextRange) {
+            var range = document.body.createTextRange();
+            range.moveToElementText(div);
+            range.select();
+            document.execCommand("Copy");
+            try { document.selection.empty(); } catch(e) {} // エラーが出ても無視する
+        } else if (window.getSelection) {
+            var sel = window.getSelection();
+            var range = document.createRange();
+            range.selectNodeContents(div);
+            sel.removeAllRanges();
+            sel.addRange(range);
+            document.execCommand("Copy");
+            sel.removeAllRanges();
+        }
+        
         document.body.removeChild(div);
         
         // ★修正2: JUST Calc を優先して探し、なければExcelを探す
