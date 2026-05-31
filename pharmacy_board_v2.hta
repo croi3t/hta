@@ -2846,6 +2846,9 @@ window.onload = function() {
     loadData(false); 
     updateUIMode();
     
+    // 薬歴ツール初期化 (グローバルスコープから移動)
+    yrInit();
+    
     // 定期更新タイマー (1分ごとに共有データを再ロード)
     setInterval(function() {
     if (typeof DataManager !== "undefined") {
@@ -9110,7 +9113,7 @@ function changeSharedFontFamily() {
 }
 
 // 薬歴ツール初期化 (基準日等の初期化処理含む)
-yrInit();
+// yrInit(); // ★ window.onload内に移動しました
 
 // 全患者選択用の関数（エラー解消）
 function toggleAllPatientsSelect(checked) {
