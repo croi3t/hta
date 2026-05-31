@@ -9344,8 +9344,16 @@ function addCustomTabFromModal(tagName) {
     
     if (!isDuplicate) {
         userTabs.push({ tag: tagName, scope: scope });
-
     }
+    
+    // ★追加: タブ配列が更新されたのでトランザクションを発行
+    if (typeof DataManager !== "undefined") {
+        DataManager.appendTransaction("UPDATE_CUSTOM_TABS", {
+            userId: currentSystemId,
+            tabs: userTabs
+        });
+    }
+
     currentFilterTag = tagName;
     currentFilterScope = scope;
     renderCustomTabsUI();
@@ -9362,9 +9370,16 @@ function removeCustomTab(tagName, scope) {
             var t = userTabs[i];
             if (t && t.tag === tagName && t.scope === scope) {
                 userTabs.splice(i, 1);
-
                 break;
             }
+        }
+
+        // ★追加: タブ削除後にもトランザクションを発行
+        if (typeof DataManager !== "undefined") {
+            DataManager.appendTransaction("UPDATE_CUSTOM_TABS", {
+                userId: currentSystemId,
+                tabs: userTabs
+            });
         }
     }
     if (currentFilterTag === tagName && currentFilterScope === scope) { currentFilterTag = ""; }

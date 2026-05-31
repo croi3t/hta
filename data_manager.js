@@ -421,6 +421,11 @@ var DataManager = (function() {
                             }
                         }
                         break;
+                    case "UPDATE_CUSTOM_TABS":
+                        if (!appData.settings) appData.settings = {};
+                        if (!appData.settings.userCustomTabs) appData.settings.userCustomTabs = {};
+                        appData.settings.userCustomTabs[data.userId] = data.tabs;
+                        break;
                 }
             } catch(e) {}
         },
