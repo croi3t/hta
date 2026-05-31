@@ -283,6 +283,17 @@ var DataManager = (function() {
                         break;
                     case "UPDATE_PATIENT_MEMO":
                         if (p) { p.memo = data.value; this._updateMemoAuthors(p, uName); }
+                        else {
+                            if (!appData.dischargedArchive || (appData.dischargedArchive instanceof Array)) {
+                                appData.dischargedArchive = {};
+                            }
+                            if (!appData.dischargedArchive[data.patientId]) {
+                                appData.dischargedArchive[data.patientId] = { id: data.patientId, archivedAt: new Date().getTime(), memoAuthors: [] };
+                            }
+                            var arc = appData.dischargedArchive[data.patientId];
+                            arc.memo = data.value;
+                            this._updateMemoAuthors(arc, uName);
+                        }
                         break;
                     case "UPDATE_BLOOD_DATE":
                         if (p) {
@@ -396,9 +407,13 @@ var DataManager = (function() {
 
         _findPatientInAppData: function(appData, pid, wardCode) {
             var list = appData.patients ? appData.patients[wardCode] : null;
-            if (!list) return null;
-            for (var i = 0; i < list.length; i++) {
-                if (String(list[i].id) === String(pid)) return list[i];
+            if (list) {
+                for (var i = 0; i < list.length; i++) {
+                    if (String(list[i].id) === String(pid)) return list[i];
+                }
+            }
+            if (appData.dischargedArchive && appData.dischargedArchive[pid]) {
+                return appData.dischargedArchive[pid];
             }
             return null;
         },
