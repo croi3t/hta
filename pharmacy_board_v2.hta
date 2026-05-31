@@ -672,38 +672,43 @@ function generateAbbreviation() {}
         <div id="todo-sub-tabs" class="sub-tabs" style="margin-bottom: 12px;"></div>
         
         <div style="margin-bottom: 12px; padding: 10px; background-color: #f5f8fa; border-radius: 6px; border: 1px solid #e1e8ed;">
-            <div style="display:flex; gap:5px; margin-bottom:8px;">
-                <input type="text" id="ipt-new-todo" placeholder="タスク内容を入力..." style="flex-grow: 1; padding: 8px; border: 1px solid #ccc; border-radius:4px;" disabled onkeypress="if(event.keyCode===13) addNewTodoUI()">
-                <button class="btn" onclick="addNewTodoUI()" id="btn-add-todo" disabled style="background-color:#007bff; color:white; min-width:60px;">追加</button>
-                <button class="btn" onclick="cancelEditTodo()" id="btn-cancel-todo" style="display:none; background-color:#999;">取消</button>
+            <div style="display:flex; flex-direction:column; gap:5px; margin-bottom:8px;">
+                <input type="text" id="ipt-new-todo" placeholder="ToDoの件名を入力..." style="padding: 8px; border: 1px solid #ccc; border-radius:4px;" disabled onkeypress="if(event.keyCode===13) addNewTodoUI()">
+                <textarea id="ipt-new-todo-body" placeholder="ToDoの詳細（長文可）" style="width:100%; height:60px; padding: 8px; border: 1px solid #ccc; border-radius:4px; font-family:inherit; resize:vertical;" disabled></textarea>
             </div>
-            <div style="display:flex; gap:10px; align-items:center; font-size:12px;">
-                <div style="display:flex; align-items:center; gap:3px;">
-                    <span>作業者:</span>
-                    <select id="sel-todo-assignee" style="padding:4px; border:1px solid #ccc; border-radius:4px;" disabled>
-                        <option value="">(指定なし)</option>
-                    </select>
+            <div style="display:flex; justify-content:space-between; align-items:flex-end;">
+                <div style="display:flex; gap:10px; align-items:center; font-size:12px; flex-wrap:wrap;">
+                    <div style="display:flex; align-items:center; gap:3px;">
+                        <span>作業者:</span>
+                        <select id="sel-todo-assignee" style="padding:4px; border:1px solid #ccc; border-radius:4px;" disabled>
+                            <option value="">(指定なし)</option>
+                        </select>
+                    </div>
+                    <div style="display:flex; align-items:center; gap:3px;">
+                        <span>期限:</span>
+                        <button class="btn" onclick="openCustomDatePicker(this)" id="btn-todo-deadline" disabled style="padding:4px 8px; background-color:#17a2b8; color:white; font-size:11px;" title="カレンダーから期限を設定します">&#128197; 選択</button>
+                        <span id="lbl-todo-deadline" style="font-weight:bold; color:#d9534f; display:none;"></span>
+                    </div>
+                    <div style="display:flex; align-items:center; gap:3px;">
+                        <span>通知:</span>
+                        <select id="sel-todo-reminder" style="padding:4px; border:1px solid #ccc; border-radius:4px;" disabled>
+                            <option value="0">なし</option>
+                            <option value="15">15分前</option>
+                            <option value="30">30分前</option>
+                            <option value="60" selected>1時間前</option>
+                            <option value="180">3時間前</option>
+                            <option value="1440">1日前</option>
+                        </select>
+                    </div>
+                    <div style="display:flex; align-items:center; gap:3px; margin-left:5px;">
+                        <label style="cursor:pointer; display:flex; align-items:center; gap:3px;">
+                            <input type="checkbox" id="chk-todo-notify-done" checked disabled> 完了時に依頼者へ通知
+                        </label>
+                    </div>
                 </div>
-                <div style="display:flex; align-items:center; gap:3px;">
-                    <span>期限:</span>
-                    <button class="btn" onclick="openCustomDatePicker(this)" id="btn-todo-deadline" disabled style="padding:4px 8px; background-color:#17a2b8; color:white; font-size:11px;" title="カレンダーから期限を設定します">&#128197; 選択</button>
-                    <span id="lbl-todo-deadline" style="font-weight:bold; color:#d9534f; display:none;"></span>
-                </div>
-                <div style="display:flex; align-items:center; gap:3px;">
-                    <span>通知:</span>
-                    <select id="sel-todo-reminder" style="padding:4px; border:1px solid #ccc; border-radius:4px;" disabled>
-                        <option value="0">なし</option>
-                        <option value="15">15分前</option>
-                        <option value="30">30分前</option>
-                        <option value="60" selected>1時間前</option>
-                        <option value="180">3時間前</option>
-                        <option value="1440">1日前</option>
-                    </select>
-                </div>
-                <div style="display:flex; align-items:center; gap:3px; margin-left:5px;">
-                    <label style="cursor:pointer; display:flex; align-items:center; gap:3px;">
-                        <input type="checkbox" id="chk-todo-notify-done" checked disabled> 完了時に依頼者へ通知
-                    </label>
+                <div style="display:flex; gap:5px;">
+                    <button class="btn" onclick="addNewTodoUI()" id="btn-add-todo" disabled style="background-color:#007bff; color:white; min-width:60px; padding:4px 12px;">追加</button>
+                    <button class="btn" onclick="cancelEditTodo()" id="btn-cancel-todo" style="display:none; background-color:#999; padding:4px 12px;">取消</button>
                 </div>
             </div>
         </div>
@@ -2961,7 +2966,9 @@ function updateUIMode() {
     var btnFetch = document.getElementById('btn-fetch');
     var btnReset = document.getElementById('btn-reset');
     var iptNewTodo = document.getElementById('ipt-new-todo');
+    var iptNewTodoBody = document.getElementById('ipt-new-todo-body');
     if(iptNewTodo) iptNewTodo.disabled = !isEditMode;
+    if(iptNewTodoBody) iptNewTodoBody.disabled = !isEditMode;
     if(document.getElementById('btn-add-todo')) document.getElementById('btn-add-todo').disabled = !isEditMode;
     if(document.getElementById('btn-todo-deadline')) document.getElementById('btn-todo-deadline').disabled = !isEditMode;
         

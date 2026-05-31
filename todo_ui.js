@@ -132,9 +132,13 @@ var TodoUI = {
         
         var h = [];
         h.push('<tr style="' + rowStyle + '">');
+        var bodyHtml = "";
+        if (t.body) {
+            bodyHtml = '<div style="font-size:11px; color:#555; margin-top:4px; white-space:pre-wrap;">' + escapeHtml(t.body) + '</div>';
+        }
         h.push('<td align="center"><input type="checkbox" ' + checked + ' onclick="TodoUI.toggleDone(\'' + t.id + '\')"></td>');
         h.push('<td style="cursor:pointer;" onclick="TodoUI.editTodo(\'' + t.id + '\')">');
-        h.push(escapeHtml(t.text) + assigneeStr + deadlineInfo + '</td>');
+        h.push('<div style="font-weight:bold;">' + escapeHtml(t.text) + assigneeStr + '</div>' + bodyHtml + deadlineInfo + '</td>');
         h.push('<td style="font-size:11px; color:#666;">' + escapeHtml(t.author || "不明") + '<br>' + escapeHtml(t.date || "") + '</td>');
         h.push('<td align="center" style="white-space:nowrap;">');
         h.push('<button class="btn" onclick="TodoUI.editTodo(\'' + t.id + '\')" style="background:#3498db; padding:2px 6px; color:white; margin-right:3px;" title="編集">✎</button>');
@@ -146,9 +150,10 @@ var TodoUI = {
     generateDeletedRowHtml: function(t) {
         var statusLabel = t.done ? '<span style="color:#27ae60;font-size:10px;">[完了済]</span>' : '<span style="color:#c0392b;font-size:10px;">[未完了]</span>';
         var h = [];
+        var bodyHtml = t.body ? '<div style="font-size:11px; margin-top:2px;">' + escapeHtml(t.body) + '</div>' : '';
         h.push('<tr style="background-color:#f9f9f9; color:#999; text-decoration:line-through;">');
         h.push('<td align="center">-</td>');
-        h.push('<td>' + statusLabel + ' ' + escapeHtml(t.text) + '</td>');
+        h.push('<td><div style="font-weight:bold;">' + statusLabel + ' ' + escapeHtml(t.text) + '</div>' + bodyHtml + '</td>');
         h.push('<td style="font-size:11px;">' + escapeHtml(t.author || "") + '</td>');
         h.push('<td align="center" style="white-space:nowrap;">');
         h.push('<button class="btn" onclick="TodoUI.restoreTodo(\'' + t.id + '\')" style="background:#2ecc71; padding:2px 6px; color:white; margin-right:3px; font-size:10px;" title="元に戻す">↺</button>');
@@ -262,11 +267,13 @@ var TodoUI = {
         this.editingTodoId = t.id;
 
         var ipt = document.getElementById("ipt-new-todo");
+        var iptBody = document.getElementById("ipt-new-todo-body");
         var btnAdd = document.getElementById("btn-add-todo");
         var btnCancel = document.getElementById("btn-cancel-todo");
         var selAssignee = document.getElementById("sel-todo-assignee");
 
         if (ipt) { ipt.value = t.text; ipt.focus(); }
+        if (iptBody) { iptBody.value = t.body || ""; }
         if (btnAdd) btnAdd.innerText = "更新";
         if (btnCancel) btnCancel.style.display = "inline-block";
         if (selAssignee && t.assignee) selAssignee.value = t.assignee;
@@ -281,11 +288,13 @@ var TodoUI = {
     cancelEditTodo: function() {
         this.editingTodoId = null;
         var ipt = document.getElementById("ipt-new-todo");
+        var iptBody = document.getElementById("ipt-new-todo-body");
         var btnAdd = document.getElementById("btn-add-todo");
         var btnCancel = document.getElementById("btn-cancel-todo");
         var lbl = document.getElementById("lbl-todo-deadline");
 
         if (ipt) ipt.value = "";
+        if (iptBody) iptBody.value = "";
         if (btnAdd) btnAdd.innerText = "追加";
         if (btnCancel) btnCancel.style.display = "none";
         if (lbl) { lbl.innerText = ""; lbl.style.display = "none"; }
@@ -303,8 +312,10 @@ var TodoUI = {
     addNewTodoUI: function() {
         if(!isEditMode) return;
         var ipt = document.getElementById("ipt-new-todo");
+        var iptBody = document.getElementById("ipt-new-todo-body");
         var val = (ipt.value || "").trim();
-        if(val === "") { alert("ToDoの内容を入力してください。"); return; }
+        var valBody = iptBody ? (iptBody.value || "").trim() : "";
+        if(val === "") { alert("ToDoの件名を入力してください。"); return; }
         
         var assigneeSel = document.getElementById("sel-todo-assignee");
         var assignee = assigneeSel ? assigneeSel.value : "";
@@ -317,6 +328,7 @@ var TodoUI = {
                 if (String(todos[i].id) === String(this.editingTodoId)) {
                     var t = todos[i];
                     t.text = val;
+                    t.body = valBody;
                     t.deadline = this.pendingDeadline;
                     t.assignee = (this.currentTodoTab === "personal") ? currentUserName : assignee;
                     DataManager.appendTransaction("ADD_TODO", t);
@@ -340,6 +352,7 @@ var TodoUI = {
             var newTodo = {
                 id: new Date().getTime(),
                 text: val,
+                body: valBody,
                 author: currentUserName,
                 date: dateStr,
                 wardId: wardId,
@@ -355,6 +368,7 @@ var TodoUI = {
         }
 
         ipt.value = "";
+        if (iptBody) iptBody.value = "";
         this.pendingDeadline = "";
         var lbl = document.getElementById("lbl-todo-deadline");
         if(lbl) { lbl.style.display = "none"; lbl.innerText = ""; }
