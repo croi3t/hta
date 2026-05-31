@@ -2788,6 +2788,14 @@ function saveCurrentNote(isTyping) {
 function deleteCurrentNote() {
     if(!isEditMode || selectedNoteId === null) return;
     if(!confirm("このページを削除してもよろしいですか？")) return;
+    
+    if (typeof DataManager !== "undefined") {
+        DataManager.appendTransaction("DELETE_NOTE", {
+            wardCode: currentWard,
+            id: selectedNoteId
+        });
+    }
+
     var notes = getCurrentNotes();
     for (var i = 0; i < notes.length; i++) {
         if (notes[i].id === selectedNoteId) {
@@ -2797,6 +2805,7 @@ function deleteCurrentNote() {
     }
     selectedNoteId = null;
     renderNotes(); 
+    if (typeof autoSave === "function") autoSave();
 }
 
 // formatDoc removed as requested

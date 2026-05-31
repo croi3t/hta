@@ -400,6 +400,20 @@ var DataManager = (function() {
                             });
                         }
                         break;
+                    case "DELETE_NOTE":
+                        if (appData.wardNotes) {
+                            var wCode = data.wardCode || "99";
+                            if (appData.wardNotes[wCode]) {
+                                var wardNotes = appData.wardNotes[wCode];
+                                for (var n = 0; n < wardNotes.length; n++) {
+                                    if (String(wardNotes[n].id) === String(data.id)) {
+                                        wardNotes.splice(n, 1);
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+                        break;
                 }
             } catch(e) {}
         },
