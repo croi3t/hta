@@ -319,6 +319,7 @@ var TodoUI = {
                     t.text = val;
                     t.deadline = this.pendingDeadline;
                     t.assignee = (this.currentTodoTab === "personal") ? currentUserName : assignee;
+                    DataManager.appendTransaction("ADD_TODO", t);
                     break;
                 }
             }

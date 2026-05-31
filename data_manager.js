@@ -332,7 +332,15 @@ var DataManager = (function() {
                                 break;
                             }
                         }
-                        if (!exists) appData.todos.push(data);
+                        if (!exists) {
+                            appData.todos.push(data);
+                            // ★追加: 他PCから自分宛に新規ToDoが追加されたら通知
+                            if (typeof currentUserName !== "undefined" && data.assignee && (data.assignee === currentUserName || (typeof currentSystemId !== "undefined" && data.assignee === currentSystemId)) && uName !== currentUserName) {
+                                if (typeof showGhostNotification === "function") {
+                                    showGhostNotification("💡 あなた宛の新規ToDo: " + data.text);
+                                }
+                            }
+                        }
                         break;
                     case "TOGGLE_TODO":
                         if (appData.todos) {
