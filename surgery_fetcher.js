@@ -73,7 +73,7 @@ var SurgeryFetcher = {
         var days = parseInt(p.daysInHosp, 10);
         var rangeDays = (!isNaN(days) && days > 0) ? (days + 3) : 20;
 
-        var url = "http://10.5.71.21:8082/karte/karte.php?kanja_id=" + p.id + 
+        var url = "http://10.5.171.42:8082/karte/karte.php?kanja_id=" + p.id + 
                   "&user_id=" + userId + 
                   "&order_kind_code_str=0091,1091&kijun_date=" + kijunDate + 
                   "&range_date=" + rangeDays + "/7/1/1&disp_selectsection=0000021&disp_selectukind=1,2,3&document_code=700360003,730360001&multi_kind=1#top" +
@@ -238,7 +238,7 @@ var SurgeryFetcher = {
                 }
                 
                 clearTimeout(fallbackTimer);
-                autoSave(); 
+                if (typeof DataManager !== "undefined") { DataManager.saveAll(appData, true); } 
                 cleanupAndCallback();
             }, 1500); 
         };

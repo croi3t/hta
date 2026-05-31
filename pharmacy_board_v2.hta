@@ -2827,7 +2827,7 @@ function deleteTodo(id) {
 }
 
 function openKarteLink(type, pid) {
-    var url = "http://10.5.71.21:8082/karte/main.php?id=" + pid + "&type=" + type;
+    var url = "http://10.5.171.42:8082/karte/main.php?id=" + pid + "&type=" + type;
     window.open(url, "_blank");
 }
 
@@ -3119,7 +3119,7 @@ function openKarteLink(type, kanjaId) {
     var userId = currentSystemId || '';
     var today = new Date();
     var todayStr = today.getFullYear() + '/' + ('0'+(today.getMonth()+1)).slice(-2) + '/' + ('0'+today.getDate()).slice(-2);
-    var baseUrl = 'http://10.5.71.21:8082/karte/';
+    var baseUrl = 'http://10.5.171.42:8082/karte/';
     var url = '';
     
     switch(type) {
@@ -3206,7 +3206,7 @@ function openKarteLink(type, kanjaId) {
 
 function openAdmissionMenu() {
     var userId = currentSystemId || '';
-    var url = 'http://10.5.71.21:8082/karte/kanja_ichiran/kanja_ichiran_menu.php?ichiran_code=6&user_id=' + userId + '&section_code=&page_num=&login_flg=';
+    var url = 'http://10.5.171.42:8082/karte/kanja_ichiran/kanja_ichiran_menu.php?ichiran_code=6&user_id=' + userId + '&section_code=&page_num=&login_flg=';
     try {
         var wsh = new ActiveXObject('WScript.Shell');
         try { wsh.Run('msedge "' + url + '"'); } catch(e1) {
@@ -4228,7 +4228,7 @@ function fetchPatientData() {
             var doc = iframe.contentWindow.document;
             parseHtmlAndMerge(doc, wardSettings.name);
         } catch(e) {
-            alert("患者データの読み取りに失敗しました。\n\n【考えられる原因】\n1. セキュリティ制限: ブラウザ（インターネットオプション）の『信頼済みサイト』にカルテサーバーのURL(10.5.71.21)を登録してください。\n2. ネットワーク: サーバーに接続できない環境です。\n3. ファイル不在: まだ作成されていない時間帯のリストを読み込もうとしています。\n\nエラー詳細: " + e.message);
+            alert("患者データの読み取りに失敗しました。\n\n【考えられる原因】\n1. セキュリティ制限: ブラウザ（インターネットオプション）の『信頼済みサイト』にカルテサーバーのURL(10.5.171.42)を登録してください。\n2. ネットワーク: サーバーに接続できない環境です。\n3. ファイル不在: まだ作成されていない時間帯のリストを読み込もうとしています。\n\nエラー詳細: " + e.message);
         }
         btn.innerText = "↻ 現在の病棟のシステム更新";
         btn.disabled = false;
@@ -4243,7 +4243,7 @@ function fetchPatientData() {
     var dd = ("0" + today.getDate()).slice(-2);
     var dateStr = yyyy + "%2F" + mm + "%2F" + dd; // YYYY/MM/DDのエンコード
     
-    var baseUrl = "http://10.5.71.21:8082/karte/kanja_ichiran/kanja_ichiran.php";
+    var baseUrl = "http://10.5.171.42:8082/karte/kanja_ichiran/kanja_ichiran.php";
     var fetchUrl = baseUrl + "?byoto_code=" + wardSettings.code + 
                    "&search_date=" + dateStr + 
                    "&ichiran_code=58&user_id=" + currentSystemId + 
@@ -4408,7 +4408,7 @@ function fetchSingleBloodDate(p, callback) {
         userId = appData.settings.adminIds[0];
     }
 
-    var url = "http://10.5.71.21:8082/karte/karte.php?kanja_id=" + p.id + 
+    var url = "http://10.5.171.42:8082/karte/karte.php?kanja_id=" + p.id + 
               "&user_id=" + userId + 
               "&order_search_flg=1&order_search_code=3&order_search_name=#top" +
               "&_nocache=" + new Date().getTime();
@@ -4849,7 +4849,7 @@ function fetchAdmissionSchedule() {
     var dd = ('0' + today.getDate()).slice(-2);
     var dateStr = yyyy + "%2F" + mm + "%2F" + dd;
 
-    var fetchUrl = "http://10.5.71.21:8082/karte/kanja_ichiran/kanja_ichiran.php" +
+    var fetchUrl = "http://10.5.171.42:8082/karte/kanja_ichiran/kanja_ichiran.php" +
         "?nyuin_yoyaku_start_date=" + dateStr +
         "&nyuin_yoyaku_end_date=" + dateStr +
         "&byoto_gentei_flg=%2C" +
