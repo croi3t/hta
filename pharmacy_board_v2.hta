@@ -3357,9 +3357,17 @@ function doExcelImport() {
     var patientsWithMark = {}; // patientId -> true
     
     try {
-        excel = new ActiveXObject('Excel.Application');
+        // ▼▼▼ ここから書き換え ▼▼▼
+        // ★修正4: 取込時も JUST Calc と Excel の両方に対応させる
+        try {
+            excel = new ActiveXObject("JustCalc.Application");
+        } catch(e1) {
+            excel = new ActiveXObject("Excel.Application");
+        }
+        
         excel.Visible = false;
         excel.DisplayAlerts = false;
+        // ▲▲▲ ここまで ▲▲▲
         
         for (var fi = 0; fi < filesToRead.length; fi++) {
             var wb = null;
@@ -6022,14 +6030,42 @@ function exportToExcel() {
         }
         
         var outputHTML = "<table border='1'>" + cloneTable.innerHTML + "</table>";
-        window.clipboardData.setData("Text", outputHTML);
         
-        var excelApp = new ActiveXObject("Excel.Application");
-        if(!excelApp) { alert("Excelの起動に失敗しました。"); return; }
+        // ▼▼▼ ここから書き換え ▼▼▼
+        // ★修正1: 単なるテキストではなく、「HTMLの表」としてクリップボードにコピーさせる（JUST Calc対策）
+        var div = document.createElement("div");
+        div.style.position = "absolute";
+        div.style.left = "-9999px";
+        div.innerHTML = outputHTML;
+        document.body.appendChild(div);
+        
+        var range = document.body.createTextRange();
+        range.moveToElementText(div);
+        range.select();
+        document.execCommand("Copy");
+        document.selection.empty();
+        document.body.removeChild(div);
+        
+        // ★修正2: JUST Calc を優先して探し、なければExcelを探す
+        var excelApp = null;
+        try {
+            excelApp = new ActiveXObject("JustCalc.Application");
+        } catch(e1) {
+            try {
+                excelApp = new ActiveXObject("Excel.Application");
+            } catch(e2) {
+                alert("JUST Calc または Excel の起動に失敗しました。");
+                return;
+            }
+        }
         
         var workbook = excelApp.Workbooks.Add();
         var sheet = workbook.ActiveSheet;
+        
+        // ★修正3: A1セルを明示的に選択してから貼り付ける
+        sheet.Range("A1").Select();
         sheet.Paste();
+        // ▲▲▲ ここまで ▲▲▲
         
         sheet.Cells.WrapText = true;
         sheet.Cells.VerticalAlignment = -4160; // xlTop
