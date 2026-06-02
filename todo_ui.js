@@ -440,12 +440,18 @@ var TodoUI = {
         if (typeof DataManager === "undefined" || !DataManager.appData.todos) return;
         if (typeof currentSystemId === "undefined" || typeof currentUserName === "undefined") return;
 
-        var hasUnread = DataManager.appData.todos.some(function(t) {
-            if (t.done || t.deleted || t.hardDeleted || t.archived) return false;
+        var hasUnread = false;
+        var todos = DataManager.appData.todos;
+        for (var i = 0; i < todos.length; i++) {
+            var t = todos[i];
+            if (t.done || t.deleted || t.hardDeleted || t.archived) continue;
             var isAssignedToMe = (t.assignee === currentSystemId || t.assignee === currentUserName);
             var isRead = t.readBy && (t.readBy.indexOf(currentSystemId) !== -1 || t.readBy.indexOf(currentUserName) !== -1);
-            return isAssignedToMe && !isRead;
-        });
+            if (isAssignedToMe && !isRead) {
+                hasUnread = true;
+                break;
+            }
+        }
 
         var tabBtn = document.getElementById("tab-btn-todo");
         if (tabBtn) {

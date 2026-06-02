@@ -545,6 +545,7 @@ function generateAbbreviation() {}
                 <option value="medium">文字: 中</option>
                 <option value="large">文字: 大</option>
             </select>
+            <button class="btn" onclick="recoverFromTransactions()" id="btn-emergency-recover" style="display:none; background-color:#e74c3c; margin-right:10px;" title="トランザクションファイルからデータを強制復元します">⚠️ 緊急復元</button>
             <button class="btn" onclick="saveData(true)" id="btn-save" style="display:none; margin-left:10px;">💾 手動保存</button>
             <button class="btn" style="margin-left:5px;" onclick="loadData(true)">↻ 表示更新</button>
         </div>
@@ -3073,6 +3074,10 @@ function editAnnouncement() {
         if (!appData.settings) appData.settings = {};
         appData.settings.announcement = msg;
         
+        if (typeof DataManager !== "undefined") {
+            DataManager.appendTransaction("UPDATE_ANNOUNCEMENT", { value: msg });
+        }
+        
         updateAnnouncementUI();
 
     }
@@ -3087,9 +3092,12 @@ function updateAnnouncementUI() {
     var msg = appData.announcement || "";
     txt.innerText = msg;
     
+    var btnRecover = document.getElementById("btn-emergency-recover");
+    
     if (currentSystemId === "16622") {
         area.style.display = "flex";
         btn.style.display = "inline-block";
+        if(btnRecover) btnRecover.style.display = "inline-block";
         if(!msg) txt.innerText = "【お知らせ未設定】";
     } else {
         if (msg) {
@@ -3098,6 +3106,7 @@ function updateAnnouncementUI() {
             area.style.display = "none";
         }
         btn.style.display = "none";
+        if(btnRecover) btnRecover.style.display = "none";
     }
 }
 

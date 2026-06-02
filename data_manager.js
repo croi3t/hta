@@ -267,6 +267,11 @@ var DataManager = (function() {
                 }
 
                 switch (op) {
+                    case "UPDATE_ANNOUNCEMENT":
+                        appData.announcement = data.value;
+                        if (!appData.settings) appData.settings = {};
+                        appData.settings.announcement = data.value;
+                        break;
                     case "UPDATE_ADMISSION_MEMO":
                         if (appData.admissionSchedule) {
                             for (var a = 0; a < appData.admissionSchedule.length; a++) {
