@@ -2879,6 +2879,20 @@ window.onload = function() {
     // 3. 画面の再描画
     loadData(false);
 }, 60000);
+
+// ---------- 定期更新タイマー (15分ごとにカルテから患者一覧を自動取得) ----------
+setInterval(function() {
+    // 未ログイン（閲覧モード）のPCが裏で一斉に通信するとカルテサーバーに負荷がかかるため、
+    // ログインして編集モードになっているPCのみ自動取得を走らせる
+    if (isEditMode) {
+        var btn = document.getElementById("btn-fetch");
+        // すでに取得中でなければ実行
+        if (btn && !btn.disabled) {
+            fetchPatientData();
+        }
+    }
+}, 900000); // 900000ミリ秒 = 15分
+
 };
 
 // ---------- ログイン制御 ----------
