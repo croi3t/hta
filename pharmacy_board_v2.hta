@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html>
 <head>
 <meta charset="UTF-8">
@@ -1368,6 +1368,8 @@ function generateAbbreviation() {}
 <script src="js/todo_ui.js" charset="utf-8"></script>
 <script src="js/tokuyaku_list.js" charset="utf-8"></script>
 <script src="js/surgery_fetcher.js" charset="utf-8"></script>
+<script src="js/patient_logic.js" charset="utf-8"></script>
+<script src="js/patient_logic.js" charset="utf-8"></script>
 <script>
 // ---------- グローバル変数と初期設定 ----------
 var SHARED_DATA_PATH = "Z:\\reiwa\\data"; // 優先される共有データの保存先
@@ -3533,6 +3535,7 @@ function getCurrentPatientsList() {
 }
 
 function renderPatients() {
+    if (window.PatientLogic && window.PatientLogic.injectMeta) window.PatientLogic.injectMeta(appData);
     var scrollX = window.pageXOffset || (document.documentElement ? document.documentElement.scrollLeft : 0);
     var scrollY = window.pageYOffset || (document.documentElement ? document.documentElement.scrollTop : 0);
     var tbody = document.getElementById("tbody-patients");
@@ -4325,6 +4328,11 @@ function fetchPatientData() {
     }
 }
 
+function processFetchedPatients(newPatients, wardName) {
+    if (window.PatientLogic) window.PatientLogic.processFetchedPatients(newPatients, wardName);
+}
+
+
 // ---------- 採血日個別取得機能（karte.php連携） ----------
 // Deleted redundant vars & function
 
@@ -4665,214 +4673,9 @@ function parseHtmlAndMerge(doc, wardName) {
 }
 
 function processFetchedPatients(newPatients, wardName) {
-    if (!newPatients || !newPatients.length) return;
-    
-    // 不正な空データを排除 (Vol.15.13)
-    newPatients = newPatients.filter(function(item) { return item != null; });
-    
-    try {
-        var list = getCurrentPatientsList();
-        var oldMap = {};
-        for(var j = 0; j < list.length; j++) {
-            if(list[j]) oldMap[list[j].id] = list[j];
-        }
-        
-        var newMap = {};
-        var newMap = {};
-        for(var k = 0; k < newPatients.length; k++) {
-            if(newPatients[k]) newMap[newPatients[k].id] = newPatients[k];
-        }
-        
-        // 入退室履歴（追加・削除の検知）※データが空の状態からの初回読み込み時には大量に履歴が出るのを防ぐため既存リストがある場合のみ記録
-        if (!appData.history) appData.history = [];
-        var nowStr = getTodayString() + " " + getTimeString();
-        var historyAdded = 0;
-        
-        // 退室者アーカイブ用（存在しなければ初期化）
-        if (!appData.dischargedArchive) appData.dischargedArchive = {};
-
-        // === アーカイブの自動クリーンアップ（約半年＝180日経過で削除） ===
-        var currentMs = new Date().getTime();
-        var limitMs = 180 * 24 * 60 * 60 * 1000;
-        for (var arcId in appData.dischargedArchive) {
-            if (appData.dischargedArchive.hasOwnProperty(arcId)) {
-                var arcDat = appData.dischargedArchive[arcId].archivedAt;
-                if (arcDat && (currentMs - arcDat > limitMs)) {
-                    delete appData.dischargedArchive[arcId];
-                }
-            }
-        }
-
-        // 旧リストにあって、新リストにない人 ＝ 「退室」
-        for(var j = 0; j < list.length; j++) {
-            var oldP = list[j];
-            if(!oldP) continue;
-            if(!newMap[oldP.id]) {
-                appData.history.unshift({
-                    date: nowStr, type: "退室", patient: oldP.name, id: oldP.id, ward: wardName, 
-                    dept: oldP.dept || "", doctor: oldP.doctor || "", disease: oldP.disease || "",
-                    createdAt: new Date().getTime(), user: currentUserName
-                });
-                historyAdded++;
-                
-                // 退室時にメモや介入フラグ情報をアーカイブへ保存
-                appData.dischargedArchive[oldP.id] = {
-                    id: oldP.id, // ★追加: アーカイブデータ内にもIDを保持させる
-                    status: oldP.status,
-                    statusAuthor: oldP.statusAuthor,
-                    memo: oldP.memo,
-                    chkPrescription: oldP.chkPrescription || false,
-                    memoAuthors: oldP.memoAuthors || [],
-                    memoAuthor: oldP.memoAuthor || "",
-                    alertLevel: oldP.alertLevel || 0,
-                    personalMemos: oldP.personalMemos || {},
-                    archivedAt: new Date().getTime(),
-                    bloodDate: oldP.bloodDate || "",
-                    bloodDetail: oldP.bloodDetail || ""
-                };
-            }
-        }
-        
-        var mergedList = [];
-        for(var k = 0; k < newPatients.length; k++) {
-            var np = newPatients[k];
-            // 新リストにあって、旧リストにない人 ＝ 「入室」
-            if(!oldMap[np.id] && list.length > 0) {
-                appData.history.unshift({
-                    date: nowStr, type: "入室/追加", patient: np.name, id: np.id, ward: wardName,
-                    dept: np.dept || "", doctor: np.doctor || "", disease: np.disease || "",
-                    createdAt: new Date().getTime(), user: currentUserName
-                });
-                historyAdded++;
-            }
-            
-            var pId = np.id;
-            if(pId && oldMap[pId]) {
-                var oldP = oldMap[pId];
-                np.status = oldP.status;
-                np.statusAuthor = oldP.statusAuthor;
-                np.memo = oldP.memo;
-                np.chkPrescription = oldP.chkPrescription || false;
-                np.memoAuthors = oldP.memoAuthors || [];
-                np.memoAuthor = oldP.memoAuthor || "";
-                np.alertLevel = oldP.alertLevel || 0;
-                np.personalMemos = oldP.personalMemos || {};
-                if (oldP.bloodDate && oldP.bloodDate !== "-") {
-                    np.bloodDate = oldP.bloodDate;
-                    np.bloodDetail = oldP.bloodDetail;
-                } else if ((!np.bloodDate || np.bloodDate === "-") && oldP.bloodDate) {
-                    np.bloodDate = oldP.bloodDate;
-                    np.bloodDetail = oldP.bloodDetail;
-                }
-            } else {
-                // 病棟間移動時の情報引き継ぎ (cross-ward inheritance)
-                // この病棟の旧リストには居ないが、他の病棟データに同じIDの患者が存在するか探索する
-                var inherited = false;
-                var otherWards = [];
-                for (var wk in appData.patients) {
-                    if (wk !== String(currentWard) && appData.patients[wk]) {
-                        otherWards.push(appData.patients[wk]);
-                    }
-                }
-                
-                for(var w = 0; w < otherWards.length; w++) {
-                    var wList = otherWards[w];
-                    if(!wList) continue;
-                    for(var m = 0; m < wList.length; m++) {
-                        if (wList[m] && wList[m].id === np.id) {
-                            var target = wList[m];
-                            np.status = target.status;
-                            np.statusAuthor = target.statusAuthor;
-                            np.memo = target.memo;
-                            np.chkPrescription = target.chkPrescription || false;
-                            np.memoAuthors = target.memoAuthors || [];
-                            np.memoAuthor = target.memoAuthor || "";
-                            np.alertLevel = target.alertLevel || 0;
-                            np.personalMemos = target.personalMemos || {};
-                            inherited = true;
-                            break; 
-                        }
-                    }
-                    if(inherited) break;
-                }
-                
-                // どの病棟にも存在しない場合、過去の退室アーカイブを探す
-                if(!inherited && appData.dischargedArchive && appData.dischargedArchive[np.id]) {
-                    var arc = appData.dischargedArchive[np.id];
-                    np.status = arc.status;
-                    np.statusAuthor = arc.statusAuthor;
-                    np.memo = arc.memo;
-                    np.chkPrescription = arc.chkPrescription || false;
-                    np.memoAuthors = arc.memoAuthors || [];
-                    np.memoAuthor = arc.memoAuthor || "";
-                    np.alertLevel = arc.alertLevel || 0;
-                    np.personalMemos = arc.personalMemos || {};
-                    inherited = true;
-                    // 引継ぎ完了後、アーカイブからは削除する
-                    delete appData.dischargedArchive[np.id];
-                }
-
-                // ★追加: アーカイブにもない場合、さらに「入院予定(admissionSchedule)」にデータがないか探す
-                if(!inherited && appData.admissionSchedule) {
-                    for(var as=0; as<appData.admissionSchedule.length; as++) {
-                        var asP = appData.admissionSchedule[as];
-                        if(asP && String(asP.id) === String(np.id)) {
-                            np.status = asP.status || 0;
-                            np.statusAuthor = asP.statusAuthor || "";
-                            np.memo = asP.memo || "";
-                            np.memoAuthors = asP.memoAuthors || [];
-                            np.memoAuthor = asP.memoAuthor || "";
-                            np.alertLevel = asP.alertLevel || 0;
-                            np.personalMemos = asP.personalMemos || {};
-                            // 採血予定が入っていればそれも引き継ぐ
-                            if (asP.bloodDate && asP.bloodDate !== "-") {
-                                np.bloodDate = asP.bloodDate;
-                                np.bloodDetail = asP.bloodDetail || "";
-                            }
-                            inherited = true;
-                            break;
-                        }
-                    }
-                }
-
-                // それでも存在しない完全な新規患者の場合
-                if(!inherited) {
-                    np.status = 0;
-                    np.statusAuthor = "";
-                    np.memo = "";
-                }
-            }
-            mergedList.push(np);
-        }
-        
-        // 履歴が多くなりすぎないように制限（直近100件）
-        if (appData.history && appData.history.length > 100) {
-            appData.history = appData.history.slice(0, 100);
-        }
-        
-        // データの書き込み
-        appData.patients[currentWard] = mergedList;
-        
-        renderPatients();
-        renderHistory(); // 履歴タブの更新
-
-        var msg = wardName + " のリストを更新しました。(" + mergedList.length + "件)";
-        if(historyAdded > 0) msg += " ※退室/追加の変動がありました (履歴タブ参照)";
-        
-        var elTime = document.getElementById("last-update-time");
-        if(elTime) elTime.innerText = "【システム最終取得: " + getTimeString() + "】";
-        
-        // 入院予定データも同時に取得
-        setTimeout(function(){ fetchAdmissionSchedule(); }, 3000);
-        
-        // ローカル更新時間も合わせてリセットしておく（次回１分後に変わる）
-        var elLocalTime = document.getElementById("last-local-update-time");
-        if(elLocalTime) elLocalTime.innerText = "【ローカルデータ最新: " + getTimeString() + "】";
-        
-    } catch(e) {
-        alert("患者データのマージ処理エラー: " + e.message);
-    }
+    if (window.PatientLogic) window.PatientLogic.processFetchedPatients(newPatients, wardName);
 }
+
 
 // ---------- 入院予定患者一覧 ----------
 var admissionPatients = [];
@@ -5080,95 +4883,12 @@ function parseBloodDateFromDoc(doc, patientId) {
 // function saveDataQuietly removed to avoid conflict with DataManager
 
 function parseAdmissionHtml(doc) {
-    try {
-        var tables = doc.getElementsByTagName("table");
-        if (tables.length === 0) return;
-
-        var targetTable = tables[0];
-        var rows = targetTable.getElementsByTagName("tr");
-
-        var newAdmissions = [];
-        var idIndex = 2;
-        var nameIndex = 3;
-        var deptIndex = 11;
-        var docIndex = 12;
-        var diseaseIndex = 15;
-        var bloodDateIndex = 17; // 入院予定用インデックスの仮定
-
-        for (var i = 0; i < rows.length; i++) {
-            var cells = rows[i].getElementsByTagName("td");
-            if (cells.length > diseaseIndex) {
-                var pidStr = (cells[idIndex].innerText || cells[idIndex].textContent || "").replace(/[\n\r]/g, "").replace(/\s+/g, "");
-                var pname = (cells[nameIndex].innerText || cells[nameIndex].textContent || "").trim();
-                var pdept = (cells[deptIndex].innerText || cells[deptIndex].textContent || "").trim();
-                var pdoc = (cells[docIndex].innerText || cells[docIndex].textContent || "").trim();
-                var pdisease = (cells[diseaseIndex].innerText || cells[diseaseIndex].textContent || "").trim();
-
-                if (pidStr) {
-                    newAdmissions.push({
-                        id: pidStr,
-                        name: pname,
-                        dept: pdept,
-                        doctor: pdoc,
-                        disease: pdisease,
-                        daysInHosp: "-",
-                        bloodDate: (cells[bloodDateIndex] ? (cells[bloodDateIndex].innerText || cells[bloodDateIndex].textContent || "").replace(/[\n\r\t]/g, "").trim() : "-")
-                    });
-                }
-            }
-        }
-
-        // 既存の入院予定データからステータス・メモを引き継ぐ
-        var oldMap = {};
-        for (var j = 0; j < admissionPatients.length; j++) {
-            oldMap[admissionPatients[j].id] = admissionPatients[j];
-        }
-        // appDataのadmissionScheduleからも引き継ぐ
-        if (appData.admissionSchedule) {
-            for (var j = 0; j < appData.admissionSchedule.length; j++) {
-                var as = appData.admissionSchedule[j];
-                if (!oldMap[as.id]) oldMap[as.id] = as;
-            }
-        }
-        // 既存の患者リストからも引き継ぎ（入院予定→入院移行時）
-        var currentList = getCurrentPatientsList();
-        for (var j = 0; j < currentList.length; j++) {
-            if (!oldMap[currentList[j].id]) oldMap[currentList[j].id] = currentList[j];
-        }
-
-        for (var k = 0; k < newAdmissions.length; k++) {
-            var np = newAdmissions[k];
-            var old = oldMap[np.id];
-            if (old) {
-                np.status = old.status || 0;
-                np.statusAuthor = old.statusAuthor || "";
-                np.memo = old.memo || "";
-                np.memoAuthors = old.memoAuthors || [];
-                np.memoAuthor = old.memoAuthor || "";
-                np.alertLevel = old.alertLevel || 0;
-                // 採血日の引き継ぎ
-                if ((!np.bloodDate || np.bloodDate === "-") && old.bloodDate) {
-                    np.bloodDate = old.bloodDate;
-                }
-            } else {
-                np.status = 0;
-                np.statusAuthor = "";
-                np.memo = "";
-                np.memoAuthors = [];
-                np.alertLevel = 0;
-            }
-        }
-
-        admissionPatients = newAdmissions;
-        appData.admissionSchedule = newAdmissions;
-        renderAdmissionSchedule();
-
-    } catch(e) {
-        // パースエラーはサイレントに
-    }
+    if (window.PatientLogic) window.PatientLogic.parseAdmissionHtml(doc);
 }
 
+
 function renderAdmissionSchedule() {
+    if (window.PatientLogic && window.PatientLogic.injectMeta) window.PatientLogic.injectMeta(appData);
     var tbody = document.getElementById('tbody-admission');
     var countEl = document.getElementById('admission-count');
     if (!tbody) return;
@@ -9565,6 +9285,9 @@ function insertTagSuggest(elem, tag) {
 <div id="tag-suggest-box" style="position:absolute; background:#fff; border:1px solid #ccc; display:none; z-index:999; padding:5px;"></div>
 </body>
 </html>
+
+
+
 
 
 

@@ -1,4 +1,4 @@
-var DataManager = (function() {
+﻿var DataManager = (function() {
     var fso = null;
     var lastReplayTs = 0;
     var lastArchiveTs = 0;
@@ -141,6 +141,46 @@ var DataManager = (function() {
             disk.history = safeRead("history") || [];
             disk.appliedTxIds = pat.appliedTxIds || []; 
             
+            // --- メタデータの抽出・移行処理 ---
+            disk.patientMeta = pat.patientMeta || {};
+
+            function extractMeta(p) {
+                if (!p || !p.id) return;
+                var nId = String(p.id).replace(/^0+/, '') || '0';
+                var hasMeta = false;
+                var meta = disk.patientMeta[nId] || {};
+                
+                if (p.memo !== undefined) { meta.memo = p.memo; hasMeta = true; }
+                if (p.status !== undefined) { meta.status = p.status; hasMeta = true; }
+                if (p.statusAuthor !== undefined) { meta.statusAuthor = p.statusAuthor; hasMeta = true; }
+                if (p.alertLevel !== undefined) { meta.alertLevel = p.alertLevel; hasMeta = true; }
+                if (p.memoAuthors !== undefined) { meta.memoAuthors = p.memoAuthors; hasMeta = true; }
+                if (p.bloodDate !== undefined && p.bloodDate !== "-") { meta.bloodDate = p.bloodDate; hasMeta = true; }
+                if (p.bloodDetail !== undefined) { meta.bloodDetail = p.bloodDetail; hasMeta = true; }
+                if (p.chkPrescription !== undefined) { meta.chkPrescription = p.chkPrescription; hasMeta = true; }
+                if (p.personalMemos !== undefined) { meta.personalMemos = p.personalMemos; hasMeta = true; }
+                
+                if (hasMeta) {
+                    disk.patientMeta[nId] = meta;
+                }
+            }
+
+            // patientsから抽出
+            for (var ward in disk.patients) {
+                if (disk.patients.hasOwnProperty(ward) && disk.patients[ward] instanceof Array) {
+                    for (var i = 0; i < disk.patients[ward].length; i++) extractMeta(disk.patients[ward][i]);
+                }
+            }
+            // admissionScheduleから抽出
+            if (disk.admissionSchedule instanceof Array) {
+                for (var i = 0; i < disk.admissionSchedule.length; i++) extractMeta(disk.admissionSchedule[i]);
+            }
+            // dischargedArchiveから抽出
+            for (var aId in disk.dischargedArchive) {
+                if (disk.dischargedArchive.hasOwnProperty(aId)) extractMeta(disk.dischargedArchive[aId]);
+            }
+            // ---------------------------------
+            
             return disk;
         },
 
@@ -260,12 +300,48 @@ var DataManager = (function() {
             return updatedCount > 0;
         },
 
-        _applyDelta: function(appData, op, data, uName) {
+                _applyDelta: function(appData, op, data, uName) {
             try {
                 var p = null;
                 if (data && data.patientId && data.wardCode) {
                     p = this._findPatientInAppData(appData, data.patientId, data.wardCode);
                 }
+
+                // メタデータ一元更新ヘルパー
+                var updateMeta = function(pid, field, value) {
+                    if (!pid) return;
+                    var nId = String(pid).replace(/^0+/, '') || '0';
+                    if (!appData.patientMeta) appData.patientMeta = {};
+                    if (!appData.patientMeta[nId]) appData.patientMeta[nId] = {};
+                    appData.patientMeta[nId][field] = value;
+                };
+
+                var updateMetaAuthors = function(pid, author) {
+                    if (!pid || !author) return;
+                    var nId = String(pid).replace(/^0+/, '') || '0';
+                    if (!appData.patientMeta) appData.patientMeta = {};
+                    if (!appData.patientMeta[nId]) appData.patientMeta[nId] = {};
+                    var meta = appData.patientMeta[nId];
+                    if (!meta.memoAuthors) meta.memoAuthors = [];
+                    if (meta.memoAuthors.length > 0 && meta.memoAuthors[0].indexOf(author) === 0) {
+                        meta.memoAuthors[0] = author;
+                    } else {
+                        meta.memoAuthors.unshift(author);
+                    }
+                    if (meta.memoAuthors.length > 3) meta.memoAuthors = meta.memoAuthors.slice(0, 3);
+                    meta.memoAuthor = author;
+                };
+
+                var updateMetaDict = function(pid, dictField, key, value) {
+                    if (!pid) return;
+                    var nId = String(pid).replace(/^0+/, '') || '0';
+                    if (!appData.patientMeta) appData.patientMeta = {};
+                    if (!appData.patientMeta[nId]) appData.patientMeta[nId] = {};
+                    if (!appData.patientMeta[nId][dictField]) appData.patientMeta[nId][dictField] = {};
+                    appData.patientMeta[nId][dictField][key] = value;
+                };
+
+                var needsInject = false;
 
                 switch (op) {
                     case "UPDATE_ANNOUNCEMENT":
@@ -274,43 +350,25 @@ var DataManager = (function() {
                         appData.settings.announcement = data.value;
                         break;
                     case "UPDATE_ADMISSION_MEMO":
-                        if (appData.admissionSchedule) {
-                            for (var i = 0; i < appData.admissionSchedule.length; i++) {
-                                var id1 = String(appData.admissionSchedule[i].id).replace(/^0+/, '') || '0';
-                                var id2 = String(data.patientId).replace(/^0+/, '') || '0';
-                                if (id1 === id2) {
-                                    appData.admissionSchedule[i].memo = data.value;
-                                    break;
-                                }
-                            }
-                        }
+                    case "UPDATE_PATIENT_MEMO":
+                        updateMeta(data.patientId, "memo", data.value);
+                        updateMetaAuthors(data.patientId, uName);
+                        needsInject = true;
                         break;
-
                     case "UPDATE_ADMISSION_STATUS":
-                        if (appData.admissionSchedule) {
-                            for (var i = 0; i < appData.admissionSchedule.length; i++) {
-                                var id1 = String(appData.admissionSchedule[i].id).replace(/^0+/, '') || '0';
-                                var id2 = String(data.patientId).replace(/^0+/, '') || '0';
-                                if (id1 === id2) {
-                                    appData.admissionSchedule[i].status = data.value;
-                                    appData.admissionSchedule[i].statusAuthor = data.author;
-                                    break;
-                                }
-                            }
-                        }
+                        updateMeta(data.patientId, "status", data.value);
+                        updateMeta(data.patientId, "statusAuthor", data.author);
+                        needsInject = true;
                         break;
-
+                    case "TOGGLE_STATUS":
+                        updateMeta(data.patientId, "status", data.value);
+                        updateMeta(data.patientId, "statusAuthor", data.author || uName);
+                        needsInject = true;
+                        break;
                     case "UPDATE_ADMISSION_ALERT":
-                        if (appData.admissionSchedule) {
-                            for (var i = 0; i < appData.admissionSchedule.length; i++) {
-                                var id1 = String(appData.admissionSchedule[i].id).replace(/^0+/, '') || '0';
-                                var id2 = String(data.patientId).replace(/^0+/, '') || '0';
-                                if (id1 === id2) {
-                                    appData.admissionSchedule[i].alertLevel = data.value;
-                                    break;
-                                }
-                            }
-                        }
+                    case "TOGGLE_ALERT":
+                        updateMeta(data.patientId, "alertLevel", data.value);
+                        needsInject = true;
                         break;
                     case "UPDATE_SURGERY_INFO":
                         if (p) {
@@ -319,47 +377,21 @@ var DataManager = (function() {
                             p.surgeryProcedure = data.surgeryProcedure;
                             p.surgeryAnesthesia = data.surgeryAnesthesia;
                             p.surgeryHasEpi = data.surgeryHasEpi;
-                            p.surgeryLixiana = data.surgeryLixiana; // ★この1行を追加
-                        }
-                        break;
-                    case "UPDATE_PATIENT_MEMO":
-                        if (p) { p.memo = data.value; this._updateMemoAuthors(p, uName); }
-                        else {
-                            if (!appData.dischargedArchive || (appData.dischargedArchive instanceof Array)) {
-                                appData.dischargedArchive = {};
-                            }
-                            if (!appData.dischargedArchive[data.patientId]) {
-                                appData.dischargedArchive[data.patientId] = { id: data.patientId, archivedAt: new Date().getTime(), memoAuthors: [] };
-                            }
-                            var arc = appData.dischargedArchive[data.patientId];
-                            arc.memo = data.value;
-                            this._updateMemoAuthors(arc, uName);
+                            p.surgeryLixiana = data.surgeryLixiana;
                         }
                         break;
                     case "UPDATE_BLOOD_DATE":
-                        if (p) {
-                            p.bloodDate = data.bloodDate;
-                            p.bloodDetail = data.bloodDetail;
-                        }
-                        break;
-                    case "TOGGLE_STATUS":
-                        // ★修正: 作業者名(author)も一緒に更新する
-                        if (p) {
-                            p.status = data.value;
-                            p.statusAuthor = data.author || uName;
-                        }
+                        updateMeta(data.patientId, "bloodDate", data.bloodDate);
+                        updateMeta(data.patientId, "bloodDetail", data.bloodDetail);
+                        needsInject = true;
                         break;
                     case "TOGGLE_PRESCRIPTION":
-                        if (p) p.chkPrescription = data.value;
-                        break;
-                    case "TOGGLE_ALERT":
-                        if (p) p.alertLevel = data.value;
+                        updateMeta(data.patientId, "chkPrescription", data.value);
+                        needsInject = true;
                         break;
                     case "UPDATE_PERSONAL_MEMO":
-                        if (p) {
-                            if (!p.personalMemos) p.personalMemos = {};
-                            p.personalMemos[data.userId] = data.value;
-                        }
+                        updateMetaDict(data.patientId, "personalMemos", data.userId, data.value);
+                        needsInject = true;
                         break;
                     case "ADD_TODO":
                         if (!appData.todos) appData.todos = [];
@@ -461,10 +493,13 @@ var DataManager = (function() {
                         appData.settings.userCustomTabs[data.userId] = data.tabs;
                         break;
                 }
-            } catch(e) {}
+                if (needsInject && typeof window.PatientLogic !== "undefined" && window.PatientLogic.injectMeta) {
+                    window.PatientLogic.injectMeta(appData);
+                }
+            } catch(e) { console.log(e); }
         },
 
-        _updateMemoAuthors: function(p, uName) {
+                _updateMemoAuthors: function(p, uName) {
             var now = new Date();
             var minStr = (now.getMinutes() < 10 ? "0" : "") + now.getMinutes();
             var tsDisplay = (now.getMonth() + 1) + "/" + now.getDate() + " " + now.getHours() + ":" + minStr;
@@ -474,6 +509,8 @@ var DataManager = (function() {
             if (p.memoAuthors[0] && p.memoAuthors[0].indexOf(uName) === 0) {
                 p.memoAuthors[0] = authorStr;
             } else {
+                p.memoAuthors.unshift(authorStr);
+            }
                 p.memoAuthors.unshift(authorStr);
             }
             if (p.memoAuthors.length > 3) p.memoAuthors = p.memoAuthors.slice(0, 3);
@@ -662,6 +699,7 @@ var DataManager = (function() {
                 patients: merged.patients, 
                 admissionSchedule: merged.admissionSchedule, 
                 dischargedArchive: merged.dischargedArchive,
+                patientMeta: merged.patientMeta,
                 appliedTxIds: merged.appliedTxIds 
             };
             var patStr = stringifyData(patObj);
@@ -683,3 +721,5 @@ var DataManager = (function() {
         }
     };
 })();
+
+
