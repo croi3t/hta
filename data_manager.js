@@ -275,10 +275,38 @@ var DataManager = (function() {
                         break;
                     case "UPDATE_ADMISSION_MEMO":
                         if (appData.admissionSchedule) {
-                            for (var a = 0; a < appData.admissionSchedule.length; a++) {
-                                if (String(appData.admissionSchedule[a].id) === String(data.patientId)) {
-                                    appData.admissionSchedule[a].memo = data.value;
-                                    this._updateMemoAuthors(appData.admissionSchedule[a], uName);
+                            for (var i = 0; i < appData.admissionSchedule.length; i++) {
+                                var id1 = String(appData.admissionSchedule[i].id).replace(/^0+/, '') || '0';
+                                var id2 = String(data.patientId).replace(/^0+/, '') || '0';
+                                if (id1 === id2) {
+                                    appData.admissionSchedule[i].memo = data.value;
+                                    break;
+                                }
+                            }
+                        }
+                        break;
+
+                    case "UPDATE_ADMISSION_STATUS":
+                        if (appData.admissionSchedule) {
+                            for (var i = 0; i < appData.admissionSchedule.length; i++) {
+                                var id1 = String(appData.admissionSchedule[i].id).replace(/^0+/, '') || '0';
+                                var id2 = String(data.patientId).replace(/^0+/, '') || '0';
+                                if (id1 === id2) {
+                                    appData.admissionSchedule[i].status = data.value;
+                                    appData.admissionSchedule[i].statusAuthor = data.author;
+                                    break;
+                                }
+                            }
+                        }
+                        break;
+
+                    case "UPDATE_ADMISSION_ALERT":
+                        if (appData.admissionSchedule) {
+                            for (var i = 0; i < appData.admissionSchedule.length; i++) {
+                                var id1 = String(appData.admissionSchedule[i].id).replace(/^0+/, '') || '0';
+                                var id2 = String(data.patientId).replace(/^0+/, '') || '0';
+                                if (id1 === id2) {
+                                    appData.admissionSchedule[i].alertLevel = data.value;
                                     break;
                                 }
                             }
