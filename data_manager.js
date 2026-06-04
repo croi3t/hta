@@ -93,6 +93,7 @@ var DataManager = (function() {
             
             var adminList = ["16622", "17049", "17494", "17701", "17702"];
             adminList.push("3107", "17397", "17050", "16623", "17496", "3429", "17626");
+            adminList.push("17624", "2772", "16365", "17276", "17495", "3716");
 
             var disk = {
                 patients: {}, wardNotes: {}, todos: [], history: [],
