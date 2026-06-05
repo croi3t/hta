@@ -132,13 +132,14 @@ var PatientLogic = {
             
             // リストを更新
             if (!appData.patients) appData.patients = {};
-            appData.patients[wardName] = mergedList;
+            var targetWardKey = (typeof window.currentWard !== 'undefined') ? window.currentWard : wardName;
+            appData.patients[targetWardKey] = mergedList;
             
             DataManager.saveAll(appData, true);
             renderPatients();
             
         } catch(e) {
-            console.log("Error in processFetchedPatients: " + e.message);
+            alert("Error in processFetchedPatients: " + e.message);
         }
     },
     
@@ -186,8 +187,10 @@ var PatientLogic = {
             renderAdmissionSchedule();
             
         } catch(e) {
-            console.log("Error in parseAdmissionHtml: " + e.message);
+            alert("Error in parseAdmissionHtml: " + e.message);
         }
     }
 };
+
+
 
