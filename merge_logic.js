@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Board2 - 3-Way Merge Logic
  * 複数ユーザーによる同時編集を、ベースデータ、他者データ(ディスク)、自分データの3点から統合します。
  */
@@ -80,29 +80,58 @@ function perform3WayMerge(baseData, diskData, myData) {
     
     var result = {};
     try {
-        // 1. 患者リスト (レガシー個別キー)
+                // 1. 患者リスト (レガシー個別キー) - メタデータ分離後は単純上書き
         var patientKeys = ["patientsWard1", "patientsWard2", "patientsWard3", "admissionSchedule"];
         for(var w=0; w<patientKeys.length; w++) {
             var wk = patientKeys[w];
             if (myData[wk] !== undefined || diskData[wk] !== undefined) {
-                result[wk] = mergePatientList(baseData[wk], diskData[wk], myData[wk]);
+                result[wk] = myData[wk] !== undefined ? myData[wk] : diskData[wk];
             }
         }
 
-        // 1c. patients マップ (新形式・動的病棟)
+        // 1c. patients マップ (新形式・動的病棟) - 単純上書き
         if (myData.patients || diskData.patients) {
             var myPats = myData.patients || {};
             var diskPats = diskData.patients || {};
-            var basePats = baseData.patients || {};
             var mergedPats = {};
             var allCodes = {};
             for(var c in myPats) allCodes[c] = true;
             for(var c in diskPats) allCodes[c] = true;
-            for(var c in basePats) allCodes[c] = true;
             for(var code in allCodes) {
-                mergedPats[code] = mergePatientList(basePats[code], diskPats[code], myPats[code]);
+                mergedPats[code] = myPats[code] !== undefined ? myPats[code] : diskPats[code];
             }
             result.patients = mergedPats;
+        }
+
+        // 1d. patientMeta マップ (一元化されたメタデータ)
+        if (myData.patientMeta || diskData.patientMeta) {
+            var myMeta = myData.patientMeta || {};
+            var diskMeta = diskData.patientMeta || {};
+            var mergedMeta = {};
+            for (var id in diskMeta) {
+                if (diskMeta.hasOwnProperty(id)) {
+                    mergedMeta[id] = {};
+                    for(var k in diskMeta[id]) mergedMeta[id][k] = diskMeta[id][k];
+                }
+            }
+            for (var id in myMeta) {
+                if (myMeta.hasOwnProperty(id)) {
+                    var mObj = myMeta[id];
+                    var dObj = mergedMeta[id] || {};
+                    for (var key in mObj) {
+                        if (mObj.hasOwnProperty(key)) {
+                            if (key === "personalMemos" && typeof mObj[key] === "object") {
+                                if (!dObj.personalMemos) dObj.personalMemos = {};
+                                for (var pk in mObj[key]) dObj.personalMemos[pk] = mObj[key][pk];
+                            } else {
+                                dObj[key] = mObj[key];
+                            }
+                        }
+                    }
+                    mergedMeta[id] = dObj;
+                }
+            }
+            result.patientMeta = mergedMeta;
         }
 
         // 1b. dischargedArchive (オブジェクト形式: PID -> Data)
@@ -226,3 +255,4 @@ function perform3WayMerge(baseData, diskData, myData) {
     }
     return result;
 }
+
