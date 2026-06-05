@@ -605,7 +605,7 @@
             return merged; 
         },
 
-        _mergeAndSave: function(myData, diskData, forceSave) {
+                _mergeAndSave: function(myData, diskData, forceSave) {
             var merged = {};
 
             merged.patients = myData.patients || {};
@@ -613,13 +613,90 @@
             merged.dischargedArchive = myData.dischargedArchive || {};
             merged.todos = myData.todos || [];
 
-            // ★修正: 病棟メモ(wardNotes)をサーバーデータと安全にマージする
+            // ★追加: patientMetaのマージ
+            merged.patientMeta = {};
+            var dMeta = diskData.patientMeta || {};
+            var mMeta = myData.patientMeta || {};
+            
+            for (var id in dMeta) {
+                if (dMeta.hasOwnProperty(id)) {
+                    merged.patientMeta[id] = {};
+                    for (var k in dMeta[id]) merged.patientMeta[id][k] = dMeta[id][k];
+                }
+            }
+            for (var id in mMeta) {
+                if (mMeta.hasOwnProperty(id)) {
+                    var mObj = mMeta[id];
+                    var dObj = merged.patientMeta[id] || {};
+                    for (var key in mObj) {
+                        if (mObj.hasOwnProperty(key)) {
+                            if (key === "personalMemos" && typeof mObj[key] === "object") {
+                                if (!dObj.personalMemos) dObj.personalMemos = {};
+                                for (var pk in mObj[key]) dObj.personalMemos[pk] = mObj[key][pk];
+                            } else {
+                                dObj[key] = mObj[key];
+                            }
+                        }
+                    }
+                    merged.patientMeta[id] = dObj;
+                }
+            }
+
+                        // ★修正: 病棟メモ(wardNotes)をサーバーデータと安全にマージする
             merged.wardNotes = diskData.wardNotes || {}; 
             if (myData.wardNotes) {
                 for (var wk in myData.wardNotes) {
                     if (myData.wardNotes.hasOwnProperty(wk)) {
-                        // 自分の手元にデータがある病棟だけを最新化し、他は維持する
-                        merged.wardNotes[wk] = myData.wardNotes[wk];
+                        var mNotes = myData.wardNotes[wk] || [];
+                        var dNotes = merged.wardNotes[wk] || [];
+                        
+                        // 手元が空配列(0件)の場合、初期化バグでディスクのデータが消えるのを防ぐ
+                        if (mNotes.length === 0 && dNotes.length > 0) {
+                            merged.wardNotes[wk] = dNotes;
+                            continue;
+                        }
+
+                        // IDベースで安全にマージ
+                        var noteMap = {};
+                        var finalNotes = [];
+                        
+                        // 1. ディスクのノートをマップに登録
+                        for (var i = 0; i < dNotes.length; i++) {
+                            if (dNotes[i] && dNotes[i].id) {
+                                noteMap[dNotes[i].id] = dNotes[i];
+                            }
+                        }
+                        
+                        // 2. 自分の手元のノートを優先して結果配列に追加（並び順は自分のものを優先）
+                        var myIds = {};
+                        for (var j = 0; j < mNotes.length; j++) {
+                            if (mNotes[j] && mNotes[j].id) {
+                                var nid = mNotes[j].id;
+                                myIds[nid] = true;
+                                if (noteMap[nid]) {
+                                    // 既存ノートなら最新の内容に更新
+                                    var mergedNote = {};
+                                    for (var prop in noteMap[nid]) mergedNote[prop] = noteMap[nid][prop];
+                                    for (var prop in mNotes[j]) mergedNote[prop] = mNotes[j][prop];
+                                    finalNotes.push(mergedNote);
+                                } else {
+                                    // 新規ノート
+                                    finalNotes.push(mNotes[j]);
+                                }
+                            }
+                        }
+                        
+                        // 3. 自分側に存在しないディスク側のノートは、「他人が追加した」か「自分が削除した」もの。
+                        // データロスを防ぐため、「自分が削除した」ケース以外は復活させるのが安全だが、
+                        // 今回はトランザクションで削除が同期される前提なので、
+                        // 基本的に他人が追加した未同期ノートを拾うため、ディスク残存分を後ろに追加する。
+                        for (var i = 0; i < dNotes.length; i++) {
+                            if (dNotes[i] && dNotes[i].id && !myIds[dNotes[i].id]) {
+                                finalNotes.push(dNotes[i]);
+                            }
+                        }
+                        
+                        merged.wardNotes[wk] = finalNotes;
                     }
                 }
             }
@@ -719,6 +796,8 @@
         }
     };
 })();
+
+
 
 
 
