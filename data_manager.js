@@ -508,9 +508,7 @@
             if (!p.memoAuthors) p.memoAuthors = [];
             if (p.memoAuthors[0] && p.memoAuthors[0].indexOf(uName) === 0) {
                 p.memoAuthors[0] = authorStr;
-            } else {
-                p.memoAuthors.unshift(authorStr);
-            }
+} else {
                 p.memoAuthors.unshift(authorStr);
             }
             if (p.memoAuthors.length > 3) p.memoAuthors = p.memoAuthors.slice(0, 3);
@@ -721,5 +719,6 @@
         }
     };
 })();
+
 
 
