@@ -3,12 +3,11 @@
 // ==========================================
 
 var PatientLogic = {
-    injectMeta: function(appData) {
-        if (!appData || !appData.patientMeta) return;
-        var meta = appData.patientMeta;
-
-        var applyMeta = function(p) {
-            if (!p || !p.id) return;
+        injectMetaToList: function(list, meta) {
+        if (!list || !meta) return;
+        for (var i = 0; i < list.length; i++) {
+            var p = list[i];
+            if (!p || !p.id) continue;
             var nId = String(p.id).replace(/^0+/, '') || '0';
             var m = meta[nId];
             if (m) {
@@ -21,22 +20,6 @@ var PatientLogic = {
                 if (m.bloodDetail) p.bloodDetail = m.bloodDetail;
                 if (m.chkPrescription !== undefined) p.chkPrescription = m.chkPrescription;
                 if (m.personalMemos) p.personalMemos = m.personalMemos;
-            }
-        };
-
-        if (appData.patients) {
-            for (var ward in appData.patients) {
-                if (appData.patients.hasOwnProperty(ward) && appData.patients[ward] instanceof Array) {
-                    for (var i = 0; i < appData.patients[ward].length; i++) applyMeta(appData.patients[ward][i]);
-                }
-            }
-        }
-        if (appData.admissionSchedule instanceof Array) {
-            for (var i = 0; i < appData.admissionSchedule.length; i++) applyMeta(appData.admissionSchedule[i]);
-        }
-        if (appData.dischargedArchive) {
-            for (var aId in appData.dischargedArchive) {
-                if (appData.dischargedArchive.hasOwnProperty(aId)) applyMeta(appData.dischargedArchive[aId]);
             }
         }
     },
@@ -191,6 +174,7 @@ var PatientLogic = {
         }
     }
 };
+
 
 
 
