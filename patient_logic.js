@@ -118,7 +118,7 @@ var PatientLogic = {
             var targetWardKey = (typeof window.currentWard !== 'undefined') ? window.currentWard : wardName;
             appData.patients[targetWardKey] = mergedList;
             
-            DataManager.saveAll(appData, true);
+            DataManager.hasLocalChanges = true;
             renderPatients();
             
         } catch(e) {
@@ -166,7 +166,7 @@ var PatientLogic = {
             // 新規リストで上書き
             appData.admissionSchedule = newAdmissions;
             
-            DataManager.saveAll(appData, true);
+            DataManager.hasLocalChanges = true;
             renderAdmissionSchedule();
             
         } catch(e) {
@@ -174,6 +174,8 @@ var PatientLogic = {
         }
     }
 };
+
+
 
 
 

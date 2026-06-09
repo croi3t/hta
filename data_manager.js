@@ -69,6 +69,7 @@
 
     var _lastTx = { op: "", id: "", val: "" };
     var _lastSavedDataHash = "";
+    var _txCounter = 0;
     
     function getHash(obj) {
         var str = stringifyData(obj);
@@ -206,11 +207,11 @@
 
             // 2. トランザクションファイル作成
             var ts = new Date().getTime();
-            var txId = ts + "_" + (window.currentSystemId || "unknown") + "_" + Math.floor(Math.random() * 0x10000).toString(16);
+            var txId = ts + "_" + (_txCounter++) + "_" + (window.currentSystemId || "unknown") + "_" + Math.floor(Math.random() * 0x10000).toString(16);
 
             // (UI側で漏れている場合への保険としてローカルにも適用)
             if (typeof appData !== 'undefined') {
-                this._applyDelta(appData, op, payload, window.currentUserName);
+                this._applyDelta(appData, op, payload, window.currentUserName, ts);
                 // ★修正: ローカル適用時に自分のトランザクションIDも記録しておく
                 if (!appData.appliedTxIds) appData.appliedTxIds = [];
                 appData.appliedTxIds.push(txId); 
@@ -284,7 +285,7 @@
                 if (tx) {
                     // ★修正: tx.uId !== window.currentSystemId という「自分を無視する制限」を削除！
                     // 誰のトランザクションであれ、未適用なら必ず適用する
-                    this._applyDelta(appData, tx.op, tx.data, tx.uName);
+                    this._applyDelta(appData, tx.op, tx.data, tx.uName, tx.ts);
                     updatedCount++;
                 }
                 appData.appliedTxIds.push(targets[i].id);
@@ -300,7 +301,7 @@
             return updatedCount > 0;
         },
 
-                _applyDelta: function(appData, op, data, uName) {
+                _applyDelta: function(appData, op, data, uName, txTs) {
             try {
                 var p = null;
                 if (data && data.patientId && data.wardCode) {
@@ -316,20 +317,32 @@
                     appData.patientMeta[nId][field] = value;
                 };
 
-                var updateMetaAuthors = function(pid, author) {
+                                var updateMetaAuthors = function(pid, author, tsVal) {
                     if (!pid || !author) return;
+                    var timeStr = "";
+                    if (tsVal) {
+                        var d = new Date(tsVal);
+                        var mm = ("0" + (d.getMonth() + 1)).slice(-2);
+                        var dd = ("0" + d.getDate()).slice(-2);
+                        var hh = ("0" + d.getHours()).slice(-2);
+                        var min = ("0" + d.getMinutes()).slice(-2);
+                        timeStr = " (" + mm + "/" + dd + " " + hh + ":" + min + ")";
+                    }
+                    var authorText = author + timeStr;
+
                     var nId = String(pid).replace(/^0+/, '') || '0';
                     if (!appData.patientMeta) appData.patientMeta = {};
                     if (!appData.patientMeta[nId]) appData.patientMeta[nId] = {};
                     var meta = appData.patientMeta[nId];
                     if (!meta.memoAuthors) meta.memoAuthors = [];
+                    
                     if (meta.memoAuthors.length > 0 && meta.memoAuthors[0].indexOf(author) === 0) {
-                        meta.memoAuthors[0] = author;
+                        meta.memoAuthors[0] = authorText;
                     } else {
-                        meta.memoAuthors.unshift(author);
+                        meta.memoAuthors.unshift(authorText);
                     }
                     if (meta.memoAuthors.length > 3) meta.memoAuthors = meta.memoAuthors.slice(0, 3);
-                    meta.memoAuthor = author;
+                    meta.memoAuthor = authorText;
                 };
 
                 var updateMetaDict = function(pid, dictField, key, value) {
@@ -352,7 +365,7 @@
                     case "UPDATE_ADMISSION_MEMO":
                     case "UPDATE_PATIENT_MEMO":
                         updateMeta(data.patientId, "memo", data.value);
-                        updateMetaAuthors(data.patientId, uName);
+                        updateMetaAuthors(data.patientId, uName, txTs);
                         needsInject = true;
                         break;
                     case "UPDATE_ADMISSION_STATUS":
@@ -362,7 +375,7 @@
                         break;
                     case "TOGGLE_STATUS":
                         updateMeta(data.patientId, "status", data.value);
-                        updateMeta(data.patientId, "statusAuthor", data.author || uName);
+                        updateMeta(data.patientId, "statusAuthor", typeof data.author !== "undefined" ? data.author : uName);
                         needsInject = true;
                         break;
                     case "UPDATE_ADMISSION_ALERT":
@@ -796,6 +809,7 @@
         }
     };
 })();
+
 
 
 
