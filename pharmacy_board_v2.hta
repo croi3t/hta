@@ -5672,55 +5672,6 @@ function recoverFromTransactions() {
         alert("復元中にエラーが発生しました: " + e.message);
     }
 }
-    
-    if(txFiles.length === 0) {
-        alert("復元対象のトランザクションファイルがありません。");
-        return;
-    }
-
-    // 古い順にソートして、順次マージしていく
-    txFiles.sort(function(a, b) { return a.Name.localeCompare(b.Name); });
-
-    var recoveredData = null;
-    var count = 0;
-
-    for (var i = 0; i < txFiles.length; i++) {
-        try {
-            var txStr = loadTextUtf8(txFiles[i].Path);
-            var txObj = parseData(txStr);
-            if (txObj && txObj.base && txObj.my) {
-                if (!recoveredData) {
-                    recoveredData = txObj.my;
-                } else {
-                    recoveredData = perform3WayMerge(txObj.base, recoveredData, txObj.my);
-                }
-                count++;
-            }
-        } catch(e) {}
-    }
-
-    if(recoveredData) {
-        appData = recoveredData;
-        window.baseAppDataStr = stringifyData(appData);
-        window.lastLoadedDataStr = window.baseAppDataStr;
-        
-        applyWardTabs();
-        renderPatients();
-        renderPatients();
-        if (typeof TodoUI !== "undefined" && document.getElementById("tab-todo").className.indexOf("active") !== -1) {
-            TodoUI.render();
-        }
-        renderHistory();
-        
-        alert("【復元完了】\n" + count + "件のトランザクションから最新状態を再構築しました。\n\n※この時点ではまだサーバーに保存されていません。内容を確認の上、手動で「保存(マージ反映)」を押してマスタファイルを再作成してください。");
-        
-        var elLocalTime = document.getElementById("last-local-update-time");
-        if(elLocalTime) elLocalTime.innerText = "【！復元データ表示中！】";
-    } else {
-        alert("データの復元に失敗しました。ファイルが空か破損しています。");
-    }
-}
-
 
 // ---------- Excel出力機能 ----------
 // ---------- Excel出力機能 (Vol.15.x拡張版) ----------
@@ -9302,6 +9253,7 @@ function insertTagSuggest(elem, tag) {
 <div id="tag-suggest-box" style="position:absolute; background:#fff; border:1px solid #ccc; display:none; z-index:999; padding:5px;"></div>
 </body>
 </html>
+
 
 
 
