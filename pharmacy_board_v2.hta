@@ -5642,20 +5642,36 @@ function updateHistoryMemo(pId, newVal) {
 
 // ---------- トランザクション履歴からの緊急復元ロジック (Vol.15) ----------
 function recoverFromTransactions() {
-    if(!fso) return;
-    var txDir = getTxDir();
-    if(!fso.FolderExists(txDir)) {
-        alert("トランザクションフォルダ(data/tx)が見つかりません。復元できるデータがありません。");
+    if (typeof DataManager === "undefined") {
+        alert("DataManagerが読み込まれていません。");
+        return;
+    }
+    if (!confirm("トランザクションから緊急復元を試みますか？\n(注意: 未適用の保存ファイルからデータを作り直します)")) {
         return;
     }
 
-    var folder = fso.GetFolder(txDir);
-    var fileEnum = new Enumerator(folder.Files);
-    var txFiles = [];
-    for (; !fileEnum.atEnd(); fileEnum.moveNext()) {
-        var file = fileEnum.item();
-        if (file.Name.match(/^tx_.*\.json$/i)) { txFiles.push(file); }
+    try {
+        var baseData = DataManager.loadDiskData ? DataManager.loadDiskData() : DataManager.loadAll();
+        var recovered = DataManager.replayTransactions(baseData);
+        
+        appData = recovered;
+        DataManager.appData = appData;
+        DataManager.hasLocalChanges = true;
+        
+        applyWardTabs();
+        renderPatients();
+        if (typeof TodoUI !== "undefined" && document.getElementById("tab-todo") && document.getElementById("tab-todo").className.indexOf("active") !== -1) {
+            TodoUI.render();
+        }
+        if (typeof renderHistory !== "undefined") {
+            renderHistory();
+        }
+        
+        alert("緊急復元が完了しました。\n表示を確認後、1分お待ち頂くと自動保存されます。");
+    } catch(e) {
+        alert("復元中にエラーが発生しました: " + e.message);
     }
+}
     
     if(txFiles.length === 0) {
         alert("復元対象のトランザクションファイルがありません。");
@@ -9286,6 +9302,8 @@ function insertTagSuggest(elem, tag) {
 <div id="tag-suggest-box" style="position:absolute; background:#fff; border:1px solid #ccc; display:none; z-index:999; padding:5px;"></div>
 </body>
 </html>
+
+
 
 
 
