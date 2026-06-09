@@ -5652,9 +5652,8 @@ function recoverFromTransactions() {
 
     try {
         var baseData = DataManager.loadDiskData ? DataManager.loadDiskData() : DataManager.loadAll();
-        var recovered = DataManager.replayTransactions(baseData);
-        
-        appData = recovered;
+        DataManager.replayTransactions(baseData);
+        appData = baseData;
         DataManager.appData = appData;
         DataManager.hasLocalChanges = true;
         
@@ -9253,6 +9252,7 @@ function insertTagSuggest(elem, tag) {
 <div id="tag-suggest-box" style="position:absolute; background:#fff; border:1px solid #ccc; display:none; z-index:999; padding:5px;"></div>
 </body>
 </html>
+
 
 
 
