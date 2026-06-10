@@ -3463,11 +3463,17 @@ function doExcelImport() {
             // 先頭ゼロを除去して照合（0251607 と 251607 を同一として扱う）
             var pIdNorm = pId.replace(/^0+/, '') || '0';
             if (patientsWithMark[pId] || patientsWithMark[pIdNorm]) {
-                if (p.status === 3) {
+                var currentMeta = appData.patientMeta && appData.patientMeta[pIdNorm] ? appData.patientMeta[pIdNorm] : {};
+                var currentStatus = currentMeta.status !== undefined ? currentMeta.status : (p.status || 0);
+
+                if (currentStatus === 3) {
                     alreadyRecorded++;
                 } else {
-                    p.status = 3; // 記録済
-                    p.statusAuthor = "";
+                    if (typeof DataManager !== "undefined") {
+                        DataManager.appendTransaction("UPDATE_ADMISSION_STATUS", {
+                            patientId: pId, wardCode: currentWard, value: 3, author: ""
+                        });
+                    }
                     updatedCount++;
                 }
             }
@@ -3476,8 +3482,10 @@ function doExcelImport() {
     
     // 5. 保存とUI更新
     if (updatedCount > 0) {
+        if (typeof DataManager !== "undefined") {
+            DataManager.replayTransactions(appData);
+        }
         renderPatients();
-        saveData(false); // アラートより前に同期的に確実に保存する
     }
     
     var fileNames = [];
@@ -4889,6 +4897,9 @@ function parseAdmissionHtml(doc) {
 
 
 function renderAdmissionSchedule() {
+    if (typeof appData !== "undefined" && appData.admissionSchedule) {
+        admissionPatients = appData.admissionSchedule;
+    }
     
     var tbody = document.getElementById('tbody-admission');
     var countEl = document.getElementById('admission-count');
@@ -9252,6 +9263,8 @@ function insertTagSuggest(elem, tag) {
 <div id="tag-suggest-box" style="position:absolute; background:#fff; border:1px solid #ccc; display:none; z-index:999; padding:5px;"></div>
 </body>
 </html>
+
+
 
 
 
