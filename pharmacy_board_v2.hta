@@ -2413,6 +2413,10 @@ function saveData(manual) {
 }
 
 function loadData(manual) {
+    if (typeof pendingSync !== "undefined") {
+        pendingSync = false;
+        if (typeof updateSyncUI === "function") updateSyncUI();
+    }
     if (!fso || !fso.FolderExists(SHARED_DATA_PATH)) {
         var el = document.getElementById("last-local-update-time");
         if(el) el.innerText = "[接続エラー: 共有データ未検出]";
@@ -2849,6 +2853,32 @@ function openKarteLink(type, pid) {
 }
 
 // ---------- 初期化処理 ----------
+// --- アイドル同期システム ---
+var lastActivityTime = new Date().getTime();
+var pendingSync = false;
+
+function updateActivity() {
+    lastActivityTime = new Date().getTime();
+}
+document.onmousemove = updateActivity;
+document.onkeydown = updateActivity;
+document.onscroll = updateActivity;
+
+function updateSyncUI() {
+    var btn = document.getElementById('btn-fetch');
+    if (!btn) return;
+    if (pendingSync) {
+        btn.style.backgroundColor = "#e74c3c";
+        btn.style.color = "#fff";
+        btn.innerHTML = "🔄 未反映の更新あり (クリックで反映)";
+    } else {
+        btn.style.backgroundColor = "";
+        btn.style.color = "";
+        btn.innerHTML = "🔄 現在の病棟のシステム更新";
+    }
+}
+
+// ---------------------------
 window.onload = function() {
     // データ管理モジュールの初期化
     if (typeof DataManager !== "undefined") {
@@ -2871,15 +2901,25 @@ window.onload = function() {
     if (typeof DataManager !== "undefined") {
         // 1. 未適用のトランザクションを読み込んで appData に適用
         var updated = DataManager.replayTransactions(appData);
-        
-        // 2. 他人の更新(updated)があるか、自分の未保存の変更(hasLocalChanges)がある場合のみ保存
         if (updated || DataManager.hasLocalChanges) {
-            DataManager.saveAll(appData, true); // マスターを更新
-            DataManager.hasLocalChanges = false; // 保存したらフラグをリセット
+            DataManager.saveAll(appData, true);
+            DataManager.hasLocalChanges = false;
+        }
+        if (updated) {
+            pendingSync = true;
         }
     }
-    // 3. 画面の再描画
-    loadData(false);
+    
+    var now = new Date().getTime();
+    var isIdle = (now - lastActivityTime) > 60000;
+    
+    if (pendingSync && isIdle) {
+        pendingSync = false;
+        loadData(false);
+        updateSyncUI();
+    } else if (pendingSync) {
+        updateSyncUI();
+    }
 }, 60000);
 
 // ---------- 定期更新タイマー (15分ごとにカルテから患者一覧を自動取得) ----------
@@ -5056,8 +5096,16 @@ function finalizeAdmissionMemo(idx, el) {
     p.memo = el.value;
     if (el.value && currentUserName) {
         if (!p.memoAuthors) p.memoAuthors = [];
-        if (p.memoAuthors.indexOf(currentUserName) === -1) {
-            p.memoAuthors.unshift(currentUserName);
+        var d = new Date();
+        var mm = ("0" + (d.getMonth() + 1)).slice(-2);
+        var dd = ("0" + d.getDate()).slice(-2);
+        var hh = ("0" + d.getHours()).slice(-2);
+        var min = ("0" + d.getMinutes()).slice(-2);
+        var authorStr = currentUserName + " (" + mm + "/" + dd + " " + hh + ":" + min + ")";
+        if (p.memoAuthors.length > 0 && p.memoAuthors[0].indexOf(currentUserName) === 0) {
+            p.memoAuthors[0] = authorStr;
+        } else {
+            p.memoAuthors.unshift(authorStr);
         }
     }
     appData.admissionSchedule = admissionPatients;
@@ -5635,12 +5683,17 @@ function updateHistoryMemo(pId, newVal) {
     arc.memo = newVal;
     // 編集者リストの更新 (重複防止)
     if (!arc.memoAuthors) arc.memoAuthors = [];
-    var found = false;
-    for (var i = 0; i < arc.memoAuthors.length; i++) {
-        if (arc.memoAuthors[i] === currentUserName) { found = true;
-            break; }
+    var d = new Date();
+    var mm = ("0" + (d.getMonth() + 1)).slice(-2);
+    var dd = ("0" + d.getDate()).slice(-2);
+    var hh = ("0" + d.getHours()).slice(-2);
+    var min = ("0" + d.getMinutes()).slice(-2);
+    var authorStr = currentUserName + " (" + mm + "/" + dd + " " + hh + ":" + min + ")";
+    if (arc.memoAuthors.length > 0 && arc.memoAuthors[0].indexOf(currentUserName) === 0) {
+        arc.memoAuthors[0] = authorStr;
+    } else {
+        arc.memoAuthors.unshift(authorStr);
     }
-    if (!found) arc.memoAuthors.push(currentUserName);
     
     // ★追加: 退室患者のメモでも確実に伝票（トランザクション）を発行する
     if (typeof DataManager !== "undefined") {
@@ -9263,6 +9316,9 @@ function insertTagSuggest(elem, tag) {
 <div id="tag-suggest-box" style="position:absolute; background:#fff; border:1px solid #ccc; display:none; z-index:999; padding:5px;"></div>
 </body>
 </html>
+
+
+
 
 
 
