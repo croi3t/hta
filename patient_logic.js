@@ -3,7 +3,14 @@
 // ==========================================
 
 var PatientLogic = {
-        injectMetaToList: function(list, meta) {
+            injectMeta: function(appData) {
+        if (!appData || !appData.patients || !appData.patientMeta) return;
+        for (var ward in appData.patients) {
+            if (appData.patients.hasOwnProperty(ward)) {
+                this.injectMetaToList(appData.patients[ward], appData.patientMeta);
+            }
+        }
+    },injectMetaToList: function(list, meta) {
         if (!list || !meta) return;
         for (var i = 0; i < list.length; i++) {
             var p = list[i];
@@ -178,6 +185,7 @@ var PatientLogic = {
         }
     }
 };
+
 
 
 
