@@ -1751,12 +1751,21 @@ function switchTab(tabId) {
 }
 
 function switchWard(wardCode) {
-    currentFilterTag = ""; // 病棟を切り替えた時はフィルターをリセットする
+    currentFilterTag = ""; 
     currentWard = wardCode;
-    renderCustomTabsUI(); // カスタムタブを含めて再描画
+    renderCustomTabsUI(); 
     renderPatients();
     
-    // ▼ この1行を追加して、病棟切り替え時に入院予定も再取得させる
+    if (typeof appData !== "undefined") {
+        appData.admissionSchedule = [];
+    }
+    var tbody = document.getElementById('tbody-admission');
+    if (tbody) {
+        tbody.innerHTML = '<tr><td colspan="11" align="center" style="padding:20px; color:#666;">データを取得中...</td></tr>';
+    }
+    var countEl = document.getElementById('admission-count');
+    if (countEl) countEl.innerText = '0';
+    
     fetchAdmissionSchedule();
 
     // カルテLinkタブが表示中なら患者一覧も更新する
@@ -9353,6 +9362,8 @@ function insertTagSuggest(elem, tag) {
 <div id="tag-suggest-box" style="position:absolute; background:#fff; border:1px solid #ccc; display:none; z-index:999; padding:5px;"></div>
 </body>
 </html>
+
+
 
 
 
