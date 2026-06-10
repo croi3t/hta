@@ -145,19 +145,19 @@ var PatientLogic = {
                 for (var i = 0; i < rows.length; i++) {
                     var cells = rows[i].getElementsByTagName("td");
                     if (cells.length >= 6) {
-                        var idMatch = cells[1].innerText.match(/\d+/);
+                        var idMatch = cells[2].innerText.match(/\d+/);
                         var pId = idMatch ? idMatch[0] : "";
-                        var pName = cells[2].innerText.trim();
+                        var pName = cells[3].innerText.trim();
                         if (pName.indexOf("　") > 0) {
                             pName = pName.replace(/　/g, " ");
                         }
-                        var pAgeMatch = cells.length > 6 ? cells[6].innerText.match(/\d+/) : null;
+                        var pAgeMatch = cells.length > 7 ? cells[7].innerText.match(/\d+/) : null;
                         var pAge = pAgeMatch ? pAgeMatch[0] : "";
-                        var pSex = cells.length > 7 ? cells[7].innerText.trim() : "";
+                        var pSex = cells.length > 8 ? cells[8].innerText.trim() : "";
                         
-                        var pDept = cells.length > 10 ? cells[10].innerText.trim() : "";
-                        var pDoctor = cells.length > 11 ? cells[11].innerText.trim() : "";
-                        var pDisease = cells.length > 14 ? cells[14].innerText.trim() : "";
+                        var pDept = cells.length > 11 ? cells[11].innerText.trim() : "";
+                        var pDoctor = cells.length > 12 ? cells[12].innerText.trim() : "";
+                        var pDisease = cells.length > 15 ? cells[15].innerText.trim() : "";
                         
                         if (pId && pName) {
                             newAdmissions.push({
@@ -190,6 +190,7 @@ var PatientLogic = {
         }
     }
 };
+
 
 
 
