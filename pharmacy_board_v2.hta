@@ -2866,15 +2866,38 @@ document.onscroll = updateActivity;
 
 function updateSyncUI() {
     var btn = document.getElementById('btn-fetch');
-    if (!btn) return;
+    if (btn) {
+        if (pendingSync) {
+            btn.style.backgroundColor = "#e74c3c";
+            btn.style.color = "#fff";
+            btn.innerHTML = "🔄 未反映の更新あり (クリックで反映)";
+        } else {
+            btn.style.backgroundColor = "";
+            btn.style.color = "";
+            btn.innerHTML = "🔄 現在の病棟のシステム更新";
+        }
+    }
+    
+    var badge = document.getElementById("fixed-sync-badge");
+    if (!badge) {
+        badge = document.createElement("div");
+        badge.id = "fixed-sync-badge";
+        badge.style.cssText = "position:fixed; bottom:20px; right:20px; padding:12px 20px; background-color:#e74c3c; color:white; border-radius:5px; font-weight:bold; cursor:pointer; z-index:9999; box-shadow:0 4px 6px rgba(0,0,0,0.3); display:none; font-size:14px;";
+        badge.innerHTML = "🔄 未反映の更新あり<br><span style='font-size:11px;font-weight:normal;'>クリックで反映</span>";
+        badge.onclick = function() {
+            if(pendingSync) {
+                pendingSync = false;
+                loadData(false);
+                updateSyncUI();
+            }
+        };
+        document.body.appendChild(badge);
+    }
+    
     if (pendingSync) {
-        btn.style.backgroundColor = "#e74c3c";
-        btn.style.color = "#fff";
-        btn.innerHTML = "🔄 未反映の更新あり (クリックで反映)";
+        badge.style.display = "block";
     } else {
-        btn.style.backgroundColor = "";
-        btn.style.color = "";
-        btn.innerHTML = "🔄 現在の病棟のシステム更新";
+        badge.style.display = "none";
     }
 }
 
@@ -2911,7 +2934,7 @@ window.onload = function() {
     }
     
     var now = new Date().getTime();
-    var isIdle = (now - lastActivityTime) > 60000;
+    var isIdle = (now - lastActivityTime) > 10000;
     
     if (pendingSync && isIdle) {
         pendingSync = false;
@@ -4145,6 +4168,20 @@ function finalizeMemo(id, element) {
     
     // 1. メモリを即時更新
     p.memo = val;
+    var d = new Date();
+    var mm = ("0" + (d.getMonth() + 1)).slice(-2);
+    var dd = ("0" + d.getDate()).slice(-2);
+    var hh = ("0" + d.getHours()).slice(-2);
+    var min = ("0" + d.getMinutes()).slice(-2);
+    var authorStr = currentUserName + " (" + mm + "/" + dd + " " + hh + ":" + min + ")";
+    
+    if (!p.memoAuthors) p.memoAuthors = [];
+    if (p.memoAuthors.length > 0 && p.memoAuthors[0].indexOf(currentUserName) === 0) {
+        p.memoAuthors[0] = authorStr;
+    } else {
+        p.memoAuthors.unshift(authorStr);
+    }
+    if (p.memoAuthors.length > 3) p.memoAuthors = p.memoAuthors.slice(0, 3);
 
     // 2. トランザクションファイルを作成する（これは非常に軽いので即時実行）
     if (typeof DataManager !== "undefined") {
@@ -9316,6 +9353,7 @@ function insertTagSuggest(elem, tag) {
 <div id="tag-suggest-box" style="position:absolute; background:#fff; border:1px solid #ccc; display:none; z-index:999; padding:5px;"></div>
 </body>
 </html>
+
 
 
 
