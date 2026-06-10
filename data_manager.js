@@ -48,8 +48,7 @@
         return false;
     }
 
-    function loadFile(path) {
-        var maxRetries = 3;
+    function loadFile(path) { var maxRetries = 10;
         for (var i = 0; i < maxRetries; i++) {
             try {
                 if (!fso.FileExists(path)) return null;
@@ -507,8 +506,10 @@
                         break;
                 }
                 if (needsInject && typeof window.PatientLogic !== "undefined" && window.PatientLogic.injectMeta) {
-                    window.PatientLogic.injectMeta(appData);
-                }
+                        try {
+                            window.PatientLogic.injectMeta(appData);
+                        } catch(e) { /* ignore */ }
+                    }
             } catch(e) { console.log(e); }
         },
 
@@ -820,6 +821,7 @@
         }
     };
 })();
+
 
 
 

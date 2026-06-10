@@ -7,7 +7,7 @@ var PatientLogic = {
         if (!appData || !appData.patients || !appData.patientMeta) return;
         for (var ward in appData.patients) {
             if (appData.patients.hasOwnProperty(ward)) {
-                this.injectMetaToList(appData.patients[ward], appData.patientMeta);
+                PatientLogic.injectMetaToList(appData.patients[ward], appData.patientMeta);
             }
         }
     },injectMetaToList: function(list, meta) {
@@ -151,10 +151,13 @@ var PatientLogic = {
                         if (pName.indexOf("　") > 0) {
                             pName = pName.replace(/　/g, " ");
                         }
-                        var pSex = cells[3].innerText.trim();
-                        var pAgeMatch = cells[4].innerText.match(/\d+/);
+                        var pAgeMatch = cells.length > 6 ? cells[6].innerText.match(/\d+/) : null;
                         var pAge = pAgeMatch ? pAgeMatch[0] : "";
-                        var pDept = cells[5].innerText.trim();
+                        var pSex = cells.length > 7 ? cells[7].innerText.trim() : "";
+                        
+                        var pDept = cells.length > 10 ? cells[10].innerText.trim() : "";
+                        var pDoctor = cells.length > 11 ? cells[11].innerText.trim() : "";
+                        var pDisease = cells.length > 14 ? cells[14].innerText.trim() : "";
                         
                         if (pId && pName) {
                             newAdmissions.push({
@@ -162,7 +165,9 @@ var PatientLogic = {
                                 name: pName,
                                 sex: pSex,
                                 age: pAge,
-                                dept: pDept
+                                dept: pDept,
+                                doctor: pDoctor,
+                                disease: pDisease
                             });
                         }
                     }
@@ -185,6 +190,9 @@ var PatientLogic = {
         }
     }
 };
+
+
+
 
 
 
