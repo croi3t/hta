@@ -164,16 +164,21 @@ var PatientLogic = {
             
             // メタデータの引き継ぎ処理は不要 (patientMeta で管理するため)
             // 新規リストで上書き
-            appData.admissionSchedule = newAdmissions;
-            
-            DataManager.hasLocalChanges = true;
-            renderAdmissionSchedule();
+            if (tables.length > 0 || doc.body.innerText.indexOf("データがありません") !== -1 || doc.body.innerText.indexOf("該当する患者") !== -1 || doc.body.innerText.indexOf("該当データが") !== -1) {
+                appData.admissionSchedule = newAdmissions;
+                DataManager.hasLocalChanges = true;
+                renderAdmissionSchedule();
+            } else {
+                // テーブルも無く、データなしの文言も無い場合は、セッション切れやエラーページとみなし、既存のデータを保持する
+                renderAdmissionSchedule(); // 既存データで再描画のみ行う
+            }
             
         } catch(e) {
             alert("Error in parseAdmissionHtml: " + e.message);
         }
     }
 };
+
 
 
 

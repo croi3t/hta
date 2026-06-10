@@ -619,6 +619,7 @@
         },
 
                 _mergeAndSave: function(myData, diskData, forceSave) {
+            if (typeof myData !== "object" || myData === null) return diskData;
             var merged = {};
 
             merged.patients = myData.patients || {};
@@ -790,6 +791,16 @@
                 patientMeta: merged.patientMeta,
                 appliedTxIds: merged.appliedTxIds 
             };
+            
+            var isSuspiciouslyEmpty = false;
+            if (Object.keys(patObj.patients || {}).length === 0 && Object.keys(diskData.patients || {}).length > 0) {
+                isSuspiciouslyEmpty = true;
+            }
+            if (isSuspiciouslyEmpty) {
+                alert("【エラー防止機能】データが空になる異常を検知したため、ファイルへの保存を安全に中断しました。画面を再読み込みしてください。");
+                return diskData;
+            }
+            
             var patStr = stringifyData(patObj);
             if (patStr && patStr.length > 2) saveFile(getJsonPath("patients"), patStr);
 
@@ -809,6 +820,7 @@
         }
     };
 })();
+
 
 
 
