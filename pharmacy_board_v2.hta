@@ -1754,6 +1754,7 @@ function switchWard(wardCode) {
     currentFilterTag = ""; 
     currentWard = wardCode;
     renderCustomTabsUI(); 
+    if (typeof renderWardTabs === "function") { renderWardTabs(); }
     renderPatients();
     
     if (typeof appData !== "undefined") {
@@ -2560,7 +2561,6 @@ function renderKarteLinks() {
     	html += '<td style="text-align:center; vertical-align:middle;"><button style="background:#00838f;' + bs + '" onclick="openKarteLink(\'chuusha_s\',\'' + pid + '\')">注射S</button><br><button style="background:#006064;' + bs + '" onclick="openKarteLink(\'chuusha_d\',\'' + pid + '\')">注射D</button></td>';
     	html += '<td style="text-align:center; vertical-align:middle;"><button style="background:#5d4037;' + bs + '" onclick="openKarteLink(\'ope_record\',\'' + pid + '\')">手術</button></td>';
 
-
     	// 情報共有・メモ（2段構成）
         var memoAuthorHtml = '';
         if (p.memoAuthors && p.memoAuthors.length > 0) {
@@ -2930,29 +2930,28 @@ window.onload = function() {
     
     // 定期更新タイマー (1分ごとに共有データを再ロード)
     setInterval(function() {
-    if (typeof DataManager !== "undefined") {
-        // 1. 未適用のトランザクションを読み込んで appData に適用
-        var updated = DataManager.replayTransactions(appData);
-        if (updated || DataManager.hasLocalChanges) {
-            DataManager.saveAll(appData, true);
-            DataManager.hasLocalChanges = false;
+        var now = new Date().getTime();
+        var isIdle = (now - lastActivityTime) > 30000;
+        if (!isIdle) {
+            if (pendingSync) updateSyncUI();
+            return;
         }
-        if (updated) {
-            pendingSync = true;
+        if (typeof DataManager !== "undefined") {
+            var updated = DataManager.replayTransactions(appData);
+            if (updated || DataManager.hasLocalChanges) {
+                DataManager.saveAll(appData, true);
+                DataManager.hasLocalChanges = false;
+            }
+            if (updated) {
+                pendingSync = true;
+            }
         }
-    }
-    
-    var now = new Date().getTime();
-    var isIdle = (now - lastActivityTime) > 10000;
-    
-    if (pendingSync && isIdle) {
-        pendingSync = false;
-        loadData(false);
-        updateSyncUI();
-    } else if (pendingSync) {
-        updateSyncUI();
-    }
-}, 60000);
+        if (pendingSync) {
+            pendingSync = false;
+            loadData(false);
+            updateSyncUI();
+        }
+    }, 30000);
 
 // ---------- 定期更新タイマー (15分ごとにカルテから患者一覧を自動取得) ----------
 setInterval(function() {
@@ -9362,6 +9361,14 @@ function insertTagSuggest(elem, tag) {
 <div id="tag-suggest-box" style="position:absolute; background:#fff; border:1px solid #ccc; display:none; z-index:999; padding:5px;"></div>
 </body>
 </html>
+
+
+
+
+
+
+
+
 
 
 
