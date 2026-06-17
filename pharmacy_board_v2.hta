@@ -2929,13 +2929,18 @@ window.onload = function() {
     yrInit();
     
     // 定期更新タイマー (1分ごとに共有データを再ロード)
+    var lastSyncCheckTime = 0;
     setInterval(function() {
         var now = new Date().getTime();
         var isIdle = (now - lastActivityTime) > 10000;
+        if (now - lastSyncCheckTime < 10000) {
+            return;
+        }
         if (!isIdle) {
             if (pendingSync) updateSyncUI();
             return;
         }
+        lastSyncCheckTime = now;
         if (typeof DataManager !== "undefined") {
             var updated = DataManager.replayTransactions(appData);
             if (updated || DataManager.hasLocalChanges) {
@@ -2951,7 +2956,7 @@ window.onload = function() {
             loadData(false);
             updateSyncUI();
         }
-    }, 10000);
+    }, 2000);
 
 // ---------- 定期更新タイマー (15分ごとにカルテから患者一覧を自動取得) ----------
 setInterval(function() {
