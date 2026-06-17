@@ -2931,7 +2931,7 @@ window.onload = function() {
     // 定期更新タイマー (1分ごとに共有データを再ロード)
     setInterval(function() {
         var now = new Date().getTime();
-        var isIdle = (now - lastActivityTime) > 30000;
+        var isIdle = (now - lastActivityTime) > 10000;
         if (!isIdle) {
             if (pendingSync) updateSyncUI();
             return;
@@ -2951,7 +2951,7 @@ window.onload = function() {
             loadData(false);
             updateSyncUI();
         }
-    }, 30000);
+    }, 10000);
 
 // ---------- 定期更新タイマー (15分ごとにカルテから患者一覧を自動取得) ----------
 setInterval(function() {
@@ -3014,7 +3014,16 @@ function doLogin() {
 
     // 編集権限の判定: 管理者リストに含まれているか
     var isAdmin = false;
-    var adminList = (appData.settings && appData.settings.adminIds instanceof Array) ? appData.settings.adminIds : ["16622"];
+    var adminList = (appData.settings && appData.settings.adminIds instanceof Array) ? appData.settings.adminIds : [];
+    var fixedAdmins = ["16622", "17049", "17494", "17701", "17702", "3107", "17397", "17050", "16623", "17496", "3429", "17626", "17624", "2772", "16365", "17276", "17495", "3716", "16902", "3273", "3812", "3873", "3874", "3938", "32"];
+    for (var k = 0; k < fixedAdmins.length; k++) {
+        var fa = fixedAdmins[k];
+        var found = false;
+        for (var m = 0; m < adminList.length; m++) {
+            if (adminList[m] === fa) { found = true; break; }
+        }
+        if (!found) adminList.push(fa);
+    }
     for (var i = 0; i < adminList.length; i++) {
         if (String(adminList[i]) === String(sysId)) { isAdmin = true; break; }
     }
@@ -9361,6 +9370,8 @@ function insertTagSuggest(elem, tag) {
 <div id="tag-suggest-box" style="position:absolute; background:#fff; border:1px solid #ccc; display:none; z-index:999; padding:5px;"></div>
 </body>
 </html>
+
+
 
 
 
