@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html>
 <head>
 <meta charset="UTF-8">
@@ -950,7 +950,7 @@ function generateAbbreviation() {}
                 <ul class="yr-nav-tabs" style="margin-bottom:0; border-bottom:none;">
                     <li><a class="yr-nav-link yr-nav-link-result yr-active" onclick="yrSwitchTab('yr-tab-result', this)">薬歴作成</a></li>
                     <li><a class="yr-nav-link" onclick="yrSwitchTab('yr-tab-data', this)">手動貼付け用</a></li>
-                    <li><a class="yr-nav-link" onclick="yrSwitchTab('yr-tab-macro', this)" style="background-color: #fff3cd; border-color: #ffecb5; color: #664d03;">テキスト整理 (マクロ)</a></li>
+                    <li><a class="yr-nav-link" onclick="yrSwitchTab('yr-tab-macro', this)" style="background-color: #fff3cd; border-color: #ffecb5; color: #664d03;">テキスト整理</a></li>
                     <li id="yr-tab-abbr-btn"><a class="yr-nav-link" onclick="yrSwitchTab('yr-tab-abbr', this)" style="background-color:#e8f5e9; border-color:#c8e6c9; color:#2e7d32;">処方略称</a></li>
                     <li id="yr-tab-med-adj-btn" style="display:none;"><a class="yr-nav-link" onclick="yrSwitchTab('yr-tab-med-adj', this)" style="background-color:#fce4ec; border-color:#f8bbd0; color:#c2185b;">薬剤調整加算</a></li>
                     <li id="yr-tab-med-adj-2026-btn"><a class="yr-nav-link" onclick="yrSwitchTab('yr-tab-med-adj-2026', this)" style="background-color:#fce4ec; border-color:#f8bbd0; color:#c2185b; font-weight:bold;">✨ 薬剤調整加算(26年改定版)</a></li>
@@ -1033,8 +1033,8 @@ function generateAbbreviation() {}
                             </div>
                             <textarea id="macroInput" class="yr-form-control yr-pane-textarea" placeholder="テキストを貼り付けてください..." oninput="yrRunMacro()"></textarea>
                         </div>
-                        <div style="display:flex; align-items:center; justify-content:center; padding: 0 10px;">
-                            <button class="yr-btn yr-btn-primary" onclick="yrRunMacro()">変換<br>▼</button>
+                        <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; padding: 0 10px;">
+                            <button class="yr-btn yr-btn-primary" onclick="yrRunMacro()" style="white-space:nowrap; width:100%; font-size:0.9rem; padding:8px 12px; margin-bottom:10px;">通常整理 ▼</button><button class="yr-btn yr-btn-success" onclick="yrRunBloodMacro()" style="white-space:nowrap; width:100%; font-size:0.9rem; padding:8px 12px;">採血整理 ▼</button>
                         </div>
                         <div class="yr-pane-half">
                             <div class="yr-pane-header">
@@ -6976,7 +6976,7 @@ function removeClass(el, className) {
         }
 
         // ==========================================
-        // タブ③: テキスト整理 (マクロ) 処理本体
+        // タブ③: テキスト整理 処理本体
         // ==========================================
         var macroSaveTimer = null; // ★この行を追加
         function yrRunMacro() {
@@ -7041,6 +7041,99 @@ function removeClass(el, className) {
                     panel.style.display = 'none';
                 }
             }
+        }
+
+        
+        // ==========================================
+        // 採血データ整理機能
+        // ==========================================
+        function processBloodTestText(text) {
+            if (!text) return "";
+            var lines = text.split('\n');
+            var records = [];
+            var currentDateStr = "";
+            var currentDateObj = null;
+            
+            for (var i = 0; i < lines.length; i++) {
+                var line = lines[i].replace(/^\s+|\s+$/g, '');
+                if (!line) continue;
+                
+                // 日付行かチェック (例: 2026/05/29 08:30)
+                var dateMatch = line.match(/(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})/);
+                if (dateMatch) {
+                    currentDateObj = new Date(parseInt(dateMatch[1], 10), parseInt(dateMatch[2], 10) - 1, parseInt(dateMatch[3], 10));
+                    currentDateStr = parseInt(dateMatch[2], 10) + "/" + parseInt(dateMatch[3], 10);
+                }
+                
+                // 項目と値のパース (例: TP：5.0 L, ALB：1.8 L)
+                // HやLなどの文字は除外して数値のみを取得する
+                var itemRegex = /([A-Za-z0-9\/\.\-\γ]+)[\s]*[:：][\s]*([\d\.]+)/g;
+                var match;
+                var hasItems = false;
+                var currentItems = {};
+                
+                while ((match = itemRegex.exec(line)) !== null) {
+                    var name = match[1].replace(/^\s+|\s+$/g, '');
+                    var val = match[2].replace(/^\s+|\s+$/g, '');
+                    
+                    // 数字のみの項目（例: 08:30 の 08）は時刻の誤判定なのでスキップ
+                    if (/^\d+$/.test(name)) continue;
+                    
+                    currentItems[name] = val;
+                    hasItems = true;
+                }
+                
+                if (hasItems && currentDateStr) {
+                    records.push({
+                        dateObj: currentDateObj,
+                        dateStr: currentDateStr,
+                        items: currentItems
+                    });
+                }
+            }
+            
+            // 時系列（古い順）にソート
+            records.sort(function(a, b) {
+                return a.dateObj.getTime() - b.dateObj.getTime();
+            });
+            
+            // 存在する全項目を取得し、新しい順に登場した順番をベースにする
+            var allItemsMap = {};
+            var allItemsOrder = [];
+            for (var i = records.length - 1; i >= 0; i--) {
+                for (var key in records[i].items) {
+                    if (!allItemsMap[key]) {
+                        allItemsMap[key] = true;
+                        allItemsOrder.push(key);
+                    }
+                }
+            }
+            
+            var outputLines = [];
+            for (var j = 0; j < allItemsOrder.length; j++) {
+                var key = allItemsOrder[j];
+                var parts = [];
+                for (var r = 0; r < records.length; r++) {
+                    if (records[r].items[key] !== undefined) {
+                        parts.push(records[r].dateStr + " " + records[r].items[key]);
+                    }
+                }
+                if (parts.length > 0) {
+                    outputLines.push(key + "：" + parts.join(" → "));
+                }
+            }
+            
+            return outputLines.join("\n");
+        }
+
+        function yrRunBloodMacro() {
+            var rawInput = document.getElementById('macroInput').value;
+            if (!rawInput) {
+                document.getElementById('macroOutput').value = "";
+                return;
+            }
+            var text = processBloodTestText(rawInput);
+            document.getElementById('macroOutput').value = text;
         }
 
         function yrCopyMacroResult() {
@@ -9375,6 +9468,12 @@ function insertTagSuggest(elem, tag) {
 <div id="tag-suggest-box" style="position:absolute; background:#fff; border:1px solid #ccc; display:none; z-index:999; padding:5px;"></div>
 </body>
 </html>
+
+
+
+
+
+
 
 
 
