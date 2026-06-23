@@ -6,7 +6,6 @@
 var SurgeryFetcher = {
     updateAllSurgeries: function() {
         if (!isEditMode) { alert("編集モード時のみ実行可能です。"); return; }
-        if (currentWard !== "51") { alert("この機能は5A病棟専用です。"); return; }
         
         var list = getCurrentPatientsList();
         if (list.length === 0) { alert("更新対象の患者がいません。"); return; }
