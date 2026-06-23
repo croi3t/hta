@@ -614,12 +614,12 @@ function generateAbbreviation() {}
                     </th>
                     <th width="150" style="padding: 2px;">
                         <div style="cursor:pointer; border-bottom:1px dotted #ccc; padding-bottom:2px; margin-bottom:2px;" onclick="sortPatients('disease')" title="主病名でソート">主病名 <span class="sort-icon">↕</span></div>
-                        <div id="header-surgery-proc" style="display:none; font-size:10px; color:#c2185b; font-weight:bold;">術式</div>
+                        <div id="header-surgery-proc" style="font-size:10px; color:#c2185b; font-weight:bold;">術式</div>
                     </th>
                     <th width="45" class="sortable" onclick="sortPatients('room')">病室 <span class="sort-icon">↕</span></th>
                     <th width="35" class="sortable" onclick="sortPatients('daysInHosp')">在院 <span class="sort-icon">↕</span></th>
                     <th width="65" style="padding: 0;">
-                        <div id="btn-fetch-surgery" class="hide-on-print" onclick="SurgeryFetcher.updateAllSurgeries()" style="display:none; background:#fce4ec; color:#c2185b; font-size:10px; padding:2px 0; cursor:pointer; border-bottom:1px solid #f8bbd0; font-weight:bold;" title="手術情報を一括取得します">✂️ 手術取得</div>
+                        <div id="btn-fetch-surgery" class="hide-on-print" onclick="SurgeryFetcher.updateAllSurgeries()" style="background:#fce4ec; color:#c2185b; font-size:10px; padding:2px 0; cursor:pointer; border-bottom:1px solid #f8bbd0; font-weight:bold;" title="手術情報を一括取得します">✂️ 手術取得</div>
                         
                         <div class="hide-on-print" onclick="updateAllBloodDates()" style="background:#d1ecf1; color:#0c5460; font-size:10px; padding:2px 0; cursor:pointer; border-bottom:1px solid #bee5eb;" title="表示中の全患者の採血日を一括取得します">[採血] 全体取得</div>
                         <div onclick="sortPatients('bloodDate')" style="cursor:pointer; padding:2px 0;" title="採血日でソート">採血日 <span class="sort-icon">↕</span></div>
@@ -1569,68 +1569,6 @@ function findPatientById(id) {
     return null;
 }
 
-// メモ欄でのタグサジェスト用関数
-function showTagSuggest(textarea, event) {
-    if (event && (event.key === "Shift" || event.key === "Control" || event.key === "Alt" || (event.keyCode >= 37 && event.keyCode <= 40))) return;
-    
-    var val = textarea.value;
-    var cursor = textarea.selectionStart;
-    if (typeof cursor !== 'number') return;
-    var textBefore = val.substring(0, cursor);
-    var match = textBefore.match(/#([^\s#]*)$/);
-
-    var suggestBox = document.getElementById("tag-suggest-box");
-    if (!suggestBox) {
-        suggestBox = document.createElement("div");
-        suggestBox.id = "tag-suggest-box";
-        suggestBox.style.position = "absolute";
-        suggestBox.style.zIndex = "9999";
-        suggestBox.style.background = "#fff";
-        suggestBox.style.border = "1px solid #0d6efd";
-        suggestBox.style.boxShadow = "0 2px 8px rgba(0,0,0,0.2)";
-        suggestBox.style.padding = "4px";
-        suggestBox.style.borderRadius = "4px";
-        suggestBox.style.display = "none";
-        document.body.appendChild(suggestBox);
-    }
-
-    if (match) {
-        var prefix = match[1];
-        var tags = ["#NST", "#ICT", "#緩和", "#術後", "#リクシアナ"];
-        var suggestions = tags.filter(function(t) { return t.indexOf("#" + prefix) === 0; });
-        
-        if (suggestions.length > 0) {
-            var rect = textarea.getBoundingClientRect();
-            suggestBox.style.top = (rect.bottom + window.scrollY - 25) + "px";
-            suggestBox.style.left = (rect.left + window.scrollX + 15) + "px";
-            
-            var html = "";
-            for (var i = 0; i < suggestions.length; i++) {
-                html += '<div style="cursor:pointer; padding:4px 8px; color:#0d6efd; font-size:12px; font-weight:bold; border-bottom:1px dotted #ccc;" onmouseover="this.style.background=\'#e1f5fe\'" onmouseout="this.style.background=\'transparent\'" onclick="insertTagSuggest(this, \'' + suggestions[i] + '\')">' + suggestions[i] + '</div>';
-            }
-            suggestBox.innerHTML = html;
-            suggestBox.activeTextarea = textarea;
-            suggestBox.matchStart = cursor - match[0].length;
-            suggestBox.matchEnd = cursor;
-            suggestBox.style.display = "block";
-            return;
-        }
-    }
-    suggestBox.style.display = "none";
-}
-
-function insertTagSuggest(elem, tag) {
-    var suggestBox = document.getElementById("tag-suggest-box");
-    if (suggestBox && suggestBox.activeTextarea) {
-        var ta = suggestBox.activeTextarea;
-        var val = ta.value;
-        ta.value = val.substring(0, suggestBox.matchStart) + tag + " " + val.substring(suggestBox.matchEnd);
-        suggestBox.style.display = "none";
-        ta.focus();
-        if (ta.onkeyup) ta.onkeyup({key: 'Enter', keyCode: 13});
-        else if (ta.onchange) ta.onchange();
-    }
-}
 
 var updateMemoDebounced = debounce(function(id, val, element) {
     updateMemo(id, val, element);
@@ -3862,16 +3800,6 @@ function renderPatients() {
     var container = document.getElementById("main-content-scroll");
     if (container) container.scrollTop = scrollTop;
     window.scrollTo(scrollX, scrollY);
-    
-    // ★追加: 5A病棟の時だけ手術取得ボタンと「術式」ヘッダーを表示する
-    var btnSurg = document.getElementById("btn-fetch-surgery");
-    if (btnSurg) {
-        btnSurg.style.display = (currentWard === "51") ? "block" : "none";
-    }
-    var hdrSurg = document.getElementById("header-surgery-proc");
-    if (hdrSurg) {
-        hdrSurg.style.display = (currentWard === "51") ? "block" : "none";
-    }
 }
 
 function toggleAlertLevel(id) {
@@ -9384,7 +9312,9 @@ function showTagSuggest(textarea, event) {
     var cursor = textarea.selectionStart;
     if (typeof cursor !== 'number') return;
     var textBefore = val.substring(0, cursor);
-    var match = textBefore.match(/#([^\s#]*)$/);
+    
+    // 全角の「＃」と半角の「#」両方にマッチするように修正
+    var match = textBefore.match(/[#＃]([^\s#＃]*)$/);
 
     var suggestBox = document.getElementById("tag-suggest-box");
     if (!suggestBox) {
@@ -9404,14 +9334,17 @@ function showTagSuggest(textarea, event) {
     if (match) {
         var prefix = match[1];
         
-        // ★修正: ハードコードではなく、実際の使用実績上位15つを取得
         var sortedTags = getAvailableTags();
         var tags = [];
         for (var t = 0; t < Math.min(15, sortedTags.length); t++) {
             tags.push(sortedTags[t].tag);
         }
         
-        var suggestions = tags.filter(function(t) { return t.indexOf("#" + prefix) === 0; });
+        var suggestions = tags.filter(function(t) { 
+            // サジェストのタグリスト(t)は常に#か＃で始まっていると想定
+            var tagText = t.replace(/^[#＃]/, "");
+            return tagText.indexOf(prefix) === 0;
+        });
         
         if (suggestions.length > 0) {
             var rect = textarea.getBoundingClientRect();
@@ -9424,12 +9357,17 @@ function showTagSuggest(textarea, event) {
             
             var html = "";
             for (var i = 0; i < suggestions.length; i++) {
-                html += '<div style="cursor:pointer; padding:4px 8px; color:#0d6efd; font-size:12px; font-weight:bold; border-bottom:1px dotted #ccc;" onmouseover="this.style.background=\'#e1f5fe\'" onmouseout="this.style.background=\'transparent\'" onclick="insertTagSuggest(this, \'' + suggestions[i] + '\')">' + suggestions[i] + '</div>';
+                var safeTag = escapeHtml(suggestions[i]);
+                // onclickではなくonmousedownを使うことでtextareaからフォーカスが外れる(onblurが発火する)のを防ぐ
+                html += '<div style="cursor:pointer; padding:4px 8px; color:#0d6efd; font-size:12px; font-weight:bold; border-bottom:1px dotted #ccc;" onmouseover="this.style.background=\'#e1f5fe\'" onmouseout="this.style.background=\'transparent\'" onmousedown="insertTagSuggest(event, \'' + safeTag + '\')">' + safeTag + '</div>';
             }
             suggestBox.innerHTML = html;
-            suggestBox.activeTextarea = textarea;
-            suggestBox.matchStart = cursor - match[0].length;
-            suggestBox.matchEnd = cursor;
+            
+            // グローバル変数で安全に位置を保持
+            window._tagSuggestTarget = textarea;
+            window._tagSuggestStart = cursor - match[0].length;
+            window._tagSuggestEnd = cursor;
+            
             suggestBox.style.display = "block";
             return;
         }
@@ -9437,22 +9375,37 @@ function showTagSuggest(textarea, event) {
     suggestBox.style.display = "none";
 }
 
-function insertTagSuggest(elem, tag) {
-    var suggestBox = document.getElementById("tag-suggest-box");
-    if (suggestBox && suggestBox.activeTextarea) {
-        var ta = suggestBox.activeTextarea;
+function insertTagSuggest(event, tag) {
+    if (event && event.preventDefault) {
+        event.preventDefault(); // フォーカス移動(onblur)を防ぎ、強制リセットを回避
+    } else if (event) {
+        event.returnValue = false;
+    }
+    
+    var ta = window._tagSuggestTarget;
+    if (ta) {
         var val = ta.value;
-        ta.value = val.substring(0, suggestBox.matchStart) + tag + " " + val.substring(suggestBox.matchEnd);
-        suggestBox.style.display = "none";
+        var start = window._tagSuggestStart;
+        var end = window._tagSuggestEnd;
         
-        // ★修正: データ保存と、見た目の即時切り替えを強制実行
-        if (ta.onchange) ta.onchange(); 
-        ta.style.display = "none";
-        var dispDiv = ta.previousSibling;
-        if (dispDiv) {
-            dispDiv.style.display = "block";
-            dispDiv.innerHTML = escapeHtml(ta.value || "").replace(/(#[^\s　#]+)/g, '<span class="memo-tag">$1</span>') || '<span style="color:#999;">メモ...</span>';
+        if (typeof start === 'number' && typeof end === 'number' && start >= 0) {
+            ta.value = val.substring(0, start) + tag + " " + val.substring(end);
+        } else {
+            // フェールセーフ: 全角・半角のハッシュにマッチする末尾のタグを置換
+            ta.value = val.replace(/[#＃][^\s#＃]*$/, "") + tag + " ";
         }
+        
+        var suggestBox = document.getElementById("tag-suggest-box");
+        if (suggestBox) suggestBox.style.display = "none";
+        
+        // 値の変更を保存する
+        if (ta.onchange) ta.onchange();
+        if (ta.onkeyup) {
+            try { ta.onkeyup({keyCode: 0}); } catch(e){}
+        }
+        
+        // 挿入後もフォーカスを維持させる
+        ta.focus();
     }
 }
 
@@ -9468,6 +9421,9 @@ function insertTagSuggest(elem, tag) {
 <div id="tag-suggest-box" style="position:absolute; background:#fff; border:1px solid #ccc; display:none; z-index:999; padding:5px;"></div>
 </body>
 </html>
+
+
+
 
 
 
