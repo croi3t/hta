@@ -1,4 +1,4 @@
-﻿var DataManager = (function() {
+var DataManager = (function() {
     var fso = null;
     var lastReplayTs = 0;
     var lastArchiveTs = 0;
@@ -160,6 +160,13 @@
                 if (p.chkPrescription !== undefined) { meta.chkPrescription = p.chkPrescription; hasMeta = true; }
                 if (p.personalMemos !== undefined) { meta.personalMemos = p.personalMemos; hasMeta = true; }
                 
+                if (p.surgeryDate !== undefined) { meta.surgeryDate = p.surgeryDate; hasMeta = true; }
+                if (p.surgeryDisease !== undefined) { meta.surgeryDisease = p.surgeryDisease; hasMeta = true; }
+                if (p.surgeryProcedure !== undefined) { meta.surgeryProcedure = p.surgeryProcedure; hasMeta = true; }
+                if (p.surgeryAnesthesia !== undefined) { meta.surgeryAnesthesia = p.surgeryAnesthesia; hasMeta = true; }
+                if (p.surgeryHasEpi !== undefined) { meta.surgeryHasEpi = p.surgeryHasEpi; hasMeta = true; }
+                if (p.surgeryLixiana !== undefined) { meta.surgeryLixiana = p.surgeryLixiana; hasMeta = true; }
+
                 if (hasMeta) {
                     disk.patientMeta[nId] = meta;
                 }
@@ -391,6 +398,13 @@
                             p.surgeryHasEpi = data.surgeryHasEpi;
                             p.surgeryLixiana = data.surgeryLixiana;
                         }
+                        updateMeta(data.patientId, "surgeryDate", data.surgeryDate);
+                        updateMeta(data.patientId, "surgeryDisease", data.surgeryDisease);
+                        updateMeta(data.patientId, "surgeryProcedure", data.surgeryProcedure);
+                        updateMeta(data.patientId, "surgeryAnesthesia", data.surgeryAnesthesia);
+                        updateMeta(data.patientId, "surgeryHasEpi", data.surgeryHasEpi);
+                        updateMeta(data.patientId, "surgeryLixiana", data.surgeryLixiana);
+                        needsInject = true;
                         break;
                     case "UPDATE_BLOOD_DATE":
                         updateMeta(data.patientId, "bloodDate", data.bloodDate);

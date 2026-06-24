@@ -230,6 +230,19 @@ var SurgeryFetcher = {
                             surgeryAnesthesia: p.surgeryAnesthesia, surgeryHasEpi: p.surgeryHasEpi,
                             surgeryLixiana: p.surgeryLixiana
                         });
+                        
+                        // ★ メモ欄への追記（術日・術式がある場合のみ、まだ書かれていなければ追記）
+                        if (p.surgeryDate && p.surgeryDate !== "なし" && p.surgeryDate !== "-" && p.surgeryDate !== "不明" && p.surgeryProcedure && p.surgeryProcedure !== "情報なし" && p.surgeryProcedure !== "解析エラー") {
+                            var memoAddition = "【手術】" + p.surgeryDate + " " + p.surgeryProcedure;
+                            var currentMemo = p.memo || "";
+                            if (currentMemo.indexOf(p.surgeryDate) === -1 && currentMemo.indexOf(p.surgeryProcedure) === -1) {
+                                var newMemo = currentMemo ? currentMemo + "\n" + memoAddition : memoAddition;
+                                p.memo = newMemo;
+                                DataManager.appendTransaction("UPDATE_PATIENT_MEMO", {
+                                    patientId: p.id, wardCode: currentWard, value: newMemo
+                                });
+                            }
+                        }
                     }
                 } catch(e) {
                     p.surgeryDate = "-";
