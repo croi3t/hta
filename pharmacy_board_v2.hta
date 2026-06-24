@@ -516,7 +516,8 @@
 // 時点でこれらのスタブは自動的に上書きされる。
 // ============================================================
 var _yrCoreLoaded = false;
-function yrRunMacro() { /* スタブ: 本体ロード後に有効化 */ }
+function yrRunMacro() {
+            lastMacroType = 'normal'; /* スタブ: 本体ロード後に有効化 */ }
 function yrSaveSettings() {}
 function yrToggleAllCheckboxes() {}
 function yrSwitchTab() {}
@@ -1041,12 +1042,12 @@ function generateAbbreviation() {}
                                 <span>✔ 整理されたテキスト</span>
                                 <div style="display: flex; align-items: center; gap: 15px;">
                                     <label style="font-size: 0.85rem; font-weight: bold; margin: 0; cursor: pointer; color: #2c3e50; border: 1px dashed #ccc; padding: 2px 6px; border-radius: 4px; background-color: #fff;">
-                                        <input type="checkbox" id="set-add-number"> Rp番号を付与
+                                        <input type="checkbox" id="set-add-number" onchange="yrReRunMacro()"> Rp番号を付与
                                     </label>
                                     <label style="font-size: 0.85rem; font-weight: bold; margin: 0; cursor: pointer; color: #2c3e50; border: 1px dashed #ccc; padding: 2px 6px; border-radius: 4px; background-color: #fff;">
-                                        <input type="checkbox" id="set-show-year"> 西暦から日付を表示
+                                        <input type="checkbox" id="set-show-year" onchange="yrReRunMacro()"> 西暦から日付を表示
                                     </label>
-                                    <button class="yr-btn yr-btn-primary" style="font-size:0.85rem; padding:0.2rem 0.5rem;" onclick="yrRunMacro()">↻ 再変換</button>
+                                    <button class="yr-btn yr-btn-primary" style="font-size:0.85rem; padding:0.2rem 0.5rem;" onclick="yrReRunMacro()">↻ 再変換</button>
                                     <button class="yr-btn yr-btn-success" style="font-size:0.85rem; padding:0.2rem 0.5rem;" onclick="yrCopyMacroResult()">全コピー</button>
                                 </div>
                             </div>
@@ -6909,8 +6910,10 @@ function removeClass(el, className) {
         // ==========================================
         // タブ③: テキスト整理 処理本体
         // ==========================================
-        var macroSaveTimer = null; // ★この行を追加
+        var macroSaveTimer = null;
+        var lastMacroType = 'normal'; // ★この行を追加
         function yrRunMacro() {
+            lastMacroType = 'normal';
             var rawInput = document.getElementById('macroInput').value;
             if (!rawInput) {
                 document.getElementById('macroOutput').value = "";
@@ -7063,6 +7066,7 @@ function removeClass(el, className) {
         }
 
         function yrRunBloodMacro() {
+            lastMacroType = 'blood';
             var rawInput = document.getElementById('macroInput').value;
             if (!rawInput) {
                 document.getElementById('macroOutput').value = "";
@@ -7070,6 +7074,11 @@ function removeClass(el, className) {
             }
             var text = processBloodTestText(rawInput);
             document.getElementById('macroOutput').value = text;
+        }
+
+        function yrReRunMacro() {
+            if (lastMacroType === 'blood') yrRunBloodMacro();
+            else yrRunMacro();
         }
 
         function yrCopyMacroResult() {
