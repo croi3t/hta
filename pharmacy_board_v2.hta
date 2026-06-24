@@ -1041,7 +1041,10 @@ function generateAbbreviation() {}
                                 <span>✔ 整理されたテキスト</span>
                                 <div style="display: flex; align-items: center; gap: 15px;">
                                     <label style="font-size: 0.85rem; font-weight: bold; margin: 0; cursor: pointer; color: #2c3e50; border: 1px dashed #ccc; padding: 2px 6px; border-radius: 4px; background-color: #fff;">
-                                        <input type="checkbox" id="set-add-number" onchange="yrSaveSettings()"> Rp番号を付与
+                                        <input type="checkbox" id="set-add-number"> Rp番号を付与
+                                    </label>
+                                    <label style="font-size: 0.85rem; font-weight: bold; margin: 0; cursor: pointer; color: #2c3e50; border: 1px dashed #ccc; padding: 2px 6px; border-radius: 4px; background-color: #fff;">
+                                        <input type="checkbox" id="set-show-year"> 西暦から日付を表示
                                     </label>
                                     <button class="yr-btn yr-btn-primary" style="font-size:0.85rem; padding:0.2rem 0.5rem;" onclick="yrRunMacro()">↻ 再変換</button>
                                     <button class="yr-btn yr-btn-success" style="font-size:0.85rem; padding:0.2rem 0.5rem;" onclick="yrCopyMacroResult()">全コピー</button>
@@ -3743,7 +3746,7 @@ function renderPatients() {
             // ★追加: リクシアナ適応バッジ
             var lixBadge = p.surgeryLixiana ? ' <span style="background:#ff9800; color:#fff; padding:0 3px; border-radius:2px; font-weight:bold;" title="リクシアナ（エドキサバン）適応手術">💊EDO</span>' : '';
             
-            surgeryInfoHtml = '<div style="font-size:10px; color:#c2185b; background:#fce4ec; border:1px solid #f8bbd0; border-radius:3px; padding:2px; margin-bottom:2px;" title="病名: ' + escapeHtml(p.surgeryDisease) + '\n術式: ' + escapeHtml(p.surgeryProcedure) + '\n麻酔: ' + escapeHtml(p.surgeryAnesthesia) + '">✂️術: ' + escapeHtml(p.surgeryDate) + epiBadge + lixBadge + '</div>';
+            surgeryInfoHtml = '<div style="font-size:10px; color:#c2185b; background:#fce4ec; border:1px solid #f8bbd0; border-radius:3px; padding:2px; margin-bottom:2px;" title="病名: ' + escapeHtml(p.surgeryDisease) + '\n術式: ' + escapeHtml(p.surgeryProcedure) + '\n麻酔: ' + escapeHtml(p.surgeryAnesthesia) + '">✂️術: ' + escapeHtml(p.surgeryDate) + ' ' + escapeHtml(p.surgeryProcedure) + epiBadge + lixBadge + '</div>';
         }
         tr.push('<td style="text-align:center; font-size:12px; line-height:1.2;">' + hospDaysHtml + '</td>');
 
@@ -6723,7 +6726,7 @@ function removeClass(el, className) {
                 ud['set-remove-iv-words'] = document.getElementById('set-remove-iv-words').checked ? 'true' : 'false';
                 ud['set-remove-salt'] = document.getElementById('set-remove-salt').checked ? 'true' : 'false';
                 ud['set-remove-maker'] = document.getElementById('set-remove-maker').checked ? 'true' : 'false';
-                ud['set-add-number'] = document.getElementById('set-add-number').checked ? 'true' : 'false';
+                // ud['set-add-number'] = document.getElementById('set-add-number').checked ? 'true' : 'false';
                 
                 var chkAbbr = document.getElementById('chk-use-abbr-dict');
                 if (chkAbbr) ud['set-abbr-dict'] = chkAbbr.checked ? 'true' : 'false';
@@ -6990,7 +6993,12 @@ function removeClass(el, className) {
                 var dateMatch = line.match(/(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})/);
                 if (dateMatch) {
                     currentDateObj = new Date(parseInt(dateMatch[1], 10), parseInt(dateMatch[2], 10) - 1, parseInt(dateMatch[3], 10));
-                    currentDateStr = parseInt(dateMatch[2], 10) + "/" + parseInt(dateMatch[3], 10);
+                    var showYearEl = document.getElementById('set-show-year');
+                    if (showYearEl && showYearEl.checked) {
+                        currentDateStr = parseInt(dateMatch[1], 10) + "/" + parseInt(dateMatch[2], 10) + "/" + parseInt(dateMatch[3], 10);
+                    } else {
+                        currentDateStr = parseInt(dateMatch[2], 10) + "/" + parseInt(dateMatch[3], 10);
+                    }
                 }
                 
                 // 項目と値のパース (例: TP：5.0 L, ALB：1.8 L)
@@ -8077,8 +8085,8 @@ function renderTable() {
             if (document.getElementById('set-remove-maker'))
                 document.getElementById('set-remove-maker').checked = myStorage.getItem('set-remove-maker') !== 'false';
             
-            if (document.getElementById('set-add-number'))
-                document.getElementById('set-add-number').checked = myStorage.getItem('set-add-number') === 'true';
+            // if (document.getElementById('set-add-number'))
+            //     document.getElementById('set-add-number').checked = myStorage.getItem('set-add-number') === 'true';
 
             var abbrDictSetting = myStorage.getItem('set-abbr-dict');
             if (abbrDictSetting !== null) {
