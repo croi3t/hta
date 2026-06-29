@@ -33,12 +33,15 @@ var DataManager = (function() {
 
     function saveFile(path, text) {
         var maxRetries = 10;
+        var tmpPath = path + ".tmp";
         for (var i = 0; i < maxRetries; i++) {
             try {
                 var stream = new ActiveXObject("ADODB.Stream");
                 stream.Type = 2; stream.Charset = "UTF-8";
                 stream.Open(); stream.WriteText(text);
-                stream.SaveToFile(path, 2); stream.Close();
+                stream.SaveToFile(tmpPath, 2); stream.Close();
+                fso.CopyFile(tmpPath, path, true);
+                try { fso.DeleteFile(tmpPath); } catch(e2) {}
                 return true;
             } catch (e) {
                 var start = new Date().getTime();
@@ -49,9 +52,9 @@ var DataManager = (function() {
     }
 
     function loadFile(path) { var maxRetries = 10;
+        if (!fso.FileExists(path)) return ""; // 存在しない場合は空文字
         for (var i = 0; i < maxRetries; i++) {
             try {
-                if (!fso.FileExists(path)) return null;
                 var stream = new ActiveXObject("ADODB.Stream");
                 stream.Type = 2; stream.Charset = "utf-8";
                 stream.Open(); stream.LoadFromFile(path);
@@ -63,7 +66,7 @@ var DataManager = (function() {
                 while (new Date().getTime() < start + 100);
             }
         }
-        return null;
+        return null; // 存在しているが読み込めなかった場合はnull
     }
 
     var _lastTx = { op: "", id: "", val: "" };
@@ -103,7 +106,17 @@ var DataManager = (function() {
 
             function safeRead(cat) {
                 var txt = loadFile(getJsonPath(cat));
-                return txt ? parseData(txt) : null;
+                if (txt === null) {
+                    alert("【致命的エラー】" + cat + ".json の読み込みに失敗しました。ファイルが他で使用中か破損しています。データ消失を防ぐため処理を停止します。");
+                    throw new Error("ReadError");
+                }
+                if (txt === "") return null;
+                var parsed = parseData(txt);
+                if (parsed === null && txt.trim().length > 0) {
+                    alert("【致命的エラー】" + cat + ".json のデータが破損しています。データ消失を防ぐため処理を停止します。バックアップから復旧してください。");
+                    throw new Error("ParseError");
+                }
+                return parsed;
             }
 
             var pat = safeRead("patients") || {};
@@ -809,6 +822,9 @@ var DataManager = (function() {
             
             var isSuspiciouslyEmpty = false;
             if (Object.keys(patObj.patients || {}).length === 0 && Object.keys(diskData.patients || {}).length > 0) {
+                isSuspiciouslyEmpty = true;
+            }
+            if (Object.keys(merged.wardNotes || {}).length === 0 && Object.keys(diskData.wardNotes || {}).length > 0) {
                 isSuspiciouslyEmpty = true;
             }
             if (isSuspiciouslyEmpty) {
