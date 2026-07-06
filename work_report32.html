@@ -238,10 +238,14 @@
                 <button class="btn btn-purple" style="padding:6px 14px; font-size:13px; margin-left: auto;" onclick="openPreviewModal()">👁️ JUST calc プレビュー</button>
             </div>
             
-            <div style="display:flex; gap:5px; margin-bottom:15px; margin-top:5px;">
+            <div style="display:flex; gap:5px; margin-bottom:15px; margin-top:5px; align-items: center;">
                 <button id="btnPattern1" class="step-btn" style="padding:4px 12px; font-size:11px;" onclick="changePattern(1)">パターン 1</button>
                 <button id="btnPattern2" class="step-btn" style="padding:4px 12px; font-size:11px;" onclick="changePattern(2)">パターン 2</button>
                 <button id="btnPattern3" class="step-btn" style="padding:4px 12px; font-size:11px;" onclick="changePattern(3)">パターン 3</button>
+                <span style="margin-left: 10px; border-left: 1px solid #ccc; padding-left: 10px; display:flex; gap:5px;">
+                    <button class="btn btn-outline" style="padding:4px 8px; font-size:11px;" onclick="saveAsInitialLayout()">💾 現在の状態を【初期配置】に登録</button>
+                    <button class="btn btn-info" style="padding:4px 8px; font-size:11px;" onclick="loadInitialLayout()">🔄 【初期配置】を呼出</button>
+                </span>
             </div>
 
             <div class="section-title">🔄 ブロック生成時の位置ルール</div>
@@ -260,10 +264,6 @@
         <div class="control-box flex-right">
             <div class="section-title" style="display:flex; justify-content:space-between; align-items:center;">
                 <span>📝 本日のタイムライン一覧</span>
-                <div>
-                    <button class="btn btn-outline" style="padding:4px 8px; font-size:11px;" onclick="saveAsInitialLayout()">💾 現在の状態を【初期配置】に登録</button>
-                    <button class="btn btn-info" style="padding:4px 8px; font-size:11px;" onclick="loadInitialLayout()">🔄 【初期配置】を呼出</button>
-                </div>
             </div>
             <div id="summaryText" style="font-size:12px; font-weight:bold; color:#2c3e50; background:#edf2f7; padding:6px; border-radius:4px; margin-bottom:8px;">総労働時間(休憩除く): 0分 | 算定対象時間: 0分</div>
             
@@ -356,11 +356,27 @@
                 </div>
             </div>
             <div class="help-section">
+                <h4>人物・顔</h4>
+                <div class="emoji-grid">
+                    <span class="emoji-item" onclick="copyEmoji('👨‍⚕️')">👨‍⚕️</span><span class="emoji-item" onclick="copyEmoji('👩‍⚕️')">👩‍⚕️</span><span class="emoji-item" onclick="copyEmoji('🧑‍⚕️')">🧑‍⚕️</span><span class="emoji-item" onclick="copyEmoji('👤')">👤</span>
+                    <span class="emoji-item" onclick="copyEmoji('👥')">👥</span><span class="emoji-item" onclick="copyEmoji('🗣️')">🗣️</span><span class="emoji-item" onclick="copyEmoji('👶')">👶</span><span class="emoji-item" onclick="copyEmoji('👴')">👴</span>
+                    <span class="emoji-item" onclick="copyEmoji('👵')">👵</span><span class="emoji-item" onclick="copyEmoji('👨‍👩‍👦')">👨‍👩‍👦</span><span class="emoji-item" onclick="copyEmoji('🧍')">🧍</span><span class="emoji-item" onclick="copyEmoji('🧑‍🦽')">🧑‍🦽</span>
+                </div>
+            </div>
+            <div class="help-section">
+                <h4>記録・ドキュメント</h4>
+                <div class="emoji-grid">
+                    <span class="emoji-item" onclick="copyEmoji('📝')">📝</span><span class="emoji-item" onclick="copyEmoji('📋')">📋</span><span class="emoji-item" onclick="copyEmoji('📁')">📁</span><span class="emoji-item" onclick="copyEmoji('📂')">📂</span>
+                    <span class="emoji-item" onclick="copyEmoji('📄')">📄</span><span class="emoji-item" onclick="copyEmoji('📑')">📑</span><span class="emoji-item" onclick="copyEmoji('📓')">📓</span><span class="emoji-item" onclick="copyEmoji('📔')">📔</span>
+                    <span class="emoji-item" onclick="copyEmoji('📕')">📕</span><span class="emoji-item" onclick="copyEmoji('🖊️')">🖊️</span><span class="emoji-item" onclick="copyEmoji('✒️')">✒️</span><span class="emoji-item" onclick="copyEmoji('✏️')">✏️</span>
+                </div>
+            </div>
+            <div class="help-section">
                 <h4>ビジネス・オフィス</h4>
                 <div class="emoji-grid">
-                    <span class="emoji-item" onclick="copyEmoji('💼')">💼</span><span class="emoji-item" onclick="copyEmoji('📁')">📁</span><span class="emoji-item" onclick="copyEmoji('📊')">📊</span><span class="emoji-item" onclick="copyEmoji('📈')">📈</span>
-                    <span class="emoji-item" onclick="copyEmoji('📞')">📞</span><span class="emoji-item" onclick="copyEmoji('🏢')">🏢</span><span class="emoji-item" onclick="copyEmoji('📅')">📅</span><span class="emoji-item" onclick="copyEmoji('💡')">💡</span>
-                    <span class="emoji-item" onclick="copyEmoji('🤝')">🤝</span><span class="emoji-item" onclick="copyEmoji('📝')">📝</span><span class="emoji-item" onclick="copyEmoji('✉️')">✉️</span><span class="emoji-item" onclick="copyEmoji('🔒')">🔒</span>
+                    <span class="emoji-item" onclick="copyEmoji('💼')">💼</span><span class="emoji-item" onclick="copyEmoji('📊')">📊</span><span class="emoji-item" onclick="copyEmoji('📈')">📈</span><span class="emoji-item" onclick="copyEmoji('📞')">📞</span>
+                    <span class="emoji-item" onclick="copyEmoji('🏢')">🏢</span><span class="emoji-item" onclick="copyEmoji('📅')">📅</span><span class="emoji-item" onclick="copyEmoji('💡')">💡</span><span class="emoji-item" onclick="copyEmoji('🤝')">🤝</span>
+                    <span class="emoji-item" onclick="copyEmoji('✉️')">✉️</span><span class="emoji-item" onclick="copyEmoji('🔒')">🔒</span>
                 </div>
             </div>
             <div class="help-section">
