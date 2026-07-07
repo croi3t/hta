@@ -1743,7 +1743,7 @@ function getTodayString() {
 // サブタブを動的に描画
 function renderWardTabs() {
     var activeCodes = (appData.settings && appData.settings.activeWardCodes) || ["99"];
-    var containers = ["sub-tabs-container", "note-sub-tabs-container", "kl-sub-tabs-container"];
+    var containers = ["note-sub-tabs-container", "kl-sub-tabs-container"]; // ★修正: sub-tabs-containerはrenderCustomTabsUIで管理するため除外
     for (var c = 0; c < containers.length; c++) {
         var container = document.getElementById(containers[c]);
         if (!container) continue;
@@ -4874,7 +4874,7 @@ function parseHtmlAndMerge(doc, wardName) {
         }
         
         if(newPatients.length === 0) {
-            alert("テーブルから患者情報を抽出できませんでした。データが0件またはフォーマットが変わった可能性があります。");
+            // alert("テーブルから患者情報を抽出できませんでした。データが0件またはフォーマットが変わった可能性があります。");
             return;
         }
         
@@ -9292,7 +9292,11 @@ function renderCustomTabsUI() {
         var code = activeCodes[i];
         var name = getWardName(code);
         var activeClass = (code === currentWard && currentFilterTag === "") ? " active" : "";
-        html += '<div class="sub-tab' + activeClass + '" style="position:relative; padding-right:25px;" onclick="currentFilterTag=\'\'; switchWard(\'' + code + '\')">' + name + '</div>';
+        var closeBtnColor = (code === currentWard && currentFilterTag === "") ? "rgba(255,255,255,0.8)" : "#999";
+        
+        html += '<div class="sub-tab' + activeClass + '" style="position:relative; padding-right:25px;" onclick="currentFilterTag=\'\'; switchWard(\'' + code + '\')">' + name;
+        html += '<span class="tab-close-btn" onclick="event.stopPropagation(); removeWard(\'' + code + '\')" style="position:absolute; right:5px; top:50%; margin-top:-8px; font-size:10px; color:' + closeBtnColor + '; cursor:pointer;">&times;</span>';
+        html += '</div>';
     }
     container.innerHTML = html;
     
