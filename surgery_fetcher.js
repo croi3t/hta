@@ -7,7 +7,7 @@ var SurgeryFetcher = {
     updateAllSurgeries: function() {
         if (!isEditMode) { alert("編集モード時のみ実行可能です。"); return; }
         
-        var list = getCurrentPatientsList();
+        var list = (typeof getDisplayedPatientsList === "function") ? getDisplayedPatientsList() : getCurrentPatientsList();
         if (list.length === 0) { alert("更新対象の患者がいません。"); return; }
         if (!confirm("表示中の全患者(" + list.length + "名)の手術記録を検索・取得しますか？\n(直列処理のため画面は固まりません)")) return;
 
@@ -106,6 +106,29 @@ var SurgeryFetcher = {
                 cleanupAndCallback(); 
             }
         }, 180000);
+        
+        // ★ダミーデータ処理
+        if (typeof USE_DUMMY_DATA !== 'undefined' && USE_DUMMY_DATA) {
+            setTimeout(function() {
+                if (isDone) return;
+                var dummyText = "手術日：" + kijunDate + "\n病名：ダミー疾患\n術式：ダミー手術(人工関節置換術)\n麻酔法：全身麻酔・硬膜外麻酔\n出血量：100ml\n";
+                iframe.onload = null; // ダミーの場合はonloadを発火させないよう上書き
+                
+                // dummyTextを doc.body.innerText っぽく扱うためのモック
+                iframe.onload = function() {
+                    var doc = iframe.contentWindow.document;
+                    doc.body.innerText = dummyText;
+                };
+                iframe.src = "about:blank";
+                
+                // そのまま後続のonload相当の処理を呼ぶ
+                setTimeout(function() {
+                    // ここで `allText = dummyText;` として扱うように、iframeのonload内のロジックをシミュレート
+                    // ただ、iframe.onloadが通常通り呼ばれるので、上の "about:blank" への設定で十分
+                }, 100);
+            }, 500);
+            // return しないでiframeにabout:blankを読み込ませることでonloadを発火させる
+        }
 
         iframe.onload = function() {
             setTimeout(function() {
@@ -113,6 +136,11 @@ var SurgeryFetcher = {
                 try {
                     var doc = iframe.contentWindow.document;
                     var allText = "";
+                    
+                    // ダミーデータの場合はテキストを直接セット
+                    if (typeof USE_DUMMY_DATA !== 'undefined' && USE_DUMMY_DATA) {
+                        allText = "手術日：" + kijunDate + "\n病名：ダミー疾患\n術式：ダミー手術(人工関節置換術)\n麻酔法：全身麻酔・硬膜外麻酔\n出血量：100ml\n";
+                    } else {
                     
                     function collectText(currentDoc) {
                         if (!currentDoc) return;
@@ -132,6 +160,8 @@ var SurgeryFetcher = {
                     }
                     collectText(doc);
 
+                    }
+                    
                     var extract = function(regex) {
                         var m = allText.match(regex);
                         return m ? m[1].replace(/[\r\n]+/g, ' ').trim() : "";
@@ -224,25 +254,15 @@ var SurgeryFetcher = {
                     }
 
                     if (typeof DataManager !== "undefined") {
+                        var targetWard = p._tempWardCode || currentWard;
                         DataManager.appendTransaction("UPDATE_SURGERY_INFO", {
-                            patientId: p.id, wardCode: currentWard, surgeryDate: p.surgeryDate,
+                            patientId: p.id, wardCode: targetWard, surgeryDate: p.surgeryDate,
                             surgeryDisease: p.surgeryDisease, surgeryProcedure: p.surgeryProcedure,
                             surgeryAnesthesia: p.surgeryAnesthesia, surgeryHasEpi: p.surgeryHasEpi,
                             surgeryLixiana: p.surgeryLixiana
                         });
                         
-                        // ★ メモ欄への追記（術日・術式がある場合のみ、まだ書かれていなければ追記）
-                        if (p.surgeryDate && p.surgeryDate !== "なし" && p.surgeryDate !== "-" && p.surgeryDate !== "不明" && p.surgeryProcedure && p.surgeryProcedure !== "情報なし" && p.surgeryProcedure !== "解析エラー") {
-                            var memoAddition = "【手術】" + p.surgeryDate + " " + p.surgeryProcedure;
-                            var currentMemo = p.memo || "";
-                            if (currentMemo.indexOf(p.surgeryDate) === -1 && currentMemo.indexOf(p.surgeryProcedure) === -1) {
-                                var newMemo = currentMemo ? currentMemo + "\n" + memoAddition : memoAddition;
-                                p.memo = newMemo;
-                                DataManager.appendTransaction("UPDATE_PATIENT_MEMO", {
-                                    patientId: p.id, wardCode: currentWard, value: newMemo
-                                });
-                            }
-                        }
+
                     }
                 } catch(e) {
                     p.surgeryDate = "-";

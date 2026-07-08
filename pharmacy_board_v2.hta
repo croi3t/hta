@@ -1697,6 +1697,9 @@ function switchTab(tabId) {
     if(tabId === 'tab-history') renderHistory();
     if(tabId === 'tab-notes') renderNotes();
     if(tabId === 'tab-kartelink') renderKarteLinks();
+    if(tabId === 'tab-settings') {
+        if (typeof renderWardSettingButtons === "function") renderWardSettingButtons();
+    }
 }
 
 function switchWard(wardCode) {
@@ -3838,7 +3841,7 @@ function renderPatients() {
             var epiBadge = p.surgeryHasEpi ? ' <span style="background:#dc3545; color:#fff; padding:0 3px; border-radius:2px;">エピ有</span>' : '';
             var lixBadge = p.surgeryLixiana ? ' <span style="background:#ff9800; color:#fff; padding:0 3px; border-radius:2px; font-weight:bold;" title="リクシアナ（エドキサバン）適応手術">💊EDO</span>' : '';
             
-            diseaseSurgeryHtml = '<div style="font-size:11px; color:#c2185b; font-weight:bold; margin-top:4px;">手術日: ' + escapeHtml(p.surgeryDate) + epiBadge + lixBadge + '</div>';
+            diseaseSurgeryHtml = '<div style="font-size:11px; color:#c2185b; font-weight:bold; margin-top:4px;">手術日: ' + escapeHtml(p.surgeryDate) + '<br>' + epiBadge + lixBadge + '</div>';
             memoSurgeryHtml = '<div style="font-size:10.5px; color:#c2185b; background:#fce4ec; border:1px solid #f8bbd0; border-radius:4px; padding:4px 6px; margin-bottom:6px; font-weight:bold;" title="病名: ' + escapeHtml(p.surgeryDisease) + '\n術式: ' + escapeHtml(p.surgeryProcedure) + '\n麻酔: ' + escapeHtml(p.surgeryAnesthesia) + '">✂️術式: ' + escapeHtml(p.surgeryProcedure) + '</div>';
         }
 
@@ -3848,7 +3851,7 @@ function renderPatients() {
             if (p.surgeryDate === "なし") {
                 tr.push('<div class="surgery-proc-text" style="color:#999; font-size:11px; font-style:italic;">術：なし</div>');
             } else if (p.surgeryProcedure && !memoSurgeryHtml) {
-                tr.push('<div class="surgery-proc-text" style="color:#c2185b; font-size:11px; font-weight:bold; word-break:break-all;" title="術式: ' + escapeHtml(p.surgeryProcedure) + '">✂️ ' + escapeHtml(p.surgeryProcedure) + '</div>');
+                tr.push('<div class="surgery-proc-text" style="color:#c2185b; font-size:11px; font-weight:bold; word-break:break-all;" title="手術日/術式: ' + escapeHtml(p.surgeryProcedure) + '">✂️ 手術: ' + escapeHtml(p.surgeryProcedure) + '</div>');
             } else if (!p.surgeryProcedure) {
                 tr.push('<div class="surgery-proc-text" style="color:#bbb; font-size:11px; font-style:italic;">(術式未取得)</div>');
             }
@@ -8737,6 +8740,9 @@ function renderMedAdjResult() {
     var discontList = [];
     var inD = medAdjState.input;
     var outD = medAdjState.output;
+
+
+
     var tbody = document.getElementById("med-adj-tbody");
     var html = "";
     var baseCount = 0;
@@ -9407,12 +9413,28 @@ function renderCustomTabsUI() {
     if (!appData.settings.userCustomTabs) appData.settings.userCustomTabs = {};
     if (!appData.settings.userCustomTabs[currentSystemId]) appData.settings.userCustomTabs[currentSystemId] = [];
     
-    // 常に「表示設定がONになっているタブ」だけを描画する
+    // 常に「表示設定がONになっているタブ」と「一時的に作成されたタブ」を描画する
     if (!appData.settings.activeCustomTabs) appData.settings.activeCustomTabs = {};
     if (!appData.settings.activeCustomTabs[currentSystemId]) {
         appData.settings.activeCustomTabs[currentSystemId] = [].concat(appData.settings.userCustomTabs[currentSystemId]);
     }
-    var activeCustomTabs = appData.settings.activeCustomTabs[currentSystemId];
+    
+    // activeCustomTabsとsessionCustomTabsを結合して重複を排除
+    var baseTabs = appData.settings.activeCustomTabs[currentSystemId];
+    var sessionTabs = window.sessionCustomTabs || [];
+    var activeCustomTabs = [].concat(baseTabs);
+    
+    for (var i = 0; i < sessionTabs.length; i++) {
+        var sTab = sessionTabs[i];
+        var isDup = false;
+        for (var j = 0; j < activeCustomTabs.length; j++) {
+            var aTab = activeCustomTabs[j];
+            if ((typeof aTab === "string" && aTab === sTab.tag) || (typeof aTab === "object" && aTab.tag === sTab.tag && aTab.scope === sTab.scope)) {
+                isDup = true; break;
+            }
+        }
+        if (!isDup) activeCustomTabs.push(sTab);
+    }
     
     for (var i = 0; i < activeCustomTabs.length; i++) {
         var tabObj = activeCustomTabs[i];
@@ -9441,10 +9463,13 @@ function renderCustomTabsUI() {
                 currentFilterTag = tag;
                 currentFilterScope = scope;
                 renderCustomTabsUI();
+                // キャッシュされているデータで即座にUIを更新
+                renderPatients();
+                
                 // カスタムタブ選択時（作成時）に全病棟情報を自動で取得
                 fetchAllActiveWardsData(function() {
                     renderPatients();
-                });
+                }, true);
             };
         })(tName, tScope);
         
@@ -9567,29 +9592,26 @@ function addCustomTabFromModal(tagName) {
         });
     }
     
-    // 新規作成時は activeCustomTabs にも自動追加する
+    // 新規作成時は sessionCustomTabs (一時表示配列) に追加し、activeCustomTabs には自動保存しない
     if (!isDuplicate) {
-        if (!appData.settings.activeCustomTabs) appData.settings.activeCustomTabs = {};
-        if (!appData.settings.activeCustomTabs[currentSystemId]) appData.settings.activeCustomTabs[currentSystemId] = [].concat(userTabs);
-        else {
-            var existsInActive = false;
-            var activeTabs = appData.settings.activeCustomTabs[currentSystemId];
-            for (var i = 0; i < activeTabs.length; i++) {
-                if ((typeof activeTabs[i] === "string" && activeTabs[i] === tagName) || 
-                    (typeof activeTabs[i] === "object" && activeTabs[i].tag === tagName && activeTabs[i].scope === scope)) {
-                    existsInActive = true; break;
-                }
+        if (typeof window.sessionCustomTabs === "undefined") window.sessionCustomTabs = [];
+        var existsInSession = false;
+        for (var i = 0; i < window.sessionCustomTabs.length; i++) {
+            if (window.sessionCustomTabs[i].tag === tagName && window.sessionCustomTabs[i].scope === scope) {
+                existsInSession = true; break;
             }
-            if (!existsInActive) activeTabs.push({ tag: tagName, scope: scope });
         }
-        // 即座に保存
-        saveData(true);
+        if (!existsInSession) window.sessionCustomTabs.push({ tag: tagName, scope: scope });
+        
+        // ローカルには保存するがアラートは出さない（設定タブから永続化可能）
+        saveData(false);
     }
 
     currentFilterTag = tagName;
     currentFilterScope = scope;
     renderCustomTabsUI();
-    // カスタムタブ作成時に全病棟情報を自動で取得（裏で静かに実行）
+    // カスタムタブ作成時に全病棟情報を自動で取得（裏で静かに実行する前に画面更新）
+    renderPatients();
     fetchAllActiveWardsData(function() {
         renderPatients();
     }, true);
@@ -9629,8 +9651,19 @@ function removeCustomTab(tagName, scope) {
             }
         }
         
+        // sessionCustomTabs からも削除する
+        if (typeof window.sessionCustomTabs !== "undefined") {
+            for (var i = 0; i < window.sessionCustomTabs.length; i++) {
+                var s = window.sessionCustomTabs[i];
+                if (s.tag === tagName && s.scope === scope) {
+                    window.sessionCustomTabs.splice(i, 1);
+                    break;
+                }
+            }
+        }
+        
         // ローカルに即座に保存
-        saveData(true);
+        saveData();
     }
     if (currentFilterTag === tagName && currentFilterScope === scope) { currentFilterTag = ""; }
     renderCustomTabsUI();
