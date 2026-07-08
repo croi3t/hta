@@ -1823,14 +1823,10 @@ function addWard(code) {
         currentWard = code;
     }
     
-    //  を呼ばない: セッション中の一時追加のみ
+    // セッション中の一時追加のみ
     renderWardTabs();
+    if (typeof renderCustomTabsUI !== "undefined") renderCustomTabsUI();
     if (typeof TodoUI !== "undefined") TodoUI.renderSubTabs(); // ToDoタブも同期
-    
-    // カスタムタブ表示中ならカスタムタブのUIも再描画する
-    if (typeof currentFilterTag !== 'undefined' && currentFilterTag !== "") {
-        renderCustomTabsUI();
-    }
     
     if (document.getElementById("tab-patients").className.indexOf("active") !== -1) renderPatients();
     else if (document.getElementById("tab-notes").className.indexOf("active") !== -1) renderNotes();
@@ -1848,6 +1844,7 @@ function removeWard(code) {
     if (currentWard === code) currentWard = newCodes[0];
 
     renderWardTabs();
+    if (typeof renderCustomTabsUI !== "undefined") renderCustomTabsUI();
     if (typeof TodoUI !== "undefined") TodoUI.renderSubTabs(); // ToDoタブも同期
     if (document.getElementById("tab-patients").className.indexOf("active") !== -1) renderPatients();
     else if (document.getElementById("tab-notes").className.indexOf("active") !== -1) renderNotes();
@@ -3842,19 +3839,15 @@ function renderPatients() {
             var epiBadge = p.surgeryHasEpi ? ' <span style="background:#dc3545; color:#fff; padding:0 3px; border-radius:2px;">エピ有</span>' : '';
             var lixBadge = p.surgeryLixiana ? ' <span style="background:#ff9800; color:#fff; padding:0 3px; border-radius:2px; font-weight:bold;" title="リクシアナ（エドキサバン）適応手術">💊EDO</span>' : '';
             
-            diseaseSurgeryHtml = '<div style="color:#c2185b; font-weight:bold; margin-top:4px;">手術日: ' + escapeHtml(p.surgeryDate) + '<br>' + epiBadge + lixBadge + ' <span style="cursor:pointer; font-size:11px; margin-left:4px;" title="この患者の手術情報を再取得" onclick="fetchSingleSurgery(\'' + escapeHtml(p.id) + '\')">🔄</span></div>';
-            memoSurgeryHtml = '';
+            diseaseSurgeryHtml = '<div style="font-size:11px; color:#c2185b; font-weight:bold; margin-top:4px;">手術日: ' + escapeHtml(p.surgeryDate) + '<br>' + epiBadge + lixBadge + '</div>';
+            memoSurgeryHtml = '<div style="font-size:10.5px; color:#c2185b; background:#fce4ec; border:1px solid #f8bbd0; border-radius:4px; padding:4px 6px; margin-bottom:6px; font-weight:bold;" title="病名: ' + escapeHtml(p.surgeryDisease) + '\n術式: ' + escapeHtml(p.surgeryProcedure) + '\n麻酔: ' + escapeHtml(p.surgeryAnesthesia) + '">✂️術式: ' + escapeHtml(p.surgeryProcedure) + '</div>';
         }
 
         tr.push('<td style="padding:2px 4px; vertical-align:top;">');
-        tr.push('<div style="color:#2c3e50; font-weight:bold;' + (diseaseSurgeryHtml ? 'border-bottom:1px dotted #eee; padding-bottom:2px; margin-bottom:2px;' : '') + '">' + escapeHtml(p.disease || '') + '</div>');
+        tr.push('<div style="color:#2c3e50; font-weight:bold;' + (diseaseSurgeryHtml ? 'border-bottom:1px dotted #eee; padding-bottom:2px; margin-bottom:2px;' : '') + '">' + escapeHtml(p.disease || '') + ' <span style="cursor:pointer; font-size:10px; color:#888; margin-left:4px; font-weight:normal;" title="この患者の手術情報を取得" onclick="fetchSingleSurgery(\'' + escapeHtml(p.id) + '\')">[手術取得]</span></div>');
         if (currentWard === "51") {
             if (p.surgeryDate === "なし") {
                 tr.push('<div class="surgery-proc-text" style="color:#999; font-size:11px; font-style:italic;">術：なし</div>');
-            } else if (p.surgeryProcedure && !memoSurgeryHtml) {
-                tr.push('<div class="surgery-proc-text" style="color:#c2185b; font-size:inherit; font-weight:bold; word-break:break-all;" title="手術日/術式: ' + escapeHtml(p.surgeryProcedure) + '">手術日: ' + escapeHtml(p.surgeryProcedure) + ' <span style="cursor:pointer; font-size:11px; margin-left:4px;" title="この患者の手術情報を再取得" onclick="fetchSingleSurgery(\'' + escapeHtml(p.id) + '\')">🔄</span></div>');
-            } else if (!p.surgeryProcedure) {
-                tr.push('<div class="surgery-proc-text" style="color:#bbb; font-size:inherit; font-style:italic;">(手術日未取得) <span style="cursor:pointer; font-size:11px; margin-left:4px;" title="この患者の手術情報を取得" onclick="fetchSingleSurgery(\'' + escapeHtml(p.id) + '\')">🔄</span></div>');
             }
         }
         if (diseaseSurgeryHtml) {
@@ -4713,7 +4706,7 @@ function fetchSingleSurgery(patientId) {
 
 function updateAllBloodDates() {
     if (!isEditMode) { alert("編集モード時のみ実行可能です。"); return; }
-    var list = getCurrentPatientsList();
+    var list = (typeof getDisplayedPatientsList === "function") ? getDisplayedPatientsList() : getCurrentPatientsList();
     if (list.length === 0) { alert("更新対象の患者がいません。"); return; }
     
     if (!confirm("表示中の全患者(" + list.length + "名)の採血日を順次取得しますか？\n(裏で1件ずつ取得するため画面は固まりません)")) return;
@@ -9617,9 +9610,6 @@ function addCustomTabFromModal(tagName) {
             }
         }
         if (!existsInSession) window.sessionCustomTabs.push({ tag: tagName, scope: scope });
-        
-        // ローカルには保存するがアラートは出さない（非同期にしてフリーズ防止）
-        setTimeout(function() { saveData(false); }, 100);
     }
 
     currentFilterTag = tagName;
@@ -9676,9 +9666,6 @@ function removeCustomTab(tagName, scope) {
                 }
             }
         }
-        
-        // ローカルに保存（非同期にしてフリーズ防止）
-        setTimeout(function() { saveData(false); }, 100);
     }
     if (currentFilterTag === tagName && currentFilterScope === scope) { currentFilterTag = ""; }
     renderCustomTabsUI();
