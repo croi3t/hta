@@ -1,4 +1,4 @@
-﻿// ==========================================
+// ==========================================
 // Patient Logic
 // ==========================================
 
@@ -132,6 +132,11 @@ var PatientLogic = {
             if (!appData.patients) appData.patients = {};
             var targetWardKey = (typeof window.currentWard !== 'undefined') ? window.currentWard : wardName;
             appData.patients[targetWardKey] = mergedList;
+            
+            // Webから取得した生データにローカルのメモ/タグ等のメタデータを結合する
+            if (typeof PatientLogic !== 'undefined' && PatientLogic.injectMeta) {
+                PatientLogic.injectMeta(appData);
+            }
             
             DataManager.hasLocalChanges = true;
             renderPatients();
