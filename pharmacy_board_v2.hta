@@ -864,6 +864,12 @@ function generateAbbreviation() {}
                 <!-- JSでボタンが生成されます -->
             </div>
             
+            <h4 style="margin-top:0; color:#2c3e50;">抽出タブ（カスタムタブ）の表示設定</h4>
+            <p style="font-size:12px; margin-top:0; color:#666;">起動時や病棟切り替え時に表示させたいカスタムタブにチェックを入れてください。</p>
+            <div id="custom-tab-select-container" style="margin-bottom:15px; border-bottom:1px solid #ddd; padding-bottom:15px;">
+                <!-- JSでチェックボックスが生成されます -->
+            </div>
+
             <p style="font-size:12px; margin-top:0;">【自由入力枠】特殊なURLやテスト用ファイル等を手動設定する場合に使用（手動設定枠は病棟3として扱われます）</p>
             <table style="width:auto; margin-bottom:0; font-size:12px;">
                 <tr>
@@ -2552,6 +2558,9 @@ var ALL_WARDS = [
 ];
 var pendingSettings = [];
 
+// カスタムタブの一時設定用配列
+var pendingCustomTabs = [];
+
 function renderWardSettingButtons() {
     var container = document.getElementById("ward-select-container");
     if(!container) return;
@@ -2563,6 +2572,74 @@ function renderWardSettingButtons() {
         if (code) pendingSettings.push({ code: code, name: name });
     }
     drawWardButtons();
+    renderCustomTabSettingButtons();
+}
+
+function renderCustomTabSettingButtons() {
+    var container = document.getElementById("custom-tab-select-container");
+    if(!container) return;
+    
+    // 現在のユーザーの保有する全カスタムタブ一覧を取得
+    var allTabs = (appData.settings.userCustomTabs && appData.settings.userCustomTabs[currentSystemId]) || [];
+    // 現在アクティブに設定されているカスタムタブ一覧を取得（未定義の場合は初期状態としてすべてアクティブにする）
+    if (!appData.settings.activeCustomTabs) appData.settings.activeCustomTabs = {};
+    if (!appData.settings.activeCustomTabs[currentSystemId]) {
+        appData.settings.activeCustomTabs[currentSystemId] = [].concat(allTabs);
+    }
+    var activeTabs = appData.settings.activeCustomTabs[currentSystemId];
+    
+    pendingCustomTabs = [].concat(activeTabs);
+    
+    var html = "";
+    if (allTabs.length === 0) {
+        html = '<span style="font-size:12px; color:#999;">（カスタムタブはまだ作成されていません）</span>';
+    } else {
+        for (var i = 0; i < allTabs.length; i++) {
+            var tabObj = allTabs[i];
+            if (typeof tabObj === "string") tabObj = { tag: tabObj, scope: "all" };
+            
+            var tName = escapeHtml(tabObj.tag);
+            var tScope = tabObj.scope || "all";
+            var scopeLabel = (tScope === "personal") ? "個人" : "全体";
+            
+            var isChecked = false;
+            for (var j = 0; j < pendingCustomTabs.length; j++) {
+                var pTab = pendingCustomTabs[j];
+                if (typeof pTab === "string" && pTab === tabObj.tag) isChecked = true;
+                else if (typeof pTab === "object" && pTab.tag === tabObj.tag && pTab.scope === tScope) isChecked = true;
+            }
+            
+            var disabled = isEditMode ? "" : "disabled";
+            var checkedStr = isChecked ? "checked" : "";
+            
+            html += '<label style="display:inline-block; margin-right:15px; font-size:13px; cursor:' + (isEditMode?'pointer':'not-allowed') + ';">';
+            html += '<input type="checkbox" ' + checkedStr + ' ' + disabled + ' ';
+            html += 'onchange="toggleCustomTabSelection(\'' + tName + '\', \'' + tScope + '\', this.checked)"> ';
+            html += tName + ' <span style="font-size:10px; color:#888;">(' + scopeLabel + ')</span>';
+            html += '</label>';
+        }
+    }
+    container.innerHTML = html;
+}
+
+function toggleCustomTabSelection(tag, scope, isChecked) {
+    if (isChecked) {
+        var exists = false;
+        for (var i = 0; i < pendingCustomTabs.length; i++) {
+            var p = pendingCustomTabs[i];
+            if ((typeof p === "string" && p === tag) || (typeof p === "object" && p.tag === tag && p.scope === scope)) {
+                exists = true; break;
+            }
+        }
+        if (!exists) pendingCustomTabs.push({ tag: tag, scope: scope });
+    } else {
+        for (var i = pendingCustomTabs.length - 1; i >= 0; i--) {
+            var p = pendingCustomTabs[i];
+            if ((typeof p === "string" && p === tag) || (typeof p === "object" && p.tag === tag && p.scope === scope)) {
+                pendingCustomTabs.splice(i, 1);
+            }
+        }
+    }
 }
 
 function drawWardButtons() {
@@ -2622,6 +2699,11 @@ function saveSettingsForm() {
     appData.settings.userWards[currentSystemId] = codes;
     
     appData.settings.activeWardCodes = [].concat(codes);
+    
+    // カスタムタブの表示設定も保存
+    if (!appData.settings.activeCustomTabs) appData.settings.activeCustomTabs = {};
+    appData.settings.activeCustomTabs[currentSystemId] = [].concat(pendingCustomTabs);
+    
     // 現在の表示も更新
     
     saveData(true);
@@ -3740,7 +3822,8 @@ function renderPatients() {
         tr.push('<div style="color:#0d6efd; font-weight:bold; border-bottom:1px dotted #eee;">' + escapeHtml(p.dept || '') + '</div>');
         tr.push('<div style="color:#555;">' + escapeHtml(p.doctor || '') + '</div>');
         tr.push('</td>');
-        var surgeryInfoHtml = "";
+        var diseaseSurgeryHtml = "";
+        var memoSurgeryHtml = "";
         var hospDaysPostOpHtml = ""; // 入院日数列に追加する術後日数のテキスト
         if (p.surgeryDate && p.surgeryDate !== "なし" && p.surgeryDate !== "-") {
             var today = new Date();
@@ -3755,22 +3838,23 @@ function renderPatients() {
             var epiBadge = p.surgeryHasEpi ? ' <span style="background:#dc3545; color:#fff; padding:0 3px; border-radius:2px;">エピ有</span>' : '';
             var lixBadge = p.surgeryLixiana ? ' <span style="background:#ff9800; color:#fff; padding:0 3px; border-radius:2px; font-weight:bold;" title="リクシアナ（エドキサバン）適応手術">💊EDO</span>' : '';
             
-            surgeryInfoHtml = '<div style="font-size:10px; color:#c2185b; background:#fce4ec; border:1px solid #f8bbd0; border-radius:3px; padding:2px; margin-top:4px;" title="病名: ' + escapeHtml(p.surgeryDisease) + '\n術式: ' + escapeHtml(p.surgeryProcedure) + '\n麻酔: ' + escapeHtml(p.surgeryAnesthesia) + '">✂️術: ' + escapeHtml(p.surgeryDate) + ' ' + escapeHtml(p.surgeryProcedure) + epiBadge + lixBadge + '</div>';
+            diseaseSurgeryHtml = '<div style="font-size:11px; color:#c2185b; font-weight:bold; margin-top:4px;">手術日: ' + escapeHtml(p.surgeryDate) + epiBadge + lixBadge + '</div>';
+            memoSurgeryHtml = '<div style="font-size:10.5px; color:#c2185b; background:#fce4ec; border:1px solid #f8bbd0; border-radius:4px; padding:4px 6px; margin-bottom:6px; font-weight:bold;" title="病名: ' + escapeHtml(p.surgeryDisease) + '\n術式: ' + escapeHtml(p.surgeryProcedure) + '\n麻酔: ' + escapeHtml(p.surgeryAnesthesia) + '">✂️術式: ' + escapeHtml(p.surgeryProcedure) + '</div>';
         }
 
         tr.push('<td style="padding:2px 4px; vertical-align:top;">');
-        tr.push('<div style="color:#2c3e50; font-weight:bold;' + (surgeryInfoHtml ? 'border-bottom:1px dotted #eee; padding-bottom:2px; margin-bottom:2px;' : '') + '">' + escapeHtml(p.disease || '') + '</div>');
+        tr.push('<div style="color:#2c3e50; font-weight:bold;' + (diseaseSurgeryHtml ? 'border-bottom:1px dotted #eee; padding-bottom:2px; margin-bottom:2px;' : '') + '">' + escapeHtml(p.disease || '') + '</div>');
         if (currentWard === "51") {
             if (p.surgeryDate === "なし") {
                 tr.push('<div class="surgery-proc-text" style="color:#999; font-size:11px; font-style:italic;">術：なし</div>');
-            } else if (p.surgeryProcedure) {
+            } else if (p.surgeryProcedure && !memoSurgeryHtml) {
                 tr.push('<div class="surgery-proc-text" style="color:#c2185b; font-size:11px; font-weight:bold; word-break:break-all;" title="術式: ' + escapeHtml(p.surgeryProcedure) + '">✂️ ' + escapeHtml(p.surgeryProcedure) + '</div>');
-            } else {
+            } else if (!p.surgeryProcedure) {
                 tr.push('<div class="surgery-proc-text" style="color:#bbb; font-size:11px; font-style:italic;">(術式未取得)</div>');
             }
         }
-        if (surgeryInfoHtml) {
-            tr.push(surgeryInfoHtml); // ★主病名の下に手術バッジを挿入
+        if (diseaseSurgeryHtml) {
+            tr.push(diseaseSurgeryHtml); // ★主病名の下に手術日とバッジを挿入
         }
         tr.push('</td>');
         
@@ -3795,14 +3879,19 @@ function renderPatients() {
         
         tr.push('<td class="' + hlClass + '" style="padding:4px;">');
         
+        // 術式バッジ（情報共有・メモ欄）
+        if (memoSurgeryHtml) {
+            tr.push(memoSurgeryHtml);
+        }
+        
         // 共有メモ
         var sharedMemoContent = escapeHtml(p.memo || "");
         var displaySharedMemo = sharedMemoContent.replace(/(#[^\s　#]+)/g, '<span class="memo-tag">$1</span>');
         
-        tr.push('<div class="memo-wrap" style="position:relative;">');
-        tr.push('<div class="memo-display" style="font-size:12px; padding:2px; min-height:24px; white-space:pre-wrap; cursor:text; word-break:break-all;" onclick="if(isEditMode){this.style.display=\'none\'; this.nextSibling.style.display=\'block\'; this.nextSibling.focus(); this.nextSibling.style.height=\'auto\'; this.nextSibling.style.height=this.nextSibling.scrollHeight+\'px\';}">' + (displaySharedMemo || '<span style="color:#999;">【共有】メモ...</span>') + '</div>');
+        tr.push('<div class="memo-wrap" style="position:relative; margin-bottom:6px;">');
+        tr.push('<div class="memo-display" style="font-size:12px; padding:4px 6px; border:1px solid #e0e0e0; border-radius:4px; background:#fff; line-height:1.4; min-height:28px; white-space:pre-wrap; cursor:text; word-break:break-all;" onclick="if(isEditMode){this.style.display=\'none\'; this.nextSibling.style.display=\'block\'; this.nextSibling.focus(); this.nextSibling.style.height=\'auto\'; this.nextSibling.style.height=this.nextSibling.scrollHeight+\'px\';}">' + (displaySharedMemo || '<span style="color:#aaa;">【共有】メモ...</span>') + '</div>');
         var ta1 = '<textarea rows="1" ' + memoDisabled + ' ' + memoChangeShared;
-        var ta2 = ' placeholder="【共有】メモ..." style="display:none; min-height:24px; padding:2px; font-size:12px; width:100%;" onblur="this.style.display=\'none\'; this.previousSibling.style.display=\'block\'; this.previousSibling.innerHTML = escapeHtml(this.value || \'\').replace(/(#[^\\s　#]+)/g, \'<span class=\\\'memo-tag\\\'>$1</span>\') || \'<span style=\\\'color:#999;\\\'>【共有】メモ...</span>\';">';
+        var ta2 = ' placeholder="【共有】メモ..." style="display:none; min-height:28px; padding:4px 6px; font-size:12px; line-height:1.4; border:1px solid #3498db; border-radius:4px; width:100%; box-sizing:border-box;" onblur="this.style.display=\'none\'; this.previousSibling.style.display=\'block\'; this.previousSibling.innerHTML = escapeHtml(this.value || \'\').replace(/(#[^\\s　#]+)/g, \'<span class=\\\'memo-tag\\\'>$1</span>\') || \'<span style=\\\'color:#aaa;\\\'>【共有】メモ...</span>\';">';
         tr.push(ta1 + ta2 + sharedMemoContent + '</textarea>');
         tr.push('</div>');
         
@@ -3810,11 +3899,11 @@ function renderPatients() {
         var myMemoContent = escapeHtml(myMemo || "");
         var myDisplayMemo = myMemoContent.replace(/(#[^\s　#]+)/g, '<span class="memo-tag">$1</span>');
         
-        tr.push('<div class="memo-wrap hide-on-print" style="position:relative; margin-top:2px;">');
-        tr.push('<div class="memo-display" style="font-size:12px; padding:2px; min-height:24px; white-space:pre-wrap; cursor:text; background:#e8f4f8; word-break:break-all;" onclick="if(isEditMode){this.style.display=\'none\'; this.nextSibling.style.display=\'block\'; this.nextSibling.focus(); this.nextSibling.style.height=\'auto\'; this.nextSibling.style.height=this.nextSibling.scrollHeight+\'px\';}">' + (myDisplayMemo || '<span style="color:#999;">【個人】メモ...</span>') + '</div>');
+        tr.push('<div class="memo-wrap hide-on-print" style="position:relative;">');
+        tr.push('<div class="memo-display" style="font-size:12px; padding:4px 6px; border:1px solid #b3e5fc; border-radius:4px; background:#e1f5fe; line-height:1.4; min-height:28px; white-space:pre-wrap; cursor:text; word-break:break-all;" onclick="if(isEditMode){this.style.display=\'none\'; this.nextSibling.style.display=\'block\'; this.nextSibling.focus(); this.nextSibling.style.height=\'auto\'; this.nextSibling.style.height=this.nextSibling.scrollHeight+\'px\';}">' + (myDisplayMemo || '<span style="color:#81d4fa;">【個人】メモ...</span>') + '</div>');
         var ta3 = '<textarea rows="1" ' + memoDisabled + ' ' + memoChangePersonal;
         var ta4 = ' placeholder="【個人】メモ..." ';
-        var ta5 = 'style="display:none; min-height:24px; padding:2px; font-size:12px; background:#e8f4f8; width:100%;" onblur="this.style.display=\'none\'; this.previousSibling.style.display=\'block\'; this.previousSibling.innerHTML = escapeHtml(this.value || \'\').replace(/(#[^\\s　#]+)/g, \'<span class=\\\'memo-tag\\\'>$1</span>\') || \'<span style=\\\'color:#999;\\\'>【個人】メモ...</span>\';">';
+        var ta5 = 'style="display:none; min-height:28px; padding:4px 6px; font-size:12px; line-height:1.4; border:1px solid #03a9f4; border-radius:4px; background:#e1f5fe; width:100%; box-sizing:border-box;" onblur="this.style.display=\'none\'; this.previousSibling.style.display=\'block\'; this.previousSibling.innerHTML = escapeHtml(this.value || \'\').replace(/(#[^\\s　#]+)/g, \'<span class=\\\'memo-tag\\\'>$1</span>\') || \'<span style=\\\'color:#81d4fa;\\\'>【個人】メモ...</span>\';">';
         tr.push(ta3 + ta4 + ta5 + myMemoContent + '</textarea>');
         tr.push('</div>');
         tr.push('</td>');
@@ -4351,11 +4440,14 @@ function fetchPatientData() {
         return;
     }
 
-    // カスタムタブが選択中の場合は全病棟を一括取得
+    // カスタムタブが選択中の場合は全病棟を一括取得（裏で静かに実行）
     if (typeof currentFilterTag !== 'undefined' && currentFilterTag !== "") {
         fetchAllActiveWardsData(function() {
-            alert("全病棟の最新データを取得しました。");
-        });
+            btn.innerText = orgText;
+            btn.disabled = false;
+            // 取得完了後に再描画
+            renderPatients();
+        }, true);
         return;
     }
 
@@ -4414,7 +4506,7 @@ function processFetchedPatients(newPatients, wardName) {
 }
 
 // ---------- 全病棟一括データ取得 ----------
-function fetchAllActiveWardsData(callback) {
+function fetchAllActiveWardsData(callback, silent) {
     if (!isEditMode) {
         if (callback) callback();
         return;
@@ -4458,7 +4550,11 @@ function fetchAllActiveWardsData(callback) {
         overlay.style.justifyContent = "center";
         document.body.appendChild(overlay);
     }
-    overlay.style.display = "flex";
+    if (silent) {
+        overlay.style.display = "none";
+    } else {
+        overlay.style.display = "flex";
+    }
 
     var baseUrl = "http://10.5.171.42:8082/karte/kanja_ichiran/kanja_ichiran.php";
     var today = new Date();
@@ -4470,7 +4566,7 @@ function fetchAllActiveWardsData(callback) {
     function fetchNext() {
         if (wardIndex >= activeCodes.length) {
             window.currentWard = originalWard; // 元の病棟に戻す
-            overlay.style.display = "none";
+            if (!silent) overlay.style.display = "none";
             if (callback) callback();
             return;
         }
@@ -4491,31 +4587,35 @@ function fetchAllActiveWardsData(callback) {
             fetchUrl = code;
         }
 
+        var wCode = String(code);
+        var isDummy = (wCode === "99") || 
+                      (wName.indexOf("ﾀﾞﾐｰ") !== -1) ||
+                      (wCode.toLowerCase() === "test") ||
+                      (wName.toLowerCase() === "test");
+
         // ★ダミーデータ処理
-        if (typeof USE_DUMMY_DATA !== 'undefined' && USE_DUMMY_DATA) {
+        if ((typeof USE_DUMMY_DATA !== 'undefined' && USE_DUMMY_DATA) || isDummy) {
             setTimeout(function() {
-                var dummyHtml = '<html><body><table><tbody>';
-                // 各病棟ごとに適当なダミー患者を5人生成
-                for(var d=1; d<=5; d++) {
-                    var dId = "99" + code + "0" + d; // ダミーID
-                    dummyHtml += '<tr><td></td><td></td>';
-                    dummyHtml += '<td>' + dId + '</td>'; // ID
-                    dummyHtml += '<td>ダミー患者' + code + '-' + d + '</td>'; // 氏名
-                    dummyHtml += '<td></td><td></td><td></td><td></td>';
-                    dummyHtml += '<td>' + code + '0' + d + '室</td>'; // 病室
-                    dummyHtml += '<td>内科</td>'; // 診療科
-                    dummyHtml += '<td>主治医' + d + '</td>'; // 主治医
-                    dummyHtml += '<td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td>';
-                    dummyHtml += '<td>10</td>'; // 在院日数
-                    dummyHtml += '<td></td><td></td>';
-                    dummyHtml += '<td>テスト病名' + d + '</td>'; // 主病名
-                    dummyHtml += '</tr>';
-                }
-                dummyHtml += '</tbody></table></body></html>';
+                var dummyPatients = [];
+                var depts = ["内科", "外科", "整形外科", "産婦人科", "小児科", "眼科", "耳鼻科", "皮膚科", "泌尿器科", "脳神経外科"];
+                var diseases = ["原発性免疫不全症候群", "急性虫垂炎", "大腿骨転子部骨折", "新型コロナ肺炎", "2型糖尿病", "白内障", "突発性難聴", "アトピー性皮膚炎", "前立腺肥大症", "くも膜下出血"];
                 
-                var dummyDoc = document.implementation.createHTMLDocument("Dummy");
-                dummyDoc.body.innerHTML = dummyHtml;
-                try { parseHtmlAndMerge(dummyDoc, wName); } catch(e) {}
+                for(var i=1; i<=5; i++) {
+                    var dIdx = i % 10;
+                    var roomNum = (300 + Math.ceil(i/4)).toString();
+                    
+                    dummyPatients.push({
+                        room: roomNum,
+                        id: (100000 + i).toString(),
+                        name: "テスト患者　" + i + "号",
+                        dept: depts[dIdx],
+                        doctor: "医師" + String.fromCharCode(65 + dIdx % 5),
+                        disease: diseases[dIdx],
+                        daysInHosp: (Math.floor(Math.random() * 50) + 1).toString()
+                    });
+                }
+                
+                processFetchedPatients(dummyPatients, wName || "TEST(ﾀﾞﾐｰ)");
                 
                 wardIndex++;
                 fetchNext();
@@ -9306,10 +9406,16 @@ function renderCustomTabsUI() {
     // ★修正: ログインユーザー個人のカスタムタブ配列を安全に取得
     if (!appData.settings.userCustomTabs) appData.settings.userCustomTabs = {};
     if (!appData.settings.userCustomTabs[currentSystemId]) appData.settings.userCustomTabs[currentSystemId] = [];
-    var customTabs = appData.settings.userCustomTabs[currentSystemId];
     
-    for (var i = 0; i < customTabs.length; i++) {
-        var tabObj = customTabs[i];
+    // 常に「表示設定がONになっているタブ」だけを描画する
+    if (!appData.settings.activeCustomTabs) appData.settings.activeCustomTabs = {};
+    if (!appData.settings.activeCustomTabs[currentSystemId]) {
+        appData.settings.activeCustomTabs[currentSystemId] = [].concat(appData.settings.userCustomTabs[currentSystemId]);
+    }
+    var activeCustomTabs = appData.settings.activeCustomTabs[currentSystemId];
+    
+    for (var i = 0; i < activeCustomTabs.length; i++) {
+        var tabObj = activeCustomTabs[i];
         if (typeof tabObj === "string") { tabObj = { tag: tabObj, scope: "all" }; }
         
         var tName = tabObj.tag;
@@ -9460,14 +9566,33 @@ function addCustomTabFromModal(tagName) {
             tabs: userTabs
         });
     }
+    
+    // 新規作成時は activeCustomTabs にも自動追加する
+    if (!isDuplicate) {
+        if (!appData.settings.activeCustomTabs) appData.settings.activeCustomTabs = {};
+        if (!appData.settings.activeCustomTabs[currentSystemId]) appData.settings.activeCustomTabs[currentSystemId] = [].concat(userTabs);
+        else {
+            var existsInActive = false;
+            var activeTabs = appData.settings.activeCustomTabs[currentSystemId];
+            for (var i = 0; i < activeTabs.length; i++) {
+                if ((typeof activeTabs[i] === "string" && activeTabs[i] === tagName) || 
+                    (typeof activeTabs[i] === "object" && activeTabs[i].tag === tagName && activeTabs[i].scope === scope)) {
+                    existsInActive = true; break;
+                }
+            }
+            if (!existsInActive) activeTabs.push({ tag: tagName, scope: scope });
+        }
+        // 即座に保存
+        saveData(true);
+    }
 
     currentFilterTag = tagName;
     currentFilterScope = scope;
     renderCustomTabsUI();
-    // カスタムタブ作成時に全病棟情報を自動で取得
+    // カスタムタブ作成時に全病棟情報を自動で取得（裏で静かに実行）
     fetchAllActiveWardsData(function() {
         renderPatients();
-    });
+    }, true);
 }
 
 // ★修正: タブの削除対象をユーザー個人の領域に変更
@@ -9491,6 +9616,21 @@ function removeCustomTab(tagName, scope) {
                 tabs: userTabs
             });
         }
+        
+        // activeCustomTabs からも削除する
+        if (appData.settings.activeCustomTabs && appData.settings.activeCustomTabs[currentSystemId]) {
+            var activeTabs = appData.settings.activeCustomTabs[currentSystemId];
+            for (var i = 0; i < activeTabs.length; i++) {
+                var t = activeTabs[i];
+                if ((typeof t === "string" && t === tagName) || (typeof t === "object" && t.tag === tagName && t.scope === scope)) {
+                    activeTabs.splice(i, 1);
+                    break;
+                }
+            }
+        }
+        
+        // ローカルに即座に保存
+        saveData(true);
     }
     if (currentFilterTag === tagName && currentFilterScope === scope) { currentFilterTag = ""; }
     renderCustomTabsUI();
@@ -9620,7 +9760,6 @@ function insertTagSuggest(event, tag) {
 <div id="tag-suggest-box" style="position:absolute; background:#fff; border:1px solid #ccc; display:none; z-index:999; padding:5px;"></div>
 </body>
 </html>
-
 
 
 
