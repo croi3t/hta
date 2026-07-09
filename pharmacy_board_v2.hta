@@ -617,12 +617,12 @@ function generateAbbreviation() {}
                         <div style="cursor:pointer; border-bottom:1px dotted #ccc; padding-bottom:2px; margin-bottom:2px;" onclick="sortPatients('disease')" title="主病名でソート">主病名 <span class="sort-icon">↕</span></div>
                         <div id="header-surgery-proc" style="font-size:10px; color:#c2185b; font-weight:bold;">手術日</div>
                     </th>
-                    <th width="45" class="sortable" onclick="sortPatients('room')">病室 <span class="sort-icon">↕</span></th>
+                    <th width="35" class="sortable" onclick="sortPatients('room')">病室 <span class="sort-icon">↕</span></th>
                     <th width="35" class="sortable" onclick="sortPatients('daysInHosp')">在院 <span class="sort-icon">↕</span></th>
-                    <th width="65" style="padding: 0;">
-                        <div id="btn-fetch-surgery" class="hide-on-print" onclick="SurgeryFetcher.updateAllSurgeries()" style="background:#fce4ec; color:#c2185b; font-size:10px; padding:2px 0; cursor:pointer; border-bottom:1px solid #f8bbd0; font-weight:bold;" title="手術情報を一括取得します">✂️ 手術取得</div>
+                    <th width="85" style="padding: 0;">
+                        <div id="btn-fetch-surgery" class="hide-on-print" onclick="SurgeryFetcher.updateAllSurgeries()" style="display:block; width:95%; box-sizing:border-box; margin:3px auto; background-color:#e91e63; color:#fff; font-size:10px; padding:3px 0; border-radius:10px; cursor:pointer; font-weight:bold; box-shadow:0 1px 2px rgba(0,0,0,0.2);" title="手術一括取得します">[手術]全件取得</div>
                         
-                        <div class="hide-on-print" onclick="updateAllBloodDates()" style="background:#d1ecf1; color:#0c5460; font-size:10px; padding:2px 0; cursor:pointer; border-bottom:1px solid #bee5eb;" title="表示中の全患者の採血日を一括取得します">[採血] 全体取得</div>
+                        <div class="hide-on-print" onclick="updateAllBloodDates()" style="display:block; width:95%; box-sizing:border-box; margin:3px auto; background-color:#17a2b8; color:#fff; font-size:10px; padding:3px 0; border-radius:10px; cursor:pointer; font-weight:bold; box-shadow:0 1px 2px rgba(0,0,0,0.2);" title="表示中の全患者の採血日を一括取得します">[採血]全件取得</div>
                         <div onclick="sortPatients('bloodDate')" style="cursor:pointer; padding:2px 0;" title="採血日でソート">採血日 <span class="sort-icon">↕</span></div>
                     </th>
                     <th width="35" class="sortable" onclick="sortPatients('status')">介入 <span class="sort-icon">↕</span></th>
@@ -3875,7 +3875,7 @@ function renderPatients() {
             memoSurgeryHtml = '<div style="font-size:10.5px; color:#c2185b; background:#fce4ec; padding:4px; margin-bottom:0; font-weight:bold;" title="病名: ' + escapeHtml(p.surgeryDisease) + '\n術式: ' + escapeHtml(p.surgeryProcedure) + '\n麻酔: ' + escapeHtml(p.surgeryAnesthesia) + '">✂️ ' + escapeHtml(p.surgeryProcedure) + '</div>';
         }
         tr.push('<td style="padding:2px 4px; vertical-align:top;">');
-        tr.push('<div style="color:#2c3e50; font-weight:bold;' + (diseaseSurgeryHtml ? 'border-bottom:1px dotted #eee; padding-bottom:2px; margin-bottom:2px;' : '') + '">' + escapeHtml(p.disease || '') + ' <span id="btn-single-surg-' + escapeHtml(p.id) + '" style="cursor:pointer; font-size:10px; color:#fff; background-color:#17a2b8; padding:2px 6px; border-radius:10px; margin-left:4px; font-weight:bold; display:inline-block;" title="この患者の手術情報を取得" onclick="fetchSingleSurgery(\'' + escapeHtml(p.id) + '\', this)">手術取得</span></div>');
+        tr.push('<div style="color:#2c3e50; font-weight:bold;' + (diseaseSurgeryHtml ? 'border-bottom:1px dotted #eee; padding-bottom:2px; margin-bottom:2px;' : '') + '">' + escapeHtml(p.disease || '') + ' <span id="btn-single-surg-' + escapeHtml(p.id) + '" style="cursor:pointer; font-size:10px; color:#fff; background-color:#e91e63; padding:2px 6px; border-radius:10px; margin-left:4px; font-weight:bold; display:inline-block;" title="この患者の手術情報を取得" onclick="fetchSingleSurgery(\'' + escapeHtml(p.id) + '\', this)">手術取得</span></div>');
         if (currentWard === "51") {
             if (p.surgeryDate === "なし") {
                 tr.push('<div class="surgery-proc-text" style="color:#999; font-size:11px; font-style:italic;">術：なし</div>');
@@ -3897,7 +3897,7 @@ function renderPatients() {
         hospDaysHtml += hospDaysPostOpHtml;
         tr.push('<td style="text-align:center; font-size:12px; line-height:1.2;">' + hospDaysHtml + '</td>');
 
-        tr.push('<td class="blood-date-cell" style="padding:0; width:65px;">' + fetchBtnHtml + dateTextHtml + '</td>');
+        tr.push('<td class="blood-date-cell" style="padding:0; width:85px;">' + fetchBtnHtml + dateTextHtml + '</td>');
         var st1 = '<td class="status-cell ' + statClass + '" style="' + statUnderline + '" ';
         var st2 = 'onmousedown="startDragStatus(event, \'' + escapeHtml(p.id) + '\')" ' + clickEvent + '>';
         tr.push(st1 + st2 + statText + authorHtml + '</td>');
@@ -3928,10 +3928,10 @@ function renderPatients() {
         
         // 個人メモ
         tr.push('<div class="memo-wrap hide-on-print" style="position:relative; margin-bottom:0;">');
-        tr.push('<div class="memo-display" style="font-size:12px; padding:2px 4px; background:#e1f5fe; line-height:1.4; min-height:18px; white-space:pre-wrap; cursor:text; word-break:break-all;" onclick="if(isEditMode){this.style.display=\'none\'; this.nextSibling.style.display=\'block\'; this.nextSibling.focus(); this.nextSibling.style.height=\'auto\'; this.nextSibling.style.height=this.nextSibling.scrollHeight+\'px\';}">' + (myDisplayMemo || '<span style="color:#81d4fa;">（個人）メモ...</span>') + '</div>');
+        tr.push('<div class="memo-display" style="font-size:12px; padding:2px 4px; background:#e1f5fe; line-height:1.4; min-height:18px; white-space:pre-wrap; cursor:text; word-break:break-all;" onclick="if(isEditMode){this.style.display=\'none\'; this.nextSibling.style.display=\'block\'; this.nextSibling.focus(); this.nextSibling.style.height=\'auto\'; this.nextSibling.style.height=this.nextSibling.scrollHeight+\'px\';}">' + (myDisplayMemo || '<span style="color:#aaa;">（個人）メモ...</span>') + '</div>');
         var ta3 = '<textarea rows="1" ' + memoDisabled + ' ' + memoChangePersonal;
         var ta4 = ' placeholder="（個人）メモ..." ';
-        var ta5 = 'style="display:none; min-height:18px; padding:2px 4px; font-size:12px; line-height:1.4; border:1px solid #03a9f4; background:#e1f5fe; width:100%; box-sizing:border-box;" onblur="this.style.display=\'none\'; this.previousSibling.style.display=\'block\'; this.previousSibling.innerHTML = escapeHtml(this.value || \'\').replace(/(#[^\\s　#]+)/g, \'<span class=\\\'memo-tag\\\'>$1</span>\') || \'<span style=\\\'color:#81d4fa;\\\'>（個人）メモ...</span>\';">';
+        var ta5 = 'style="display:none; min-height:18px; padding:2px 4px; font-size:12px; line-height:1.4; border:1px solid #03a9f4; background:#e1f5fe; width:100%; box-sizing:border-box;" onblur="this.style.display=\'none\'; this.previousSibling.style.display=\'block\'; this.previousSibling.innerHTML = escapeHtml(this.value || \'\').replace(/(#[^\\s　#]+)/g, \'<span class=\\\'memo-tag\\\'>$1</span>\') || \'<span style=\\\'color:#aaa;\\\'>（個人）メモ...</span>\';">';
         tr.push(ta3 + ta4 + ta5 + myMemoContent + '</textarea>');
         tr.push('</div>');
         tr.push('</td>');
@@ -4627,7 +4627,7 @@ function fetchAllActiveWardsData(callback, silent) {
                 var depts = ["内科", "外科", "整形外科", "産婦人科", "小児科", "眼科", "耳鼻科", "皮膚科", "泌尿器科", "脳神経外科"];
                 var diseases = ["原発性免疫不全症候群", "急性虫垂炎", "大腿骨転子部骨折", "新型コロナ肺炎", "2型糖尿病", "白内障", "突発性難聴", "アトピー性皮膚炎", "前立腺肥大症", "くも膜下出血"];
                 
-                for(var i=1; i<=5; i++) {
+                for(var i=1; i<=40; i++) {
                     var dIdx = i % 10;
                     var roomNum = (300 + Math.ceil(i/4)).toString();
                     
