@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html>
 <head>
 <meta charset="UTF-8">
@@ -4539,7 +4539,12 @@ function fetchAllActiveWardsData(callback, silent) {
         return;
     }
     
-    var activeCodes = (appData.settings && appData.settings.activeWardCodes) || [];
+    var activeCodes = [];
+    if (typeof ALL_WARDS !== "undefined") {
+        for (var wIdx = 0; wIdx < ALL_WARDS.length; wIdx++) {
+            activeCodes.push(ALL_WARDS[wIdx].code);
+        }
+    }
     if (activeCodes.length === 0) {
         if (callback) callback();
         return;
@@ -8472,7 +8477,12 @@ function renderTable() {
 
             // 初期選択病棟の設定
             // ユーザー設定があれば最初の病棟を選択、なければデフォルトをテスト病棟(99)に設定
-            var activeCodes = (appData.settings && appData.settings.activeWardCodes) || [];
+    var activeCodes = [];
+    if (typeof ALL_WARDS !== "undefined") {
+        for (var wIdx = 0; wIdx < ALL_WARDS.length; wIdx++) {
+            activeCodes.push(ALL_WARDS[wIdx].code);
+        }
+    }
             if (activeCodes.length > 0) {
                 currentWard = activeCodes[0];
             } else {
@@ -9470,11 +9480,11 @@ function renderCustomTabsUI() {
     // 常に「表示設定がONになっているタブ」と「一時的に作成されたタブ」を描画する
     if (!appData.settings.activeCustomTabs) appData.settings.activeCustomTabs = {};
     if (!appData.settings.activeCustomTabs[currentSystemId]) {
-        appData.settings.activeCustomTabs[currentSystemId] = [].concat(appData.settings.userCustomTabs[currentSystemId]);
+        appData.settings.activeCustomTabs[currentSystemId] = [].concat(appData.settings.userCustomTabs[currentSystemId] || []);
     }
     
     // activeCustomTabsとsessionCustomTabsを結合して重複を排除
-    var baseTabs = appData.settings.activeCustomTabs[currentSystemId];
+    var baseTabs = appData.settings.activeCustomTabs[currentSystemId] || [];
     var sessionTabs = window.sessionCustomTabs || [];
     var activeCustomTabs = [].concat(baseTabs);
     
@@ -9483,6 +9493,7 @@ function renderCustomTabsUI() {
         var isDup = false;
         for (var j = 0; j < activeCustomTabs.length; j++) {
             var aTab = activeCustomTabs[j];
+            if (!aTab) continue;
             if ((typeof aTab === "string" && aTab === sTab.tag) || (typeof aTab === "object" && aTab.tag === sTab.tag && aTab.scope === sTab.scope)) {
                 isDup = true; break;
             }
@@ -9492,6 +9503,7 @@ function renderCustomTabsUI() {
     
     for (var i = 0; i < activeCustomTabs.length; i++) {
         var tabObj = activeCustomTabs[i];
+        if (!tabObj) continue;
         if (typeof tabObj === "string") { tabObj = { tag: tabObj, scope: "all" }; }
         
         var tName = tabObj.tag;
