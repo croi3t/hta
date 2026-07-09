@@ -1,4 +1,4 @@
-// =========================================================
+﻿// =========================================================
 // 5A病棟専用：手術情報スクレイピングモジュール (改訂版)
 // js/surgery_fetcher.js
 // =========================================================
@@ -7,7 +7,7 @@ var SurgeryFetcher = {
     updateAllSurgeries: function() {
         if (!isEditMode) { alert("編集モード時のみ実行可能です。"); return; }
         
-        var list = (typeof getDisplayedPatientsList === "function") ? getDisplayedPatientsList() : getCurrentPatientsList();
+        var list = (typeof window.getDisplayedPatientsList === "function") ? window.getDisplayedPatientsList() : ((typeof getDisplayedPatientsList === "function") ? getDisplayedPatientsList() : (typeof window.getCurrentPatientsList === "function" ? window.getCurrentPatientsList() : getCurrentPatientsList()));
         if (list.length === 0) { alert("更新対象の患者がいません。"); return; }
         if (!confirm("表示中の全患者(" + list.length + "名)の手術記録を検索・取得しますか？\n(直列処理のため画面は固まりません)")) return;
 
