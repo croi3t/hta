@@ -5994,15 +5994,11 @@ function toggleHistoryDetail(pId, rowIndex) {
 
 function updateHistoryMemo(pId, newVal) {
     var arc = findPatientById(pId);
-    // 見つからない場合は退院アーカイブ側に作成
     if (!arc) {
-        if (!appData.dischargedArchive || (appData.dischargedArchive instanceof Array)) {
-            appData.dischargedArchive = {};
-        }
-        if (!appData.dischargedArchive[pId]) {
-            appData.dischargedArchive[pId] = { id: pId, archivedAt: new Date().getTime(), memoAuthors: [] };
-        }
-        arc = appData.dischargedArchive[pId];
+        if (!appData.patients) appData.patients = {};
+        if (!appData.patients["退院"]) appData.patients["退院"] = [];
+        arc = { id: pId, memoAuthors: [], name: "退院患者(手動追加)" };
+        appData.patients["退院"].push(arc);
     }
     arc.memo = newVal;
     // 編集者リストの更新 (重複防止)
@@ -8397,6 +8393,34 @@ function renderTable() {
         }
 
         function yrInit() {
+            // --- Migration for dischargedArchive ---
+            if (appData && appData.dischargedArchive) {
+                if (!appData.patients) appData.patients = {};
+                if (!appData.patients["退院"]) appData.patients["退院"] = [];
+                
+                var archiveObj = appData.dischargedArchive;
+                if (archiveObj instanceof Array) {
+                    for (var i = 0; i < archiveObj.length; i++) {
+                         var pArc = archiveObj[i];
+                         if (pArc && pArc.id) {
+                              if (!findPatientById(pArc.id)) {
+                                  appData.patients["退院"].push({ id: pArc.id, name: "退院患者(復元)" });
+                              }
+                         }
+                    }
+                } else {
+                    for (var arcId in archiveObj) {
+                        if (archiveObj.hasOwnProperty(arcId)) {
+                            if (!findPatientById(arcId)) {
+                                appData.patients["退院"].push({ id: arcId, name: "退院患者(復元)" });
+                            }
+                        }
+                    }
+                }
+                delete appData.dischargedArchive;
+                saveData(false); // migrate silently
+            }
+            // ---------------------------------------
             // 基準日 (baseDate) の初期化: 当日-3日を設定
             var today = new Date();
             today.setDate(today.getDate() - 3);

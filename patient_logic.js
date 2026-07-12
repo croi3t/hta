@@ -86,12 +86,38 @@ var PatientLogic = {
 
                 if(isNew && list.length > 0) {
                     appData.history.unshift({
+
                         date: nowStr, type: "入室/追加", patient: np.name, id: np.id, ward: wardName,
+
                         dept: np.dept || "", doctor: np.doctor || "", disease: np.disease || "",
+
                         createdAt: new Date().getTime(), user: currentUserName
+
                     });
+
                     historyAdded++;
-                }
+
+                    
+
+                    // 退院病棟からの復帰処理: もし退院病棟に存在していれば削除する
+
+                    if (appData.patients && appData.patients["退院"]) {
+
+                        for (var d = 0; d < appData.patients["退院"].length; d++) {
+
+                            if (String(appData.patients["退院"][d].id).replace(/^0+/, '') === nId) {
+
+                                appData.patients["退院"].splice(d, 1);
+
+                                break;
+
+                            }
+
+                        }
+
+                    }
+
+                    }
                 
                 mergedList.push(np);
             }
@@ -115,9 +141,36 @@ var PatientLogic = {
                     });
                     historyAdded++;
                     
-                    // アーカイブへ移動
-                    if (!appData.dischargedArchive[oId]) {
-                        appData.dischargedArchive[oId] = { id: oId, archivedAt: new Date().getTime() };
+                    // 退院病棟へ移動 (仮想病棟)
+                    
+                    if (!appData.patients) appData.patients = {};
+                    
+                    if (!appData.patients["退院"]) {
+                    
+                        appData.patients["退院"] = [];
+                    
+                    }
+                    
+                    var alreadyInDischarged = false;
+                    
+                    for (var d = 0; d < appData.patients["退院"].length; d++) {
+                    
+                        if (String(appData.patients["退院"][d].id).replace(/^0+/, '') === oId) {
+                    
+                            alreadyInDischarged = true;
+                    
+                            break;
+                    
+                        }
+                    
+                    }
+                    
+                    if (!alreadyInDischarged) {
+                    
+                        var dischargedPatient = Object.assign({}, op);
+                    
+                        appData.patients["退院"].push(dischargedPatient);
+                    
                     }
                 }
             }
