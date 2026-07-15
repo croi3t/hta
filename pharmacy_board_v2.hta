@@ -594,8 +594,16 @@ function generateAbbreviation() {}
             <span>[介入状況] <span style="display:inline-block; border:1px solid #ccc; padding:0 4px; background:#fff;">未設定</span> &#8594; <span style="display:inline-block; border:1px solid #ccc; padding:0 4px; background:#fff3cd; color:#856404;">介入予定</span> &#8594; <span style="display:inline-block; border:1px solid #ccc; padding:0 4px; background:#d4edda; color:#155724;">指導済</span> &#8594; <span style="display:inline-block; border:1px solid #ccc; padding:0 4px; background:#cce5ff; color:#004085;">記録済</span>
              <b style="color:#e74c3c; margin-left:10px;">※文字入力中・薬歴作成中は1分毎の自動更新が一時停止します</b></span>
             <div style="display:flex; align-items:center; gap:8px;">
-                <span style="margin-right:10px;">強調列: 【?】要確認 【!】緊急 (クリックで切替) / 情報共有に「退院・転院・ENT」記載で行ハイライト</span>
-                <input type="text" id="ipt-patient-search" placeholder="&#128269; 検索..." style="width:150px; padding:3px 6px; border:1px solid #ccc; border-radius:3px; font-size:11px;" onkeyup="filterPatientTable()">
+                  <span style="margin-right:10px;">ヒント: 【?】未確認 【!】要注意 (クリックで切替) / 共有メモに「退院・転院・ENT」記載でグレーアウト</span>
+                  <select id="sel-update-filter" onchange="filterPatientTable()" style="font-size:11px; padding:2px; border:1px solid #ccc; border-radius:3px; outline:none;">
+                      <option value="all">すべて表示</option>
+                      <option value="other">他ユーザーの更新</option>
+                      <option value="3h">3時間以内の更新</option>
+                      <option value="24h">24時間以内の更新</option>
+                      <option value="other_3h">他ユーザーの3時間以内</option>
+                      <option value="other_24h">他ユーザーの24時間以内</option>
+                  </select>
+                  <input type="text" id="ipt-patient-search" placeholder="&#128269; 検索..." style="width:150px; padding:3px 6px; border:1px solid #ccc; border-radius:3px; font-size:11px;" onkeyup="filterPatientTable()">
             </div>
         </div>
         <div id="excel-import-note" class="hide-on-print" style="display:none; font-size:11px; color:#6f42c1; background:#f3f0ff; border:1px dashed #6f42c1; border-radius:4px; padding:4px 10px; margin-bottom:8px;">
@@ -676,7 +684,7 @@ function generateAbbreviation() {}
         <div style="margin-bottom: 12px; padding: 10px; background-color: #f5f8fa; border-radius: 6px; border: 1px solid #e1e8ed;">
             <div style="display:flex; flex-direction:column; gap:5px; margin-bottom:8px;">
                 <input type="text" id="ipt-new-todo" placeholder="ToDoの件名を入力..." style="padding: 8px; border: 1px solid #ccc; border-radius:4px;" disabled onkeypress="if(event.keyCode===13) addNewTodoUI()">
-                <textarea id="ipt-new-todo-body" placeholder="ToDoの詳細（長文可）" style="width:100%; height:60px; padding: 8px; border: 1px solid #ccc; border-radius:4px; font-family:inherit; resize:vertical;" disabled></textarea>
+                <textarea id="ipt-new-todo-body" placeholder="ToDoの詳細（長文可）" style="width:100%; height:60px; padding: 8px; border: 1px solid #ccc; border-radius:4px; font-family:inherit; resize:vertical;" disabled oninput="this.style.height=\'auto\';this.style.height=(this.scrollHeight)+\'px\';"></textarea>
             </div>
             <div style="display:flex; justify-content:space-between; align-items:flex-end;">
                 <div style="display:flex; gap:10px; align-items:center; font-size:12px; flex-wrap:wrap;">
@@ -3842,7 +3850,11 @@ function renderPatients() {
         var myMemo = (pMemos && currentSystemId) ? (pMemos[currentSystemId] || "") : "";
 
         var tr = [];
-        tr.push('<tr id="tr-patient-' + escapeHtml(p.id) + '">');
+        var otherUpdatedAttr = "";
+        if (p.memoAuthors && p.memoAuthors.length > 0 && p.memoAuthors[0].indexOf(currentUserName) !== 0) {
+            otherUpdatedAttr = ' data-updated-by-other="true"';
+        }
+        tr.push('<tr id="tr-patient-' + escapeHtml(p.id) + '"' + otherUpdatedAttr + '>');
         // ★修正: 不要なチェックボックス列を削除
         tr.push('<td>' + escapeHtml(p.id) + '</td>');
         tr.push('<td>' + escapeHtml(p.name) + '</td>');
@@ -4685,24 +4697,69 @@ function fetchAllActiveWardsData(callback, silent) {
  */
 function filterPatientTable() {
     var input = document.getElementById("ipt-patient-search");
-    if (!input) return;
-    var filter = input.value.toLowerCase();
+    var selFilter = document.getElementById("sel-update-filter");
+    var filterText = input ? input.value.toLowerCase() : "";
+    var filterType = selFilter ? selFilter.value : "all";
     var tbody = document.getElementById("tbody-patients");
     if (!tbody) return;
     var tr = tbody.getElementsByTagName("tr");
+    
+    var nowTime = new Date().getTime();
 
     for (var i = 0; i < tr.length; i++) {
         var row = tr[i];
-        // データなしメッセージなどを判定するためのセル数チェック
-        if (row.cells.length < 5) continue; 
+        if (row.cells.length < 5) continue;
         
+        var showRow = true;
         var text = (row.textContent || row.innerText || "").toLowerCase();
-        if (text.indexOf(filter) > -1) {
-            row.style.display = "";
-        } else {
-            row.style.display = "none";
+        if (filterText && text.indexOf(filterText) === -1) {
+            showRow = false;
         }
+        
+        if (showRow && filterType !== "all") {
+            var pIdMatch = row.id.match(/^tr-patient-(.+)$/);
+            if (pIdMatch) {
+                var pId = pIdMatch[1];
+                var p = findPatientById(pId);
+                if (p) {
+                    var lastAuthor = (p.memoAuthors && p.memoAuthors.length > 0) ? p.memoAuthors[0] : "";
+                    
+                    var isOther = false;
+                    if (lastAuthor && lastAuthor.indexOf(currentUserName) !== 0) {
+                        isOther = true;
+                    }
+                    
+                    var updateTime = 0;
+                    if (lastAuthor) {
+                        var match = lastAuthor.match(/\((\d{2})\/(\d{2}) (\d{2}):(\d{2})\)$/);
+                        if (match) {
+                            var now = new Date();
+                            var d = new Date(now.getFullYear(), parseInt(match[1], 10) - 1, parseInt(match[2], 10), parseInt(match[3], 10), parseInt(match[4], 10));
+                            if (d.getTime() > now.getTime() + 30 * 24 * 60 * 60 * 1000) {
+                                d.setFullYear(d.getFullYear() - 1);
+                            }
+                            updateTime = d.getTime();
+                        }
+                    }
+                    
+                    var hoursSinceUpdate = updateTime > 0 ? (nowTime - updateTime) / (1000 * 60 * 60) : 999999;
+                    
+                    if (filterType === "other" && !isOther) showRow = false;
+                    if (filterType === "3h" && hoursSinceUpdate > 3) showRow = false;
+                    if (filterType === "24h" && hoursSinceUpdate > 24) showRow = false;
+                    if (filterType === "other_24h" && (!isOther || hoursSinceUpdate > 24)) showRow = false;
+                    if (filterType === "other_3h" && (!isOther || hoursSinceUpdate > 3)) showRow = false;
+                } else {
+                    showRow = false;
+                }
+            } else {
+                showRow = false;
+            }
+        }
+        
+        row.style.display = showRow ? "" : "none";
     }
+}
 }
 
 // Dead code processNextBloodFetch removed

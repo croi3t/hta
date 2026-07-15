@@ -146,7 +146,17 @@ var TodoUI = {
         h.push('<tr style="' + rowStyle + '">');
         var bodyHtml = "";
         if (t.body) {
-            bodyHtml = '<div style="font-size:11px; color:#555; margin-top:4px; white-space:pre-wrap;">' + escapeHtml(t.body) + '</div>';
+            var fullBody = escapeHtml(t.body);
+            var firstLine = t.body.split('\n')[0];
+            var isLong = t.body.length > 20 || t.body.indexOf('\n') !== -1;
+            var preview = firstLine.substring(0, 20) + (isLong ? '...' : '');
+            var escapedPreview = escapeHtml(preview);
+            
+            bodyHtml = '<div style="font-size:11px; color:#555; margin-top:4px;">' +
+                       '<span id="todo-preview-'+t.id+'" style="cursor:pointer; color:#0d6efd; text-decoration:underline;" onclick="document.getElementById(\'todo-full-'+t.id+'\').style.display=\'block\'; this.style.display=\'none\';">' + escapedPreview + ' (詳細)</span>' +
+                       '<div id="todo-full-'+t.id+'" style="display:none; white-space:pre-wrap; background:#f0f8ff; padding:4px; border-radius:3px; margin-top:2px; position:relative;">' + fullBody + 
+                       '<span style="position:absolute; top:2px; right:4px; cursor:pointer; color:#999;" onclick="document.getElementById(\'todo-full-'+t.id+'\').style.display=\'none\'; document.getElementById(\'todo-preview-'+t.id+'\').style.display=\'inline\';">&#10005;</span></div>' +
+                       '</div>';
         }
         h.push('<td align="center"><input type="checkbox" ' + checked + ' onclick="TodoUI.toggleDone(\'' + t.id + '\')"></td>');
         h.push('<td style="cursor:pointer;" onclick="TodoUI.editTodo(\'' + t.id + '\')">');
@@ -162,7 +172,13 @@ var TodoUI = {
     generateDeletedRowHtml: function(t) {
         var statusLabel = t.done ? '<span style="color:#27ae60;font-size:10px;">[完了済]</span>' : '<span style="color:#c0392b;font-size:10px;">[未完了]</span>';
         var h = [];
-        var bodyHtml = t.body ? '<div style="font-size:11px; margin-top:2px;">' + escapeHtml(t.body) + '</div>' : '';
+        var bodyHtml = "";
+        if (t.body) {
+            var firstLine = t.body.split('\n')[0];
+            var isLong = t.body.length > 20 || t.body.indexOf('\n') !== -1;
+            var preview = firstLine.substring(0, 20) + (isLong ? '...' : '');
+            bodyHtml = '<div style="font-size:11px; margin-top:2px;" title="' + escapeHtml(t.body) + '">' + escapeHtml(preview) + '</div>';
+        }
         h.push('<tr style="background-color:#f9f9f9; color:#999; text-decoration:line-through;">');
         h.push('<td align="center">-</td>');
         h.push('<td><div style="font-weight:bold;">' + statusLabel + ' ' + escapeHtml(t.text) + '</div>' + bodyHtml + '</td>');
@@ -286,7 +302,11 @@ var TodoUI = {
         var selAssignee = document.getElementById("sel-todo-assignee");
 
         if (ipt) { ipt.value = t.text; ipt.focus(); }
-        if (iptBody) { iptBody.value = t.body || ""; }
+        if (iptBody) { 
+            iptBody.value = t.body || ""; 
+            iptBody.style.height = 'auto';
+            iptBody.style.height = iptBody.scrollHeight + 'px';
+        }
         if (btnAdd) btnAdd.innerText = "更新";
         if (btnCancel) btnCancel.style.display = "inline-block";
         if (selAssignee && t.assignee) selAssignee.value = t.assignee;
