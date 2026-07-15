@@ -304,8 +304,9 @@ var TodoUI = {
         if (ipt) { ipt.value = t.text; ipt.focus(); }
         if (iptBody) { 
             iptBody.value = t.body || ""; 
-            iptBody.style.height = 'auto';
-            iptBody.style.height = iptBody.scrollHeight + 'px';
+            if (typeof autoResizeTextarea === "function") {
+                setTimeout(function() { autoResizeTextarea(iptBody); }, 10);
+            }
         }
         if (btnAdd) btnAdd.innerText = "更新";
         if (btnCancel) btnCancel.style.display = "inline-block";

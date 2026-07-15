@@ -684,7 +684,7 @@ function generateAbbreviation() {}
         <div style="margin-bottom: 12px; padding: 10px; background-color: #f5f8fa; border-radius: 6px; border: 1px solid #e1e8ed;">
             <div style="display:flex; flex-direction:column; gap:5px; margin-bottom:8px;">
                 <input type="text" id="ipt-new-todo" placeholder="ToDoの件名を入力..." style="padding: 8px; border: 1px solid #ccc; border-radius:4px;" disabled onkeypress="if(event.keyCode===13) addNewTodoUI()">
-                <textarea id="ipt-new-todo-body" placeholder="ToDoの詳細（長文可）" style="width:100%; height:60px; padding: 8px; border: 1px solid #ccc; border-radius:4px; font-family:inherit; resize:vertical;" disabled oninput="this.style.height=\'auto\';this.style.height=(this.scrollHeight)+\'px\';"></textarea>
+                <textarea id="ipt-new-todo-body" placeholder="ToDoの詳細（長文可）" style="width:100%; height:60px; padding: 8px; border: 1px solid #ccc; border-radius:4px; font-family:inherit; resize:vertical; overflow-y:hidden;" disabled oninput="autoResizeTextarea(this)" onkeyup="autoResizeTextarea(this)" onchange="autoResizeTextarea(this)"></textarea>
             </div>
             <div style="display:flex; justify-content:space-between; align-items:flex-end;">
                 <div style="display:flex; gap:10px; align-items:center; font-size:12px; flex-wrap:wrap;">
@@ -3145,6 +3145,14 @@ function doLogin() {
             startDeadlineTimer();
         }, 2000);
     }, 50);
+}
+
+function autoResizeTextarea(el) {
+    if (!el) return;
+    el.style.height = 'auto';
+    var newHeight = el.scrollHeight;
+    if (newHeight < 60) newHeight = 60;
+    el.style.height = newHeight + 'px';
 }
 
 function updateUIMode() {
@@ -5984,6 +5992,10 @@ function toggleHistoryDetail(pId, rowIndex) {
     var hItem = appData.history[rowIndex];
     var p = findPatientById(pId);
     var arc = p || {};
+
+      if (arc.id && typeof PatientLogic !== "undefined" && PatientLogic.injectMetaToList) {
+          PatientLogic.injectMetaToList([arc], appData.patientMeta);
+      }
     
     var status = arc.status || 0;
     var statClass = STATUS_CLASSES[status];
