@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html>
 <head>
 <meta charset="UTF-8">
@@ -1562,13 +1562,15 @@ function debounce(func, wait) {
 function findPatientById(id) {
     if (!id) return null;
     var strId = String(id);
+    var nId = strId.replace(/^0+/, '') || '0';
     if (appData.patients) {
         for (var wardCode in appData.patients) {
             if (appData.patients.hasOwnProperty(wardCode)) {
                 var list = appData.patients[wardCode];
                 if (list && list.length > 0) {
                     for (var i = 0; i < list.length; i++) {
-                        if (String(list[i].id) === strId) return list[i];
+                        var pIdStr = String(list[i].id);
+                        if (pIdStr === strId || (pIdStr.replace(/^0+/, '') || '0') === nId) return list[i];
                     }
                 }
             }
@@ -1577,12 +1579,18 @@ function findPatientById(id) {
     if (appData.dischargedArchive) {
         if (appData.dischargedArchive instanceof Array) {
             for (var i = 0; i < appData.dischargedArchive.length; i++) {
-                if (appData.dischargedArchive[i] && String(appData.dischargedArchive[i].id) === strId) {
-                    return appData.dischargedArchive[i];
+                if (appData.dischargedArchive[i]) {
+                    var pIdStr = String(appData.dischargedArchive[i].id);
+                    if (pIdStr === strId || (pIdStr.replace(/^0+/, '') || '0') === nId) return appData.dischargedArchive[i];
                 }
             }
-        } else if (appData.dischargedArchive[strId]) {
-            return appData.dischargedArchive[strId];
+        } else {
+            if (appData.dischargedArchive[strId]) return appData.dischargedArchive[strId];
+            for (var key in appData.dischargedArchive) {
+                if (appData.dischargedArchive.hasOwnProperty(key)) {
+                    if ((String(key).replace(/^0+/, '') || '0') === nId) return appData.dischargedArchive[key];
+                }
+            }
         }
     }
     return null;
@@ -9917,6 +9925,7 @@ function insertTagSuggest(event, tag) {
 <div id="tag-suggest-box" style="position:absolute; background:#fff; border:1px solid #ccc; display:none; z-index:999; padding:5px;"></div>
 </body>
 </html>
+
 
 
 
