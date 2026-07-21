@@ -5999,7 +5999,13 @@ function toggleHistoryDetail(pId, rowIndex) {
 
     var hItem = appData.history[rowIndex];
     var p = findPatientById(pId);
-    var arc = p || {};
+    var arc = p;
+    if (!arc) {
+        var pName = hItem ? (hItem.patient || "") : "";
+        var match = pName.match(/^(.*?)\s*\(\s*([0-9a-zA-Z\-]+)\s*\)$/);
+        if (match) pName = match[1];
+        arc = { id: pId, name: pName || "過去の退院患者" };
+    }
 
       if (arc.id && typeof PatientLogic !== "undefined" && PatientLogic.injectMetaToList) {
           PatientLogic.injectMetaToList([arc], appData.patientMeta);
@@ -9925,6 +9931,7 @@ function insertTagSuggest(event, tag) {
 <div id="tag-suggest-box" style="position:absolute; background:#fff; border:1px solid #ccc; display:none; z-index:999; padding:5px;"></div>
 </body>
 </html>
+
 
 
 
