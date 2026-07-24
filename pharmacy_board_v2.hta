@@ -4169,7 +4169,31 @@ function selectUserStatus(id, userName) {
     p.statusAuthor = userName;
     if(userName === "") p.status = 0;
     
-    renderPatients();
+    if (typeof DataManager !== "undefined") {
+        DataManager.appendTransaction("TOGGLE_STATUS", {
+            patientId: id, wardCode: currentWard, value: p.status, author: p.statusAuthor
+        });
+    }
+
+    var trId = "tr-patient-" + p.id;
+    var tr = document.getElementById(trId);
+    if (tr) {
+        var td = tr.querySelector(".status-cell");
+        if (td) {
+            var statIdx = p.status || 0;
+            var statClass = STATUS_CLASSES[statIdx];
+            var statText = statIdx === 0 ? "-" : STATUS_TEXTS[statIdx];
+            
+            var authorHtml = p.statusAuthor ? '<br><span class="status-author">' + escapeHtml(p.statusAuthor) + '</span>' : '';
+            var statUnderline = (statIdx === 1 || statIdx === 2) ? 'text-decoration:underline;' : '';
+            
+            td.className = "status-cell " + statClass;
+            td.style.cssText = statUnderline;
+            td.innerHTML = statText + authorHtml;
+        }
+    } else {
+        renderPatients();
+    }
 
     var menu = document.getElementById("user-select-menu");
     if(menu) menu.style.display = "none";
