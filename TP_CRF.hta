@@ -1,0 +1,1258 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <title>超高齢者PopPK研究 進捗管理・CRF</title>
+    
+    <HTA:APPLICATION 
+        ID="pkStudyApp" 
+        APPLICATIONNAME="PK_Study_CRF" 
+        WINDOWSTATE="normal"
+        SCROLL="yes"
+        SINGLEINSTANCE="yes"
+    >
+
+    <style>
+        body { font-family: 'Meiryo', sans-serif; font-size: 13px; background: #f4f7f8; margin: 15px; }
+        .container { width: 100%; margin: auto; }
+        .alert-section { background: #ffeb3b; padding: 10px; border-radius: 5px; margin-bottom: 15px; display: none; border-left: 5px solid #f44336; }
+        table { width: 100%; border-collapse: collapse; background: white; box-shadow: 0 1px 3px rgba(0,0,0,0.1); table-layout: fixed; }
+        th, td { border: 1px solid #ddd; padding: 6px; text-align: left; vertical-align: middle; word-wrap: break-word; }
+        th { background: #2c3e50; color: white; position: sticky; top: 0; font-size: 12px; }
+        
+        .sort-icon { font-size: 10px; color: #7f8c8d; margin-left: 3px; }
+        
+        /* Status Panel UI */
+        .status-grid { width: 95px; margin: auto; text-align: left; }
+        .status-badge { display: inline-block; width: 28px; margin: 1px; font-size: 11px; padding: 2px 0; text-align: center; border-radius: 2px; cursor: pointer; border: 1px solid #ccc; background: white; color: #999; user-select: none; }
+        .status-badge:hover { border-color: #888; color: #333; }
+        .status-badge.active.st-0 { background: #f1c40f; color: white; border-color: #f1c40f; font-weight:bold; } /* 同未 */
+        .status-badge.active.st-1 { background: #3498db; color: white; border-color: #3498db; font-weight:bold; } /* 同済 */
+        .status-badge.active.st-2 { background: #e74c3c; color: white; border-color: #e74c3c; font-weight:bold; } /* 採血 */
+        .status-badge.active.st-3 { background: #9b59b6; color: white; border-color: #9b59b6; font-weight:bold; } /* 処理 */
+        .status-badge.active.st-4 { background: #2ecc71; color: white; border-color: #2ecc71; font-weight:bold; } /* 提出 */
+        .status-badge.active.st-5 { background: #1abc9c; color: white; border-color: #1abc9c; font-weight:bold; } /* 冷凍 */
+        
+        .highlight { background: #fff9c4 !important; }
+        
+        /* Multiple Drugs highlight */
+        .multi-drug-row { border-left: 4px solid #e74c3c !important; }
+        .multi-drug-badge { background: #e74c3c; color: white; font-size: 9px; padding: 2px 4px; border-radius: 3px; display: inline-block; margin-top: 4px; font-weight:bold; }
+
+        .fetch-btn { cursor: pointer; padding: 4px; background: #007bff; color: white; border: none; border-radius: 3px; font-size: 11px; margin-top: 2px; white-space: nowrap; width: 100%; box-sizing: border-box; }
+        .fetch-btn:disabled { background: #ccc; cursor: not-allowed; }
+        .export-btn { cursor: pointer; padding: 5px 10px; background: #28a745; color: white; border: none; border-radius: 3px; font-size: 12px; margin-left: 20px;}
+        
+        .tab-container { margin-bottom: 10px; border-bottom: 2px solid #2c3e50; padding-bottom: 2px; }
+        .tab-btn { cursor: pointer; padding: 8px 16px; border: 1px solid #2c3e50; border-bottom: none; background: #ecf0f1; border-radius: 5px 5px 0 0; font-weight: bold; color: #7f8c8d; display: inline-block; }
+        .tab-btn.active { background: #2c3e50; color: white; }
+        
+        .search-box { float: right; padding: 5px; border: 1px solid #ccc; border-radius: 3px; margin-top: 2px; font-size: 12px; width: 180px; }
+        
+        .ward-filter-section { background: white; border: 1px solid #ccc; padding: 10px; border-radius: 3px; margin-bottom: 10px; clear: both; line-height: 1.8; }
+        .ward-label { display: inline-block; margin-right: 15px; font-size: 12px; white-space: nowrap; cursor: pointer; }
+        .remarks-input { width: 100%; box-sizing: border-box; padding: 4px; border: 1px solid #ccc; border-radius: 3px; font-size: 11px; resize: vertical; min-height: 45px; font-family: inherit; }
+
+        /* Summary Dashboard */
+        .summary-dashboard { background: white; border: 1px solid #ccc; padding: 10px; border-radius: 5px; }
+        .summary-table { width: 95%; margin-bottom: 15px; border-collapse: collapse; }
+        .summary-table th, .summary-table td { border: 1px solid #ddd; padding: 4px; text-align: center; font-size: 12px; }
+        .summary-table th { background: #34495e; color: white; }
+        .summary-table td:first-child { background: #ecf0f1; font-weight: bold; }
+        .summary-total-row { background: #ecf0f1; font-weight: bold; }
+        .summary-total-col { background: #f1c40f !important; color: #333; font-weight: bold; }
+
+        /* Multi-select filter */
+        .ms-container { position: relative; display: inline-block; width: 100%; text-align: left; }
+        .ms-btn { width: 100%; font-size: 10px; padding: 2px; text-align: left; background: white; border: 1px solid #ccc; cursor: pointer; border-radius: 2px; margin-top: 2px; }
+        .ms-content { display: none; position: absolute; background-color: white; min-width: 140px; box-shadow: 0px 4px 8px rgba(0,0,0,0.2); z-index: 100; max-height: 250px; overflow-y: auto; border: 1px solid #ccc; left: 0; padding: 5px; }
+        .ms-content label { display: block; padding: 2px 0; color: black; font-size: 11px; font-weight: normal; cursor: pointer; white-space: nowrap; }
+        .ms-content label:hover { background-color: #f1f1f1; }
+        .ms-close { display: block; width: 100%; font-size:10px; margin-top:5px; cursor:pointer; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2 style="margin-top:0;">対象抗菌薬 PopPK解析 進捗管理ツール</h2>
+
+    <div id="todayAlert" class="alert-section">
+        <strong>【当日採血アラート】 本日（2点採血）の予定患者がいます</strong>
+        <ul id="alertList" style="margin: 5px 0 0 0;"></ul>
+    </div>
+
+    <div style="margin-bottom: 15px; background: white; padding: 10px; border-radius: 5px; border: 1px solid #ddd;">
+        <label style="font-weight: bold; font-size: 12px;">1. 処方統計データ（Excel または CSV）を読み込む：</label>
+        <input type="file" id="dataFile" accept=".csv, .xls, .xlsx" style="font-size: 12px;">
+        <button class="export-btn" onclick="exportToCSV()">現在の管理一覧をCSV出力</button>
+        <button onclick="clearData()" style="float: right; color: red; font-size: 11px;">全データ初期化</button>
+    </div>
+
+    <div class="tab-container">
+        <div id="tab-screening" class="tab-btn active" onclick="switchTab('screening')">スクリーニング</div>
+        <div id="tab-target" class="tab-btn" onclick="switchTab('target')">対象症例</div>
+        <div id="tab-exclude" class="tab-btn" onclick="switchTab('exclude')">候補外</div>
+        <div id="tab-summary" class="tab-btn" onclick="switchTab('summary')" style="background:#e8f4f8; border-color:#3498db; color:#2980b9;">集計・進捗</div>
+        
+        <span id="header-tools">
+            <input type="text" id="searchInput" class="search-box" onkeyup="renderTable()" placeholder="ID、氏名で絞り込み...">
+            <button onclick="fetchAllBloodDates()" style="float: right; margin-right: 15px; margin-top: 2px; padding: 5px 12px; background: #8e44ad; color: white; border: none; border-radius: 3px; font-size: 12px; cursor: pointer; font-weight: bold;">表示リストを一括取得</button>
+        </span>
+    </div>
+
+    <div id="wardFilterContainer" class="ward-filter-section"></div>
+
+    <div id="table-view">
+        <table id="patientTable">
+            <thead>
+                <tr>
+                    <th style="width: 65px; cursor: pointer;" onclick="sortTable('id')">患者ID <span id="sort-icon-id" class="sort-icon">↕</span></th>
+                    <th style="width: 75px; cursor: pointer;" onclick="sortTable('name')">氏名 <span id="sort-icon-name" class="sort-icon">↕</span></th>
+                    <th style="width: 80px; cursor: pointer;" onclick="sortTable('age')">年齢/区分 <span id="sort-icon-age" class="sort-icon">↕</span><br>
+                        <div class="ms-container" id="ms-age">
+                            <button class="ms-btn" onclick="toggleMs('ms-age', event)">▼ 絞り込み</button>
+                            <div class="ms-content" id="ms-age-content" onclick="event.stopPropagation()"></div>
+                        </div>
+                    </th>
+                    <th style="width: 100px; cursor: pointer;" onclick="sortTable('ward')">病棟/診療科 <span id="sort-icon-ward" class="sort-icon">↕</span><br>
+                        <div class="ms-container" id="ms-dept">
+                            <button class="ms-btn" onclick="toggleMs('ms-dept', event)">▼ 診療科 絞込</button>
+                            <div class="ms-content" id="ms-dept-content" onclick="event.stopPropagation()"></div>
+                        </div>
+                    </th>
+                    <th style="width: 100px;">対象薬品<br>
+                        <div class="ms-container" id="ms-drug">
+                            <button class="ms-btn" onclick="toggleMs('ms-drug', event)">▼ 絞り込み</button>
+                            <div class="ms-content" id="ms-drug-content" onclick="event.stopPropagation()"></div>
+                        </div>
+                    </th>
+                    <th style="width: 80px; cursor: pointer;" onclick="sortTable('start')">投与期間 <span id="sort-icon-start" class="sort-icon">↕</span></th>
+                    <th style="width: 125px; cursor: pointer;" onclick="sortTable('sampleDate')">採血予定日 <span id="sort-icon-sampleDate" class="sort-icon">↕</span></th>
+                    <th style="width: auto;">備考・コメント</th>
+                    <th style="width: 105px; padding-bottom: 2px;">ステータス<br>
+                        <div class="ms-container" id="ms-status">
+                            <button class="ms-btn" onclick="toggleMs('ms-status', event)">▼ 絞り込み</button>
+                            <div class="ms-content" id="ms-status-content" onclick="event.stopPropagation()"></div>
+                        </div>
+                    </th>
+                    <th style="width: 60px; text-align: center;">操作</th>
+                </tr>
+            </thead>
+            <tbody id="tableBody"></tbody>
+        </table>
+    </div>
+    
+    <div id="summary-view" class="summary-dashboard" style="display:none;">
+    </div>
+</div>
+
+<script>
+    var fso;
+    var dataFilePath = "pk_study_crf_data.json";
+    try {
+        fso = new ActiveXObject("Scripting.FileSystemObject");
+        var htaPath = unescape(location.pathname).replace(/^\/([a-zA-Z]:)/, '$1').replace(/\//g, '\\');
+        var folderPath = fso.GetParentFolderName(htaPath);
+        dataFilePath = folderPath + "\\pk_study_crf_data.json";
+    } catch(e) {}
+
+    function toHalfWidth(str) {
+        if (!str) return "";
+        return str.replace(/[Ａ-Ｚａ-ｚ０-９]/g, function(s) {
+            return String.fromCharCode(s.charCodeAt(0) - 0xFEE0);
+        });
+    }
+
+    function loadData() {
+        if (!fso) return {};
+        try {
+            if (fso.FileExists(dataFilePath)) {
+                var ts = fso.OpenTextFile(dataFilePath, 1, false, -2);
+                if (!ts.AtEndOfStream) {
+                    var text = ts.ReadAll();
+                    ts.Close();
+                    if (text) {
+                        var parsed = JSON.parse(text);
+                        var migrated = {};
+                        
+                        for (var k in parsed) {
+                            var p = parsed[k];
+                            
+                            // Migrate status from number to explicit string
+                            if (typeof p.status === "number") {
+                                if (p.tab === undefined) {
+                                    // very old data
+                                    if (p.status === 6) p.status = "";
+                                    else if (p.status === 5) { p.status = ""; p.tab = "exclude"; }
+                                    else {
+                                        var origLabels = ["同意未", "同意済", "採血済", "処理済", "提出済"];
+                                        p.status = origLabels[p.status] || "";
+                                    }
+                                } else {
+                                    // old data with tabs
+                                    if (p.status === 0) p.status = "";
+                                    else {
+                                        var currLabels = ["", "同意未", "同意済", "採血済", "処理済", "提出済"];
+                                        p.status = currLabels[p.status] || "";
+                                    }
+                                }
+                            }
+                            if (!p.status) p.status = "";
+                            
+                            // Normalize existing ward data
+                            if (p.ward) {
+                                p.ward = toHalfWidth(String(p.ward)).toUpperCase().replace(/^\s+|\s+$/g, '');
+                            }
+                            
+                            if (p.drug && p.drug.indexOf(" / ") !== -1) {
+                                var drugs = p.drug.split(" / ");
+                                for(var i=0; i<drugs.length; i++) {
+                                    var newKey = p.id + "_" + drugs[i];
+                                    var pCopy = JSON.parse(JSON.stringify(p));
+                                    pCopy.drug = drugs[i];
+                                    migrated[newKey] = pCopy;
+                                }
+                            } else {
+                                if (k.indexOf("_") === -1) {
+                                    var newKey = p.id + "_" + p.drug;
+                                    migrated[newKey] = p;
+                                } else {
+                                    migrated[k] = p;
+                                }
+                            }
+                        }
+                        
+                        try {
+                            var d = new Date();
+                            var y = d.getFullYear();
+                            var m = d.getMonth() + 1;
+                            var day = d.getDate();
+                            var weekOfMonth = Math.ceil(day / 7);
+                            var mStr = m < 10 ? '0' + m : m;
+                            var backupDir = folderPath + "\\バックアップ";
+                            if (!fso.FolderExists(backupDir)) {
+                                fso.CreateFolder(backupDir);
+                            }
+                            var backupFileName = backupDir + "\\backup_pk_study_" + y + mStr + "_W" + weekOfMonth + ".json";
+                            if (!fso.FileExists(backupFileName)) {
+                                fso.CopyFile(dataFilePath, backupFileName, false);
+                            }
+                        } catch(err) {}
+
+                        return migrated;
+                    }
+                }
+                ts.Close();
+            }
+        } catch(e) {}
+        return {};
+    }
+
+    function saveDataToFile() {
+        if (!fso) return;
+        try {
+            var ts = fso.OpenTextFile(dataFilePath, 2, true, -2);
+            ts.Write(JSON.stringify(patientData));
+            ts.Close();
+        } catch(e) {}
+    }
+
+    var patientData = loadData();
+    var statusLabels = ["同意未", "同意済", "採血済", "処理済", "提出済", "冷凍"];
+    var statusAbbr = ["同未", "同済", "採血", "処理", "提出", "冷凍"];
+    var currentTab = "screening"; 
+    
+    var fetchQueue = [];
+    var isFetchingAll = false;
+    var currentSortCol = "";
+    var currentSortAsc = true;
+    
+    var msFilters = { age: {}, drug: {}, status: {}, dept: {} };
+
+    function escapeHtml(str) {
+        if (!str) return "";
+        return String(str).replace(/[&<>"']/g, function(match) {
+            return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[match];
+        });
+    }
+
+    function parseCSVLine(text) {
+        var ret = [];
+        var inQuote = false;
+        var val = "";
+        for (var i = 0; i < text.length; i++) {
+            var c = text.charAt(i);
+            if (inQuote) {
+                if (c === '"') {
+                    if (i + 1 < text.length && text.charAt(i + 1) === '"') {
+                        val += '"'; i++;
+                    } else {
+                        inQuote = false;
+                    }
+                } else {
+                    val += c;
+                }
+            } else {
+                if (c === '"') {
+                    inQuote = true;
+                } else if (c === ',') {
+                    ret.push(val); val = "";
+                } else {
+                    val += c;
+                }
+            }
+        }
+        ret.push(val);
+        return ret;
+    }
+
+    function formatDateString(strOrDate) {
+        if (!strOrDate) return "";
+        var d = new Date(strOrDate);
+        if (isNaN(d.getTime())) return String(strOrDate); 
+        var y = d.getFullYear();
+        var m = d.getMonth() + 1;
+        var day = d.getDate();
+        return y + '-' + (m < 10 ? '0' + m : m) + '-' + (day < 10 ? '0' + day : day);
+    }
+
+    function calculateAgeAtStart(birthDateStr, startDateStr) {
+        if (!birthDateStr || !startDateStr) return null;
+        var bStr = birthDateStr.replace(/[\/\年\月]/g, "/").replace(/日/g, "");
+        var sStr = startDateStr.replace(/[\/\年\月]/g, "/").replace(/日/g, "");
+        var b = new Date(bStr);
+        var s = new Date(sStr);
+        if(isNaN(b.getTime()) || isNaN(s.getTime())) return null;
+        var age = s.getFullYear() - b.getFullYear();
+        var m = s.getMonth() - b.getMonth();
+        if (m < 0 || (m === 0 && s.getDate() < b.getDate())) {
+            age--;
+        }
+        return age;
+    }
+
+    function getAgeGroup(age) {
+        if(age === null || age === undefined || age === "") return "";
+        if(age <= 17) return "対象外";
+        if(age <= 64) return "非高齢者";
+        if(age <= 84) return "高齢者";
+        return "超高齢者";
+    }
+
+    document.getElementById('dataFile').onchange = function(e) {
+        var fileInput = document.getElementById('dataFile');
+        var filePath = fileInput.value; 
+        var file = e.target.files[0];
+        if (!file) return;
+
+        var fileName = file.name.toLowerCase();
+        
+        if (fileName.indexOf(".xls") !== -1) {
+            try {
+                var excel = new ActiveXObject("Excel.Application");
+                excel.Visible = false;
+                excel.DisplayAlerts = false;
+                var book = excel.Workbooks.Open(filePath);
+                var sheet = book.Worksheets(1);
+                var usedRange = sheet.UsedRange;
+                var rowsCount = usedRange.Rows.Count;
+                var colsCount = usedRange.Columns.Count;
+                
+                var val = usedRange.Value;
+                var dataRows = [];
+                
+                if (rowsCount === 1 && colsCount === 1) {
+                    dataRows.push([val != null ? String(val) : ""]);
+                } else {
+                    var vbarray = new VBArray(val).toArray();
+                    var index = 0;
+                    for(var r=0; r<rowsCount; r++) {
+                        var rowData = [];
+                        for(var c=0; c<colsCount; c++) {
+                            var cellVal = vbarray[index++];
+                            rowData.push(cellVal != null ? String(cellVal) : "");
+                        }
+                        dataRows.push(rowData);
+                    }
+                }
+                
+                book.Close(false);
+                excel.Quit();
+                excel = null;
+                
+                processDataRows(dataRows, 1);
+            } catch(err) {
+                alert("Excelファイルの読み込みに失敗しました。\nExcelがインストールされているか、ファイルが使用中でないか確認してください。\n詳細: " + err.message);
+            }
+            fileInput.value = "";
+        } else {
+            var reader = new FileReader();
+            reader.onload = function(event) {
+                try {
+                    var text = event.target.result;
+                    var lines = text.split(/\r\n|\n|\r/);
+                    var dataRows = [];
+                    for (var i = 0; i < lines.length; i++) {
+                        if (!lines[i] || lines[i].replace(/^\s+|\s+$/g, '') === "") continue;
+                        dataRows.push(parseCSVLine(lines[i]));
+                    }
+                    processDataRows(dataRows, 1);
+                } catch(err) {
+                    alert("CSVの解析中にエラーが発生しました。\nエラー詳細: " + err.message);
+                }
+                fileInput.value = "";
+            };
+            reader.readAsText(file, 'Shift-JIS'); 
+        }
+    };
+
+    function processDataRows(dataRows, startIndex) {
+        var addedCount = 0;
+        for (var i = startIndex; i < dataRows.length; i++) {
+            var cols = dataRows[i];
+            if (cols.length < 6) continue;
+
+            var drugStr = cols[1] ? String(cols[1]).replace(/^\s+|\s+$/g, '') : "";
+            var rawDate = cols[4] ? cols[4] : "";
+            var date = formatDateString(rawDate);
+            var id = cols[5] ? String(cols[5]).replace(/^\s+|\s+$/g, '') : "";
+            var name = cols[6] ? String(cols[6]).replace(/^\s+|\s+$/g, '') : "";
+            
+            var department = cols.length > 7 && cols[7] ? String(cols[7]).replace(/^\s+|\s+$/g, '') : "";
+            var doctor = cols.length > 8 && cols[8] ? String(cols[8]).replace(/^\s+|\s+$/g, '') : "";
+            var ward = cols.length > 9 && cols[9] ? String(cols[9]).replace(/^\s+|\s+$/g, '') : "";
+            ward = toHalfWidth(ward).toUpperCase();
+
+            if (!id) continue;
+            
+            var drugs = drugStr.split(/\s*[\/／]\s*/);
+            
+            for(var dIdx=0; dIdx<drugs.length; dIdx++) {
+                var drug = drugs[dIdx];
+                if (!drug) continue;
+                addedCount++;
+
+                var baseKey = id + "_" + drug; 
+                var episodes = [];
+                for (var k in patientData) {
+                    if (patientData.hasOwnProperty(k) && (k === baseKey || k.indexOf(baseKey + "_") === 0)) {
+                        episodes.push(k);
+                    }
+                }
+                
+                var matchedKey = null;
+                var incomingDate = new Date(date).getTime();
+                
+                if (!isNaN(incomingDate)) {
+                    for (var e = 0; e < episodes.length; e++) {
+                        var epKey = episodes[e];
+                        var epStart = new Date(patientData[epKey].start).getTime();
+                        var epEnd = new Date(patientData[epKey].end).getTime();
+                        
+                        var diffStart = (epStart - incomingDate) / (1000 * 3600 * 24);
+                        var diffEnd = (incomingDate - epEnd) / (1000 * 3600 * 24);
+                        
+                        if (diffStart <= 3 && diffEnd <= 3) {
+                            matchedKey = epKey;
+                            break;
+                        }
+                    }
+                }
+                
+                if (isNaN(incomingDate) && episodes.length > 0) {
+                    matchedKey = episodes[0];
+                }
+
+                if (!matchedKey) {
+                    var newKey = baseKey;
+                    if (episodes.length > 0) {
+                        var counter = episodes.length + 1;
+                        while(patientData[baseKey + "_" + counter]) { counter++; }
+                        newKey = baseKey + "_" + counter;
+                    }
+                    patientData[newKey] = {
+                        id: id, name: name, drug: drug,
+                        department: department, doctor: doctor, ward: ward,
+                        start: date, end: date,
+                        status: "", // 未選択
+                        sampleDate: "", bloodDetail: "", remarks: "",
+                        tab: "screening", birthDate: "", age: null, ageGroup: ""
+                    };
+                } else {
+                    var key = matchedKey;
+                    patientData[key].department = department || patientData[key].department;
+                    patientData[key].doctor = doctor || patientData[key].doctor;
+                    patientData[key].ward = ward || patientData[key].ward;
+
+                    var newDate = new Date(date);
+                    if (!isNaN(newDate.getTime())) {
+                        if (newDate < new Date(patientData[key].start)) patientData[key].start = date;
+                        if (newDate > new Date(patientData[key].end)) patientData[key].end = date;
+                    }
+                    
+                    if (patientData[key].birthDate) {
+                        patientData[key].age = calculateAgeAtStart(patientData[key].birthDate, patientData[key].start);
+                        patientData[key].ageGroup = getAgeGroup(patientData[key].age);
+                    }
+                }
+            }
+        }
+        
+        saveDataToFile();
+        updateHeaderFilters(true);
+        updateWardCheckboxes();
+        renderTable();
+        alert("データの取り込みが完了しました。\n有効データ行数: " + addedCount);
+    }
+
+    function switchTab(tabName) {
+        currentTab = tabName;
+        document.getElementById("tab-screening").className = (tabName === "screening") ? "tab-btn active" : "tab-btn";
+        document.getElementById("tab-target").className = (tabName === "target") ? "tab-btn active" : "tab-btn";
+        document.getElementById("tab-exclude").className = (tabName === "exclude") ? "tab-btn active" : "tab-btn";
+        document.getElementById("tab-summary").className = (tabName === "summary") ? "tab-btn active" : "tab-btn";
+
+        if (tabName === "summary") {
+            document.getElementById("table-view").style.display = "none";
+            document.getElementById("wardFilterContainer").style.display = "none";
+            document.getElementById("header-tools").style.display = "none";
+            document.getElementById("summary-view").style.display = "block";
+            renderSummary();
+        } else {
+            document.getElementById("summary-view").style.display = "none";
+            document.getElementById("table-view").style.display = "block";
+            document.getElementById("wardFilterContainer").style.display = "block";
+            document.getElementById("header-tools").style.display = "inline";
+            renderTable();
+        }
+    }
+
+    function moveTab(key, targetTab) {
+        patientData[key].tab = targetTab;
+        saveAndRender();
+    }
+
+    function updateStatus(key, valStr) {
+        if (patientData[key].status === valStr) {
+            patientData[key].status = ""; // Toggle off to unselected
+        } else {
+            patientData[key].status = valStr;
+        }
+        saveAndRender();
+    }
+
+    function updateSampleDate(key, dateVal) {
+        patientData[key].sampleDate = dateVal;
+        patientData[key].bloodDetail = "手動";
+        saveAndRender();
+    }
+
+    function updateRemarks(key, textVal) {
+        patientData[key].remarks = textVal;
+        saveDataToFile(); 
+    }
+
+    function saveAndRender() {
+        saveDataToFile();
+        updateWardCheckboxes();
+        renderTable();
+    }
+
+    function clearData() {
+        if(confirm("すべての管理データを消去します。よろしいですか？（※復元できません）")) {
+            patientData = {};
+            if (fso && fso.FileExists(dataFilePath)) {
+                try { fso.DeleteFile(dataFilePath); } catch(e) {}
+            }
+            saveAndRender();
+        }
+    }
+
+    function sortTable(col) {
+        if (currentSortCol === col) currentSortAsc = !currentSortAsc;
+        else { currentSortCol = col; currentSortAsc = true; }
+        renderTable();
+    }
+
+    function toggleMs(id, e) {
+        if(e) e.stopPropagation();
+        var content = null;
+        if (id) content = document.getElementById(id + "-content");
+        var isShowing = content && content.style.display === "block";
+        
+        var allContents = document.getElementsByClassName("ms-content");
+        for (var i = 0; i < allContents.length; i++) {
+            allContents[i].style.display = "none";
+        }
+        
+        if (!isShowing && content) {
+            content.style.display = "block";
+        }
+    }
+    
+    document.onclick = function(e) {
+        var evt = e || window.event;
+        var t = evt.target || evt.srcElement;
+        if (t && typeof t.className === "string" && t.className.indexOf('ms-btn') !== -1) {
+            return;
+        }
+        toggleMs('');
+    };
+
+    function updateMsFilter(filterType, val, isChecked) {
+        if (isChecked) msFilters[filterType][val] = true;
+        else delete msFilters[filterType][val];
+        renderTable();
+    }
+
+    function clearMsFilter(filterType) {
+        msFilters[filterType] = {};
+        updateHeaderFilters(true);
+        renderTable();
+    }
+
+    function updateHeaderFilters(forceRebuild) {
+        var drugContent = document.getElementById("ms-drug-content");
+        if (!forceRebuild && drugContent.innerHTML !== "") return;
+
+        // Age
+        var ages = ["非高齢者", "高齢者", "超高齢者", "対象外"];
+        var html = '<div style="margin-bottom:5px;"><button onclick="clearMsFilter(\'age\')" style="font-size:9px; width:100%;">全クリア</button></div>';
+        for(var i=0; i<ages.length; i++) {
+            var chk = msFilters.age[ages[i]] ? "checked" : "";
+            html += '<label><input type="checkbox" value="' + ages[i] + '" ' + chk + ' onchange="updateMsFilter(\'age\', this.value, this.checked)"> ' + ages[i] + '</label>';
+        }
+        html += '<button class="ms-close" onclick="toggleMs(\'\')">閉じる</button>';
+        document.getElementById("ms-age-content").innerHTML = html;
+
+        // Dept
+        var deptContent = document.getElementById("ms-dept-content");
+        var deptMap = {};
+        for (var key in patientData) {
+            if(patientData.hasOwnProperty(key)) {
+                var dep = patientData[key].department || "(未登録)";
+                deptMap[dep] = true;
+            }
+        }
+        var sortedDepts = Object.keys(deptMap).sort();
+        var htmlDept = '<div style="margin-bottom:5px;"><button onclick="clearMsFilter(\'dept\')" style="font-size:9px; width:100%;">全クリア</button></div>';
+        for(var i=0; i<sortedDepts.length; i++) {
+            var d = sortedDepts[i];
+            var chk = msFilters.dept[d] ? "checked" : "";
+            htmlDept += '<label><input type="checkbox" value="' + escapeHtml(d) + '" ' + chk + ' onchange="updateMsFilter(\'dept\', this.value, this.checked)"> ' + escapeHtml(d) + '</label>';
+        }
+        htmlDept += '<button class="ms-close" onclick="toggleMs(\'\')">閉じる</button>';
+        deptContent.innerHTML = htmlDept;
+
+        // Drug
+        var drugsMap = {};
+        for (var key in patientData) {
+            if(patientData.hasOwnProperty(key)) drugsMap[patientData[key].drug] = true;
+        }
+        var sortedDrugs = Object.keys(drugsMap).sort();
+        html = '<div style="margin-bottom:5px;"><button onclick="clearMsFilter(\'drug\')" style="font-size:9px; width:100%;">全クリア</button></div>';
+        for(var i=0; i<sortedDrugs.length; i++) {
+            var d = sortedDrugs[i];
+            var chk = msFilters.drug[d] ? "checked" : "";
+            html += '<label><input type="checkbox" value="' + escapeHtml(d) + '" ' + chk + ' onchange="updateMsFilter(\'drug\', this.value, this.checked)"> ' + escapeHtml(d) + '</label>';
+        }
+        html += '<button class="ms-close" onclick="toggleMs(\'\')">閉じる</button>';
+        drugContent.innerHTML = html;
+
+        // Status
+        html = '<div style="margin-bottom:5px;"><button onclick="clearMsFilter(\'status\')" style="font-size:9px; width:100%;">全クリア</button></div>';
+        
+        var chkUnsel = msFilters.status[""] ? "checked" : "";
+        html += '<label><input type="checkbox" value="" ' + chkUnsel + ' onchange="updateMsFilter(\'status\', this.value, this.checked)"> 未選択</label>';
+        
+        for(var i=0; i<statusLabels.length; i++) {
+            var chk = msFilters.status[statusLabels[i]] ? "checked" : "";
+            html += '<label><input type="checkbox" value="' + statusLabels[i] + '" ' + chk + ' onchange="updateMsFilter(\'status\', this.value, this.checked)"> ' + statusLabels[i] + '</label>';
+        }
+        html += '<button class="ms-close" onclick="toggleMs(\'\')">閉じる</button>';
+        document.getElementById("ms-status-content").innerHTML = html;
+    }
+
+    function updateWardCheckboxes() {
+        var container = document.getElementById("wardFilterContainer");
+        if(!container) return;
+        
+        var existingChecks = document.getElementsByClassName('ward-cb');
+        var checkedWards = {};
+        for(var i=0; i<existingChecks.length; i++) {
+            if(existingChecks[i].checked) checkedWards[existingChecks[i].value] = true;
+        }
+
+        var predefinedOrder = ["3A", "NICU", "3C", "4A", "4B", "4C", "5A", "5B", "5C", "6A", "6B", "6C", "外来"];
+        var otherWards = {};
+        
+        for (var key in patientData) {
+            if (patientData.hasOwnProperty(key) && patientData[key].ward) {
+                var w = patientData[key].ward;
+                var found = false;
+                for(var j=0; j<predefinedOrder.length; j++) {
+                    if (predefinedOrder[j] === w) { found = true; break; }
+                }
+                if (!found) {
+                    otherWards[w] = true;
+                }
+            }
+        }
+        
+        var otherWardsArr = [];
+        for (var k in otherWards) {
+            if(otherWards.hasOwnProperty(k)) otherWardsArr.push(k);
+        }
+        otherWardsArr.sort();
+        
+        var finalOrder = predefinedOrder.concat(otherWardsArr);
+        
+        var html = '<span style="font-size:12px; font-weight:bold; margin-right:15px; color:#555;">病棟絞り込み:</span>';
+        var hasWard = false;
+        
+        for (var i = 0; i < finalOrder.length; i++) {
+            hasWard = true;
+            var w = finalOrder[i];
+            var isChecked = checkedWards[w] ? "checked" : "";
+            html += '<label class="ward-label"><input type="checkbox" class="ward-cb" value="' + escapeHtml(w) + '" onchange="renderTable()" ' + isChecked + '> ' + escapeHtml(w) + '</label>';
+        }
+        
+        if (!hasWard) html += '<span style="font-size:11px; color:#999;">（データなし）</span>';
+        
+        html += '<span style="font-size:11px; color:#777; margin-left:20px; float:right;">[注] 同未:同意未, 同済:同意済, 採血:採血済, 処理:処理済, 提出:提出済, 冷凍:冷凍</span>';
+        container.innerHTML = html;
+    }
+
+    function exportToCSV() {
+        if (!fso) {
+            alert("ファイル出力機能が利用できない環境です。");
+            return;
+        }
+
+        var csvContent = "患者ID,氏名,年齢,年齢区分,病棟,診療科,担当医師,対象薬品,投与開始,投与終了,採血予定日,ステータス,タブ,備考\n";
+        
+        for (var key in patientData) {
+            if (!patientData.hasOwnProperty(key)) continue;
+            var p = patientData[key];
+            
+            var rowArray = [
+                p.id, p.name, p.age, p.ageGroup, p.ward, p.department, p.doctor,
+                p.drug, p.start, p.end, p.sampleDate,
+                p.status === "" ? "未選択" : p.status, 
+                p.tab === "target" ? "対象症例" : (p.tab === "exclude" ? "候補外" : "スクリーニング"),
+                p.remarks
+            ];
+            
+            var escapedRow = [];
+            for (var i = 0; i < rowArray.length; i++) {
+                var str = String(rowArray[i] || "");
+                escapedRow.push('"' + str.replace(/"/g, '""') + '"');
+            }
+            csvContent += escapedRow.join(",") + "\n";
+        }
+        
+        try {
+            var d = new Date();
+            var y = d.getFullYear();
+            var m = d.getMonth() + 1;
+            var day = d.getDate();
+            var dateStr = y + (m < 10 ? '0' + m : m) + (day < 10 ? '0' + day : day);
+            
+            var htaPath = unescape(location.pathname).replace(/^\/([a-zA-Z]:)/, '$1').replace(/\//g, '\\');
+            var folderPath = fso.GetParentFolderName(htaPath);
+            var expPath = folderPath + "\\管理一覧出力_" + dateStr + ".csv";
+            
+            var stream = new ActiveXObject("ADODB.Stream");
+            stream.Type = 2;
+            stream.Charset = "Shift_JIS";
+            stream.Open();
+            stream.WriteText(csvContent);
+            stream.SaveToFile(expPath, 2);
+            stream.Close();
+            
+            alert("「" + expPath + "」にCSVを出力しました。");
+        } catch (e) {
+            alert("CSV出力に失敗しました: " + e.message);
+        }
+    }
+
+    function renderSummary() {
+        var summaryDiv = document.getElementById("summary-view");
+        var targetDrugs = ["セフトリアキソン", "ユナスピン", "タゾピペ"];
+        var ageGroups = ["非高齢者", "高齢者", "超高齢者", "対象外", "未取得"];
+        
+        var stats = {};
+        for (var i=0; i<targetDrugs.length; i++) {
+            stats[targetDrugs[i]] = {};
+            for(var j=0; j<ageGroups.length; j++) {
+                stats[targetDrugs[i]][ageGroups[j]] = [0,0,0,0,0,0,0];
+            }
+        }
+
+        for(var k in patientData) {
+            var p = patientData[k];
+            if (p.tab !== "target") continue; 
+            
+            var matchedDrug = null;
+            for(var i=0; i<targetDrugs.length; i++) {
+                if (p.drug.indexOf(targetDrugs[i]) !== -1) {
+                    matchedDrug = targetDrugs[i];
+                    break;
+                }
+            }
+            if (!matchedDrug) continue; 
+            
+            var ag = p.ageGroup || "未取得";
+            if (stats[matchedDrug][ag]) {
+                var sIdx = statusLabels.indexOf(p.status);
+                if (sIdx === -1) sIdx = statusLabels.length; // Unselected
+                stats[matchedDrug][ag][sIdx]++;
+            }
+        }
+
+        var html = "<h3 style='margin-top:0; border-bottom:2px solid #2980b9; padding-bottom:3px; margin-bottom:10px;'>各抗菌薬の症例集計（※対象症例タブのみ）</h3>";
+        
+        for(var i=0; i<targetDrugs.length; i++) {
+            var drugName = targetDrugs[i];
+            html += "<h4 style='color:#2c3e50; margin: 0 0 5px 0; font-size:13px;'>" + drugName + "</h4>";
+            html += "<table class='summary-table'><thead><tr><th>年齢区分</th>";
+            for(var s=0; s<statusLabels.length; s++) {
+                html += "<th>" + statusLabels[s] + "</th>";
+            }
+            html += "<th>未選択</th>";
+            html += "<th style='background:#f39c12;'>合計</th></tr></thead><tbody>";
+            
+            var colTotals = [0,0,0,0,0,0,0];
+            var totalCases = 0;
+
+            for(var a=0; a<ageGroups.length; a++) {
+                var ag = ageGroups[a];
+                html += "<tr><td>" + ag + "</td>";
+                var rowTotal = 0;
+                for(var s=0; s<=statusLabels.length; s++) {
+                    var cnt = stats[drugName][ag][s];
+                    html += "<td>" + cnt + "</td>";
+                    rowTotal += cnt;
+                    colTotals[s] += cnt;
+                }
+                html += "<td class='summary-total-col'>" + rowTotal + "</td></tr>";
+                totalCases += rowTotal;
+            }
+
+            html += "<tr class='summary-total-row'><td>総合計</td>";
+            for(var s=0; s<=statusLabels.length; s++) {
+                html += "<td>" + colTotals[s] + "</td>";
+            }
+            html += "<td class='summary-total-col'>" + totalCases + "</td></tr>";
+            html += "</tbody></table>";
+        }
+
+        summaryDiv.innerHTML = html;
+    }
+
+    function hasKeys(obj) {
+        for (var k in obj) { if(obj.hasOwnProperty(k)) return true; }
+        return false;
+    }
+
+    function renderTable() {
+        updateHeaderFilters();
+
+        var tbody = document.getElementById('tableBody');
+        var alertList = document.getElementById('alertList');
+        var alertSection = document.getElementById('todayAlert');
+        var searchInput = document.getElementById("searchInput") ? document.getElementById("searchInput").value.toUpperCase() : "";
+        
+        var checkboxes = document.getElementsByClassName('ward-cb');
+        var selectedWards = [];
+        for(var i=0; i<checkboxes.length; i++) {
+            if(checkboxes[i].checked) {
+                selectedWards.push(checkboxes[i].value);
+            }
+        }
+        
+        var d = new Date();
+        var y = d.getFullYear();
+        var m = d.getMonth() + 1;
+        var day = d.getDate();
+        var todayStr = y + '-' + (m < 10 ? '0' + m : m) + '-' + (day < 10 ? '0' + day : day);
+        
+        tbody.innerHTML = "";
+        alertList.innerHTML = "";
+        var alertCount = 0;
+
+        var idCounts = {};
+        for(var k in patientData) {
+            if(patientData.hasOwnProperty(k)) {
+                var pid = patientData[k].id;
+                idCounts[pid] = (idCounts[pid] || 0) + 1;
+            }
+        }
+
+        var keys = [];
+
+        for (var key in patientData) {
+            if (!patientData.hasOwnProperty(key)) continue;
+            var p = patientData[key];
+            
+            var pTab = p.tab || "screening";
+            if (pTab !== currentTab) continue;
+            
+            var searchText = (p.id + p.name).toUpperCase();
+            if (searchInput !== "" && searchText.indexOf(searchInput) === -1) continue;
+
+            if (selectedWards.length > 0) {
+                var wardMatch = false;
+                for(var j=0; j<selectedWards.length; j++) {
+                    if (p.ward === selectedWards[j]) wardMatch = true;
+                }
+                if (!wardMatch) continue;
+            }
+
+            if (hasKeys(msFilters.age) && !msFilters.age[p.ageGroup]) continue;
+            if (hasKeys(msFilters.drug) && !msFilters.drug[p.drug]) continue;
+            if (hasKeys(msFilters.status) && !msFilters.status[p.status]) continue;
+            var safeDept = p.department || "(未登録)";
+            if (hasKeys(msFilters.dept) && !msFilters.dept[safeDept]) continue;
+
+            keys.push(key);
+        }
+
+        if (currentSortCol !== "") {
+            keys.sort(function(a, b) {
+                var vA = patientData[a][currentSortCol];
+                var vB = patientData[b][currentSortCol];
+                
+                if (vA === null || vA === undefined) vA = "";
+                if (vB === null || vB === undefined) vB = "";
+                
+                if (currentSortCol === 'age') {
+                    vA = parseInt(vA, 10); if(isNaN(vA)) vA = -1;
+                    vB = parseInt(vB, 10); if(isNaN(vB)) vB = -1;
+                }
+
+                if(vA < vB) return currentSortAsc ? -1 : 1;
+                if(vA > vB) return currentSortAsc ? 1 : -1;
+                return 0;
+            });
+        }
+
+        var sortCols = ["id", "name", "age", "ward", "start", "sampleDate"];
+        for (var i=0; i<sortCols.length; i++) {
+            var sc = sortCols[i];
+            var iconId = "sort-icon-" + sc;
+            var el = document.getElementById(iconId);
+            if(el) {
+                if (currentSortCol === sc) {
+                    el.innerHTML = currentSortAsc ? "▲" : "▼";
+                    el.style.color = "#f1c40f";
+                } else {
+                    el.innerHTML = "↕";
+                    el.style.color = "#7f8c8d";
+                }
+            }
+        }
+
+        for (var i = 0; i < keys.length; i++) {
+            var key = keys[i];
+            var p = patientData[key];
+
+            var isToday = (p.sampleDate === todayStr);
+
+            if (isToday && currentTab === "target") {
+                alertCount++;
+                var li = document.createElement("li");
+                li.innerHTML = "<strong>" + escapeHtml(p.id) + " " + escapeHtml(p.name) + "様</strong> (" + escapeHtml(p.drug) + ")";
+                alertList.appendChild(li);
+            }
+
+            var hasMultiple = (idCounts[p.id] > 1);
+
+            var row = document.createElement('tr');
+            row.id = 'tr-patient-' + key;
+            
+            var rowClasses = [];
+            if (isToday) rowClasses.push("highlight");
+            if (hasMultiple) rowClasses.push("multi-drug-row");
+            row.className = rowClasses.join(" ");
+
+            var infoStr = escapeHtml(p.ward) + "<br><span style='font-size:10px;color:#555;'>" + escapeHtml(p.department) + " / " + escapeHtml(p.doctor) + "</span>";
+            var ageDisplay = (p.age !== null && p.age !== "") ? escapeHtml(p.age) + "歳<br><span style='font-size:10px;'>" + escapeHtml(p.ageGroup) + "</span>" : "<span style='color:#ccc; font-size:10px;'>未取得</span>";
+
+            var drugDisplay = escapeHtml(p.drug);
+            if (hasMultiple) {
+                drugDisplay += "<br><span class='multi-drug-badge'>複数期間(薬剤)あり</span>";
+            }
+
+            var isFutureSampleInPeriod = false;
+            if (p.sampleDate && p.start && p.end) {
+                var sDate = new Date(p.sampleDate);
+                var startDate = new Date(p.start);
+                var endDate = new Date(p.end);
+                
+                sDate.setHours(0,0,0,0);
+                startDate.setHours(0,0,0,0);
+                endDate.setHours(0,0,0,0);
+                
+                var todayDate = new Date();
+                todayDate.setHours(0,0,0,0);
+                
+                if (sDate > todayDate && sDate >= startDate && sDate <= endDate) {
+                    isFutureSampleInPeriod = true;
+                }
+            }
+            var bloodCellStyle = isFutureSampleInPeriod ? "background-color: #ffeaa7; border: 2px solid #fdcb6e;" : "";
+            var futureBadge = isFutureSampleInPeriod ? "<span style='display:inline-block; font-size:10px; font-weight:bold; color:#d35400; background:#fad390; padding:2px 4px; border-radius:3px; margin-bottom:2px;'>🌟投与中予定あり</span><br>" : "";
+
+            var html = "";
+            html += "<td>" + escapeHtml(p.id) + "</td>";
+            html += "<td>" + escapeHtml(p.name) + "</td>";
+            html += "<td>" + ageDisplay + "</td>";
+            html += "<td>" + infoStr + "</td>";
+            html += "<td style='font-size: 11px;'>" + drugDisplay + "</td>";
+            html += "<td style='font-size: 11px;'>" + escapeHtml(p.start) + "<br>～" + escapeHtml(p.end) + "</td>";
+            
+            html += "<td class='blood-date-cell' style='" + bloodCellStyle + "' title='" + escapeHtml(p.bloodDetail) + "'>";
+            html += futureBadge;
+            html += "  <input type='date' value='" + escapeHtml(p.sampleDate) + "' onchange=\"updateSampleDate('" + key + "', this.value)\" style='width: 105px;'>";
+            html += "  <br><button class='fetch-btn' id='btn-" + key + "' onclick=\"fetchSingleBloodDate('" + key + "')\">一括確認(年齢+採血)</button>";
+            html += "  <div style='font-size:10px; color:#666; margin-top:2px;' class='blood-date-text'>" + escapeHtml(p.bloodDetail) + "</div>";
+            html += "</td>";
+
+            var safeRemarks = p.remarks ? escapeHtml(p.remarks) : "";
+            html += "<td><textarea class='remarks-input' onchange=\"updateRemarks('" + key + "', this.value)\" placeholder='メモ...'>" + safeRemarks + "</textarea></td>";
+            
+            html += "<td style='text-align: center;'>";
+            html += "  <div class='status-grid'>";
+            for (var st=0; st<statusLabels.length; st++) {
+                var isActive = (p.status === statusLabels[st]) ? "active st-" + st : "";
+                html += "    <div class='status-badge " + isActive + "' onclick=\"updateStatus('" + key + "', '" + statusLabels[st] + "')\">" + statusAbbr[st] + "</div>";
+            }
+            html += "  </div>";
+            html += "</td>";
+            
+            html += "<td style='text-align: center;'>";
+            if (currentTab === "screening") {
+                html += "  <button onclick=\"moveTab('" + key + "', 'target')\" style='font-size:10px; background:#2ecc71; color:white; border:none; padding:7px 4px; border-radius:3px; cursor:pointer; width:100%; margin-bottom:5px;'>対象へ</button>";
+                html += "  <br><button onclick=\"moveTab('" + key + "', 'exclude')\" style='font-size:10px; background:#e74c3c; color:white; border:none; padding:7px 4px; border-radius:3px; cursor:pointer; width:100%;'>候補外へ</button>";
+            } else if (currentTab === "target") {
+                html += "  <button onclick=\"moveTab('" + key + "', 'screening')\" style='font-size:10px; background:#95a5a6; color:white; border:none; padding:7px 4px; border-radius:3px; cursor:pointer; width:100%; margin-bottom:5px;'>戻す</button>";
+                html += "  <br><button onclick=\"moveTab('" + key + "', 'exclude')\" style='font-size:10px; background:#e74c3c; color:white; border:none; padding:7px 4px; border-radius:3px; cursor:pointer; width:100%;'>候補外へ</button>";
+            } else if (currentTab === "exclude") {
+                html += "  <button onclick=\"moveTab('" + key + "', 'screening')\" style='font-size:10px; background:#95a5a6; color:white; border:none; padding:7px 4px; border-radius:3px; cursor:pointer; width:100%;'>スクへ戻す</button>";
+            }
+            html += "</td>";
+            
+            row.innerHTML = html;
+            tbody.appendChild(row);
+        }
+
+        alertSection.style.display = alertCount > 0 ? "block" : "none";
+    }
+
+    function fetchAllBloodDates() {
+        if(isFetchingAll) return;
+        fetchQueue = [];
+        
+        var searchInput = document.getElementById("searchInput").value.toUpperCase();
+        var checkboxes = document.getElementsByClassName('ward-cb');
+        var selectedWards = [];
+        for(var i=0; i<checkboxes.length; i++) {
+            if(checkboxes[i].checked) selectedWards.push(checkboxes[i].value);
+        }
+        
+        for (var key in patientData) {
+            if (!patientData.hasOwnProperty(key)) continue;
+            var p = patientData[key];
+            if ((p.tab || "screening") !== currentTab) continue;
+            
+            var searchText = (p.id + p.name).toUpperCase();
+            if (searchInput !== "" && searchText.indexOf(searchInput) === -1) continue;
+
+            if (selectedWards.length > 0) {
+                var wardMatch = false;
+                for(var j=0; j<selectedWards.length; j++) {
+                    if (p.ward === selectedWards[j]) wardMatch = true;
+                }
+                if (!wardMatch) continue;
+            }
+
+            if (hasKeys(msFilters.age) && !msFilters.age[p.ageGroup]) continue;
+            if (hasKeys(msFilters.drug) && !msFilters.drug[p.drug]) continue;
+            if (hasKeys(msFilters.status) && !msFilters.status[p.status]) continue;
+            var safeDept = p.department || "(未登録)";
+            if (hasKeys(msFilters.dept) && !msFilters.dept[safeDept]) continue;
+
+            fetchQueue.push(key);
+        }
+        
+        if (fetchQueue.length === 0) {
+            alert("取得対象の患者がいません。");
+            return;
+        }
+        
+        if (confirm("現在表示されている " + fetchQueue.length + " 件の生年月日と採血予定日を一括取得しますか？\n※順次カルテシステムにアクセスするため時間がかかります。")) {
+            isFetchingAll = true;
+            processFetchQueue();
+        }
+    }
+
+    function processFetchQueue() {
+        if(fetchQueue.length === 0) {
+            isFetchingAll = false;
+            alert("一括取得が完了しました。");
+            return;
+        }
+        var nextKey = fetchQueue.shift();
+        fetchSingleBloodDate(nextKey, processFetchQueue); 
+    }
+
+    function fetchSingleBloodDate(key, callback) {
+        var p = patientData[key];
+        if (!p || !p.id) {
+            if (callback) callback();
+            return;
+        }
+        
+        var btn = document.getElementById('btn-' + key);
+        if(btn) { btn.innerText = "取得中..."; btn.disabled = true; }
+
+        var userId = "16622";
+        
+        var url1 = "http://10.5.171.42:8082/karte/kanja_ichiran/kanja_ichiran.php?kanja_id=" + p.id + 
+                   "&ichiran_code=31&user_id=" + userId + "&section_code=0000022&page_num=0&login_flg=";
+                   
+        var url2 = "http://10.5.171.42:8082/karte/karte.php?kanja_id=" + p.id + 
+                   "&user_id=" + userId + "&order_search_flg=1&order_search_code=3&order_search_name=#top" +
+                   "&_nocache=" + new Date().getTime();
+
+        var iframeId = "fetch-iframe-" + key;
+        var existing = document.getElementById(iframeId);
+        if (existing && existing.parentNode) existing.parentNode.removeChild(existing);
+
+        var iframe = document.createElement("iframe");
+        iframe.id = iframeId;
+        iframe.style.display = "none";
+        iframe.setAttribute("application", "yes"); 
+        document.body.appendChild(iframe);
+
+        var step = 1;
+        var isDone = false;
+        
+        var cleanup = function() {
+            if (isDone) return;
+            isDone = true;
+            setTimeout(function() {
+                var ifr = document.getElementById(iframeId);
+                if (ifr && ifr.parentNode) ifr.parentNode.removeChild(ifr);
+                if (callback) callback();
+            }, 500);
+            saveAndRender(); 
+        };
+
+        var fallbackTimer = setTimeout(function() {
+            if (!isDone) {
+                p.bloodDetail = step === 1 ? "年齢取得T/O" : "採血取得T/O";
+                cleanup();
+            }
+        }, 30000); 
+
+        iframe.onload = function() {
+            setTimeout(function() {
+                if (isDone) return;
+                try {
+                    var doc = iframe.contentWindow.document;
+                    var allText = "";
+                    
+                    function collectText(currentDoc) {
+                        if (!currentDoc) return;
+                        try { if (currentDoc.body && currentDoc.body.innerText) allText += " " + currentDoc.body.innerText; } catch(e) {}
+                        var frames = currentDoc.getElementsByTagName("frame");
+                        var iframes = currentDoc.getElementsByTagName("iframe");
+                        for(var j=0; j<frames.length; j++) { try { collectText(frames[j].contentWindow.document); } catch(e){} }
+                        for(var k=0; k<iframes.length; k++) { try { collectText(iframes[k].contentWindow.document); } catch(e){} }
+                    }
+                    collectText(doc);
+
+                    if (step === 1) {
+                        var paddedId = ("0000000" + p.id).slice(-7);
+                        var idx = allText.indexOf(paddedId);
+                        var searchText = idx !== -1 ? allText.substring(idx) : allText;
+                        
+                        var bdRegex = /(?:生年月日.*?|)((?:18|19|20)\d{2})[\/\年]\s*(\d{1,2})[\/\月]\s*(\d{1,2})/;
+                        var match = searchText.match(bdRegex);
+                        if (match) {
+                            var y = parseInt(match[1], 10);
+                            var m = parseInt(match[2], 10);
+                            var d = parseInt(match[3], 10);
+                            p.birthDate = y + "/" + (m<10?'0'+m:m) + "/" + (d<10?'0'+d:d);
+                            p.age = calculateAgeAtStart(p.birthDate, p.start);
+                            p.ageGroup = getAgeGroup(p.age);
+                        }
+                        
+                        step = 2;
+                        iframe.src = url2; 
+                    } else if (step === 2) {
+                        var regex = /【([^】]*?(?:生化学|血液|外注|一般)[^】]*?)】[^【]{0,150}?(\d{4})\/(\d{2})\/(\d{2})/g;
+                        var match;
+                        var today = new Date();
+                        today.setHours(0,0,0,0);
+                        var futureEntries = [];
+                        
+                        while ((match = regex.exec(allText)) !== null) {
+                            var typeRaw = match[1].replace(/^[0-9:\s]+/, '').replace(/\[.*?\]\s*/g, '').replace(/^\s+|\s+$/g, '');
+                            var typeClean = typeRaw.substring(0, 15);
+                            var y = parseInt(match[2], 10);
+                            var m = parseInt(match[3], 10);
+                            var d = parseInt(match[4], 10);
+                            var dt = new Date(y, m - 1, d);
+                            
+                            var diffDays = (dt.getTime() - today.getTime()) / (1000 * 3600 * 24);
+                            if (diffDays >= 1 && diffDays <= 30) {
+                                var mStr = m < 10 ? '0' + m : m;
+                                var dStr = d < 10 ? '0' + d : d;
+                                futureEntries.push({
+                                    dateObj: dt,
+                                    displayDate: y + '-' + mStr + '-' + dStr,
+                                    detail: typeClean
+                                });
+                            }
+                        }
+                        
+                        if (futureEntries.length > 0) {
+                            futureEntries.sort(function(a, b) { return a.dateObj.getTime() - b.dateObj.getTime(); });
+                            var target = futureEntries[0];
+                            p.sampleDate = target.displayDate;
+                            p.bloodDetail = "予定有 (" + target.detail + ")";
+                        } else {
+                            p.bloodDetail = "30日以内の予定なし";
+                        }
+                        
+                        clearTimeout(fallbackTimer);
+                        cleanup();
+                    }
+                } catch(e) {
+                    var err = String(e.message || e);
+                    p.bloodDetail = (step === 1 ? "年齢Err:" : "解析Err:") + err.substring(0, 10);
+                    clearTimeout(fallbackTimer);
+                    cleanup();
+                }
+            }, 1500); 
+        };
+        
+        try {
+            iframe.src = url1;
+        } catch(e) {
+            p.bloodDetail = "URLエラー";
+            clearTimeout(fallbackTimer);
+            cleanup();
+        }
+    }
+
+    updateHeaderFilters(true);
+    updateWardCheckboxes();
+    renderTable();
+</script>
+</body>
+</html>
