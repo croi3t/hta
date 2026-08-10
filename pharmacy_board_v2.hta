@@ -7440,8 +7440,8 @@ function removeClass(el, className) {
                 }
                 
                 // 項目と値のパース (例: TP：5.0 L, ALB：1.8 L)
-                // HやLなどの文字は除外して数値のみを取得する
-                var itemRegex = /([A-Za-z0-9\/\.\-\γ]+)[\s]*[:：][\s]*([\d\.]+)/g;
+                // 括弧や日本語を含む項目名にも対応し、値の末尾の H や L は除外する
+                var itemRegex = /([^,、:：]+)[\s]*[:：][\s]*([^,、]+)/g;
                 var match;
                 var hasItems = false;
                 var currentItems = {};
@@ -7450,8 +7450,11 @@ function removeClass(el, className) {
                     var name = match[1].replace(/^\s+|\s+$/g, '');
                     var val = match[2].replace(/^\s+|\s+$/g, '');
                     
-                    // 数字のみの項目（例: 08:30 の 08）は時刻の誤判定なのでスキップ
-                    if (/^\d+$/.test(name)) continue;
+                    // 日付や時刻の誤判定（例: 2026/05/29 08）はスキップ
+                    if (/^[\d\/\-\s]+$/.test(name)) continue;
+                    
+                    // 末尾の異常値マーク( H や L )を除去（前のスペース必須）
+                    val = val.replace(/\s+[HLhl]$/, '');
                     
                     currentItems[name] = val;
                     hasItems = true;
