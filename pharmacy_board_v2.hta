@@ -4009,36 +4009,56 @@ function toggleStatus(id) {
     if(!isEditMode) return;
     var p = findPatientById(id);
     if(!p) return;
-    p.status = ((p.status || 0) + 1) % 4;
-    p.statusAuthor = p.status === 0 ? "" : currentUserName;
-
+    
+    var newStatus = ((p.status || 0) + 1) % 4;
+    var newAuthor = newStatus === 0 ? "" : currentUserName;
+    
+    var strId = String(id);
+    var nId = strId.replace(/^0+/, '') || '0';
+    if (appData && appData.patients) {
+        for (var wardCode in appData.patients) {
+            if (appData.patients.hasOwnProperty(wardCode)) {
+                var list = appData.patients[wardCode];
+                for (var i = 0; i < list.length; i++) {
+                    var pIdStr = String(list[i].id);
+                    if (pIdStr === strId || (pIdStr.replace(/^0+/, '') || '0') === nId) {
+                        list[i].status = newStatus;
+                        list[i].statusAuthor = newAuthor;
+                    }
+                }
+            }
+        }
+    }
+    
     if (typeof DataManager !== "undefined") {
         DataManager.appendTransaction("TOGGLE_STATUS", {
-            patientId: id, wardCode: currentWard, value: p.status, author: p.statusAuthor
+            patientId: id, wardCode: currentWard, value: newStatus, author: newAuthor
         });
     }
 
+    var statIdx = newStatus || 0;
+    var statClass = STATUS_CLASSES[statIdx];
+    var rawStatText = STATUS_TEXTS[statIdx];
+    var statText = rawStatText === "(未設定)" ? "未" : (rawStatText === "介入予定" ? "予定" : (rawStatText === "指導済" ? "指導" : "記録"));
+    if(statIdx === 0) statText = "-";
+    
+    var authorHtml = newAuthor ? '<br><span class="status-author">' + escapeHtml(newAuthor) + '</span>' : '';
+    var statUnderline = (statIdx === 1 || statIdx === 2) ? 'text-decoration:underline;' : '';
+    
     var trId = "tr-patient-" + p.id;
-    var tr = document.getElementById(trId);
-    if (tr) {
-        var td = tr.querySelector(".status-cell");
-        if (td) {
-            var statIdx = p.status;
-            var statClass = STATUS_CLASSES[statIdx];
-            var rawStatText = STATUS_TEXTS[statIdx];
-            var statText = rawStatText === "(未設定)" ? "未" : (rawStatText === "介入予定" ? "予定" : (rawStatText === "指導済" ? "指導" : "記録"));
-            
-            var authorHtml = p.statusAuthor ? '<br><span class="status-author">' + escapeHtml(p.statusAuthor) + '</span>' : '';
-            var statUnderline = (statIdx === 1 || statIdx === 2) ? 'text-decoration:underline;' : '';
-            
-            td.className = "status-cell " + statClass;
-            td.style.cssText = statUnderline;
-            td.innerHTML = statText + authorHtml;
+    var allRows = document.getElementsByTagName("tr");
+    for(var j=0; j<allRows.length; j++) {
+        if(allRows[j].id === trId) {
+            var td = allRows[j].querySelector(".status-cell");
+            if(td) {
+                td.className = "status-cell " + statClass;
+                td.style.cssText = statUnderline;
+                td.innerHTML = statText + authorHtml;
+            }
         }
     }
 }
 
-// ---------- 介入者ドラッグ選択機能 (Vol.11) ----------
 var dragStatusInfo = { active: false, index: -1, startX: 0, currentX: 0, element: null };
 
 function startDragStatus(e, id) {
@@ -4072,8 +4092,8 @@ function startDragStatus(e, id) {
 
 function handleDragMove() {
     if(!dragStatusInfo.active) return;
-    var e = window.event;
-    dragStatusInfo.currentX = e.clientX;
+    var e = window.event || arguments[0];
+    if(e) dragStatusInfo.currentX = e.clientX;
     
     var diff = Math.abs(dragStatusInfo.currentX - dragStatusInfo.startX);
     if(diff > 10) {
@@ -4083,9 +4103,9 @@ function handleDragMove() {
     }
 }
 
-function endDragStatus() {
+function endDragStatus(e) {
     if(!dragStatusInfo.active) return;
-    var e = window.event;
+    var ev = window.event || e;
     
     if (document.removeEventListener) {
         document.removeEventListener("mousemove", handleDragMove, false);
@@ -4103,7 +4123,9 @@ function endDragStatus() {
 
     var diff = Math.abs(dragStatusInfo.currentX - dragStatusInfo.startX);
     if(diff > 30) {
-        showUserSelectMenu(dragStatusInfo.index, e.clientX, e.clientY);
+        var clientX = ev ? ev.clientX : dragStatusInfo.currentX;
+        var clientY = ev ? ev.clientY : 0;
+        showUserSelectMenu(dragStatusInfo.index, clientX, clientY);
     }
     
     dragStatusInfo.active = false;
@@ -4137,19 +4159,18 @@ function showUserSelectMenu(id, x, y) {
     var top = y + scrollY + 5;
     
     if(x + 155 > document.body.clientWidth) left = x + scrollX - 155;
-    if(y + 205 > document.body.clientHeight) top = y + scrollY - 205;
-
+    
     menu.style.left = left + "px";
     menu.style.top = top + "px";
     
     var closeMenu = function() {
-        var ev = window.event;
+        var ev = window.event || arguments[0];
         var target = ev.srcElement || ev.target;
-        if(target.className.indexOf("user-select-item") === -1) {
+        if(!target || !target.className || (typeof target.className === 'string' && target.className.indexOf("user-select-item") === -1)) {
             menu.style.display = "none";
             if (document.removeEventListener) {
                 document.removeEventListener("mousedown", closeMenu, false);
-            } else if (document.detachEvent) {
+            } else if (document.attachEvent) {
                 document.detachEvent("onmousedown", closeMenu);
             }
         }
@@ -4165,34 +4186,53 @@ function selectUserStatus(id, userName) {
     var p = findPatientById(id);
     if (!p) return;
     
-    if((!p.status || p.status === 0) && userName !== "") p.status = 1;
-    p.statusAuthor = userName;
-    if(userName === "") p.status = 0;
+    var newStatus = p.status;
+    if((!newStatus || newStatus === 0) && userName !== "") newStatus = 1;
+    if(userName === "") newStatus = 0;
+    
+    var strId = String(id);
+    var nId = strId.replace(/^0+/, '') || '0';
+    if (appData && appData.patients) {
+        for (var wardCode in appData.patients) {
+            if (appData.patients.hasOwnProperty(wardCode)) {
+                var list = appData.patients[wardCode];
+                for (var i = 0; i < list.length; i++) {
+                    var pIdStr = String(list[i].id);
+                    if (pIdStr === strId || (pIdStr.replace(/^0+/, '') || '0') === nId) {
+                        list[i].status = newStatus;
+                        list[i].statusAuthor = userName;
+                    }
+                }
+            }
+        }
+    }
     
     if (typeof DataManager !== "undefined") {
         DataManager.appendTransaction("TOGGLE_STATUS", {
-            patientId: id, wardCode: currentWard, value: p.status, author: p.statusAuthor
+            patientId: id, wardCode: currentWard, value: newStatus, author: userName
         });
     }
 
+    var statIdx = newStatus || 0;
+    var statClass = STATUS_CLASSES[statIdx];
+    var rawStatText = STATUS_TEXTS[statIdx];
+    var statText = rawStatText === "(未設定)" ? "未" : (rawStatText === "介入予定" ? "予定" : (rawStatText === "指導済" ? "指導" : "記録"));
+    if(statIdx === 0) statText = "-";
+    
+    var authorHtml = userName ? '<br><span class="status-author">' + escapeHtml(userName) + '</span>' : '';
+    var statUnderline = (statIdx === 1 || statIdx === 2) ? 'text-decoration:underline;' : '';
+    
     var trId = "tr-patient-" + p.id;
-    var tr = document.getElementById(trId);
-    if (tr) {
-        var td = tr.querySelector(".status-cell");
-        if (td) {
-            var statIdx = p.status || 0;
-            var statClass = STATUS_CLASSES[statIdx];
-            var statText = statIdx === 0 ? "-" : STATUS_TEXTS[statIdx];
-            
-            var authorHtml = p.statusAuthor ? '<br><span class="status-author">' + escapeHtml(p.statusAuthor) + '</span>' : '';
-            var statUnderline = (statIdx === 1 || statIdx === 2) ? 'text-decoration:underline;' : '';
-            
-            td.className = "status-cell " + statClass;
-            td.style.cssText = statUnderline;
-            td.innerHTML = statText + authorHtml;
+    var allRows = document.getElementsByTagName("tr");
+    for(var j=0; j<allRows.length; j++) {
+        if(allRows[j].id === trId) {
+            var td = allRows[j].querySelector(".status-cell");
+            if(td) {
+                td.className = "status-cell " + statClass;
+                td.style.cssText = statUnderline;
+                td.innerHTML = statText + authorHtml;
+            }
         }
-    } else {
-        renderPatients();
     }
 
     var menu = document.getElementById("user-select-menu");
@@ -4737,67 +4777,23 @@ function fetchAllActiveWardsData(callback, silent) {
  */
 function filterPatientTable() {
     var input = document.getElementById("ipt-patient-search");
-    var selFilter = document.getElementById("sel-update-filter");
-    var filterText = input ? input.value.toLowerCase() : "";
-    var filterType = selFilter ? selFilter.value : "all";
+    if (!input) return;
+    var filter = input.value.toLowerCase();
     var tbody = document.getElementById("tbody-patients");
     if (!tbody) return;
     var tr = tbody.getElementsByTagName("tr");
-    
-    var nowTime = new Date().getTime();
 
     for (var i = 0; i < tr.length; i++) {
         var row = tr[i];
-        if (row.cells.length < 5) continue;
+        // データなしメッセージなどを判定するためのセル数チェック
+        if (row.cells.length < 5) continue; 
         
-        var showRow = true;
         var text = (row.textContent || row.innerText || "").toLowerCase();
-        if (filterText && text.indexOf(filterText) === -1) {
-            showRow = false;
+        if (text.indexOf(filter) > -1) {
+            row.style.display = "";
+        } else {
+            row.style.display = "none";
         }
-        
-        if (showRow && filterType !== "all") {
-            var pIdMatch = row.id.match(/^tr-patient-(.+)$/);
-            if (pIdMatch) {
-                var pId = pIdMatch[1];
-                var p = findPatientById(pId);
-                if (p) {
-                    var lastAuthor = (p.memoAuthors && p.memoAuthors.length > 0) ? p.memoAuthors[0] : "";
-                    
-                    var isOther = false;
-                    if (lastAuthor && lastAuthor.indexOf(currentUserName) !== 0) {
-                        isOther = true;
-                    }
-                    
-                    var updateTime = 0;
-                    if (lastAuthor) {
-                        var match = lastAuthor.match(/\((\d{2})\/(\d{2}) (\d{2}):(\d{2})\)$/);
-                        if (match) {
-                            var now = new Date();
-                            var d = new Date(now.getFullYear(), parseInt(match[1], 10) - 1, parseInt(match[2], 10), parseInt(match[3], 10), parseInt(match[4], 10));
-                            if (d.getTime() > now.getTime() + 30 * 24 * 60 * 60 * 1000) {
-                                d.setFullYear(d.getFullYear() - 1);
-                            }
-                            updateTime = d.getTime();
-                        }
-                    }
-                    
-                    var hoursSinceUpdate = updateTime > 0 ? (nowTime - updateTime) / (1000 * 60 * 60) : 999999;
-                    
-                    if (filterType === "other" && !isOther) showRow = false;
-                    if (filterType === "3h" && hoursSinceUpdate > 3) showRow = false;
-                    if (filterType === "24h" && hoursSinceUpdate > 24) showRow = false;
-                    if (filterType === "other_24h" && (!isOther || hoursSinceUpdate > 24)) showRow = false;
-                    if (filterType === "other_3h" && (!isOther || hoursSinceUpdate > 3)) showRow = false;
-                } else {
-                    showRow = false;
-                }
-            } else {
-                showRow = false;
-            }
-        }
-        
-        row.style.display = showRow ? "" : "none";
     }
 }
 
@@ -5457,6 +5453,7 @@ function toggleAdmissionAlert(idx) {
 }
 
 // changeBloodDate: IDベースに変更 (手動入力。DOM直接更新)
+
 function changeBloodDate(patientId) {
     if (!isEditMode) return;
     var list = getCurrentPatientsList();
