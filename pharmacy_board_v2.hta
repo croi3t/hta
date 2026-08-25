@@ -6206,6 +6206,12 @@ function exportToExcel() {
                 if (displays[d].style.backgroundColor === "" && cell.style.backgroundColor !== "") {
                     displays[d].style.backgroundColor = cell.style.backgroundColor;
                 }
+                
+                // 修正: Excel出力時に改行が消えてスペースになるのを防ぐため、明示的に <br> に変換する
+                if (displays[d].innerHTML) {
+                    displays[d].innerHTML = displays[d].innerHTML.replace(/\r?\n/g, '<br style="mso-data-placement:same-cell;" />');
+                }
+
             }
         }
         
