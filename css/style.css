@@ -1,0 +1,481 @@
+body {
+        font-family: "Meiryo", "Yu Gothic", sans-serif;
+        font-size: 13px; /* 少し小さく */
+        background-color: #f4f6f9;
+        margin: 0;
+        padding: 0;
+        color: #333;
+        min-width: 1000px; /* ウィンドウ縮小時レイアウト崩れ対策 */
+    }
+    
+    /* ヘッダー領域 */
+    .header {
+        background-color: #2c3e50;
+        color: white;
+        padding: 8px 20px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+    .header h1 {
+        margin: 0;
+        font-size: 16px;
+    }
+    .user-info {
+        font-size: 13px;
+        display: flex;
+        align-items: center;
+    }
+    .user-info span.current-user {
+        font-weight: bold;
+        color: #f39c12;
+        margin-right: 15px;
+    }
+    .btn {
+        background-color: #3498db;
+        color: white;
+        border: none;
+        padding: 4px 12px;
+        cursor: pointer;
+        border-radius: 3px;
+        font-size: 12px;
+    }
+    .btn:hover {
+        background-color: #2980b9;
+    }
+    
+    /* メインコンテナ */
+    .container {
+        padding: 15px;
+        max-width: 1800px;
+        min-width: 980px; /* bodyのmin-widthに追従 */
+        margin: 0 auto;
+    }
+
+    /* タブ切り替え */
+    .tabs {
+        display: flex;
+        border-bottom: 2px solid #ddd;
+        margin-bottom: 15px;
+    }
+    .tab {
+        padding: 8px 15px;
+        cursor: pointer;
+        background-color: #e9ecef;
+        border: 1px solid #ccc;
+        border-bottom: none;
+        margin-right: 4px;
+        border-radius: 4px 4px 0 0;
+        font-weight: bold;
+        color: #666;
+    }
+    .tab.active {
+        background-color: white;
+        color: #2c3e50;
+        border-bottom: 2px solid white;
+        margin-bottom: -2px;
+    }
+
+    /* サブタブ (病棟切り替え) */
+    .sub-tabs {
+        display: flex;
+        margin-bottom: 8px;
+    }
+    .sub-tab {
+        padding: 3px 12px;
+        cursor: pointer;
+        background-color: #fff;
+        border: 1px solid #3498db;
+        color: #3498db;
+        margin-right: 5px;
+        border-radius: 12px;
+        font-size: 12px;
+    }
+    .sub-tab.active {
+        background-color: #3498db;
+        color: white;
+    }
+
+    /* コンテンツ領域 */
+    .tab-content {
+        display: none;
+        background-color: white;
+        padding: 15px;
+        border: 1px solid #ddd;
+        border-top: none;
+        border-radius: 0 0 4px 4px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        min-height: 400px;
+    }
+    .tab-content.active {
+        display: block;
+    }
+    
+    /* 新着通知用タブスタイル (静的) */
+    .tab-updated {
+        background-color: #ffc107 !important; /* 目立つアンバー色 */
+        color: #000 !important;
+    }
+    .tab-updated::after {
+        content: " (新着!)";
+        font-size: 10px;
+        color: #856404;
+        font-weight: bold;
+    }
+    
+    /* リッチテキストエディタ用ボタン */
+    .editor-btn {
+        background: #fff;
+        border: 1px solid #ccc;
+        padding: 3px 6px;
+        cursor: pointer;
+        border-radius: 3px;
+        font-size: 12px;
+        height: 24px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #333;
+    }
+    .editor-btn:hover {
+        background: #e9ecef;
+    }
+
+    /* テーブルスタイル */
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-bottom: 15px;
+        background-color: white;
+    }
+    th, td {
+        border: 1px solid #ddd;
+        padding: 2px 6px; /* 行幅を詰める 4px 8px -> 2px 6px */
+        text-align: left;
+        line-height: 1.1; /* 行間を詰め気味にする */
+    }
+    th {
+        background-color: #f8f9fa;
+        color: #495057;
+        font-weight: bold;
+        white-space: nowrap;
+    }
+    tr:nth-child(even) {
+        background-color: #f9f9f9;
+        }
+    td.highlight-row,
+    td.highlight-row textarea {
+        font-weight: bold;
+        color: #d35400 !important; /* 濃いオレンジ色でハイライト */
+    }
+    
+    /* 介入状況のセルのスタイル */
+    .status-cell {
+        cursor: pointer;
+        text-align: center;
+        font-weight: bold;
+        width: 35px; /* 100pxから縮小 */
+        user-select: none;
+        transition: background-color 0.2s;
+    }
+    .status-cell:hover { opacity: 0.8; }
+    
+    .status-empty { background-color: white; color: #aaa; }
+    .status-plan { background-color: #fff3cd; color: #856404; }
+    .status-done { background-color: #d4edda; color: #155724; }
+    .status-recorded { background-color: #cce5ff; color: #004085; }
+    
+    .status-author {
+        display: block;
+        font-size: 9px;
+        font-weight: normal;
+        color: #666;
+        margin-top: 1px;
+    }
+
+    /* メモ入力欄 */
+    textarea {
+        width: 100%;
+        box-sizing: border-box;
+        border: 1px solid #ccc;
+        border-radius: 3px;
+        padding: 2px;
+        font-family: inherit;
+        resize: vertical;
+        min-height: 22px; /* 25px -> 22px */
+        font-size: 11px;  /* 12px -> 11px */
+    }
+
+    /* 設定エリア */
+    .settings-area {
+        margin-bottom: 15px;
+        padding: 15px;
+        background-color: #f8f9fa;
+        border: 1px solid #ddd;
+        border-radius: 3px;
+    }
+    .settings-area input[type="text"] {
+        width: 150px;
+        padding: 4px;
+        margin-bottom: 5px;
+    }
+
+    /* 新着強調表示 */
+    .new-badge {
+        display: inline-block;
+        background-color: #dc3545;
+        color: white;
+        font-size: 10px;
+        font-weight: bold;
+        padding: 2px 7px;
+        border-radius: 10px;
+        margin-right: 5px;
+        vertical-align: middle;
+        border: 1px solid #fff;
+    }
+    .new-row-highlight {
+        background-color: #fff3cd !important;
+    }
+    /* 共有テキスト更新強調エフェクト (静的) */
+    .text-updated {
+        border: 2px solid #dc3545 !important;
+        box-shadow: 0 0 8px rgba(220, 53, 69, 0.5) !important;
+    }
+    /* ユーザー選択フローティングメニュー */
+    #user-select-menu {
+        position: absolute;
+        z-index: 10000;
+        background: white;
+        border: 1px solid #3498db;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        border-radius: 4px;
+        padding: 5px 0;
+        min-width: 120px;
+        max-height: 300px;
+        overflow-y: auto;
+    }
+    .user-select-item {
+        padding: 5px 15px;
+        cursor: pointer;
+        font-size: 12px;
+        color: #333;
+    }
+    .user-select-item:hover {
+        background-color: #3498db;
+        color: white;
+    }
+    .dragging-item {
+        opacity: 0.6;
+        cursor: ew-resize !important;
+    }
+
+    /* ログインダイアログ */
+    .modal-overlay {
+        display: none;
+        position: fixed;
+        top: 0; left: 0; right: 0; bottom: 0;
+        background-color: rgba(0,0,0,0.5);
+        z-index: 1000;
+        justify-content: center;
+        align-items: center;
+    }
+    .modal-content {
+        background-color: white;
+        padding: 20px 30px;
+        border-radius: 5px;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        width: 320px;
+        text-align: center;
+    }
+    .modal-content input {
+        width: 90%;
+        padding: 6px;
+        margin: 5px 0 15px 0;
+        border: 1px solid #ccc;
+        border-radius: 3px;
+    }
+    /* 追加: 設定病棟ボタン用スタイル */
+    .ward-setting-btn {
+        display: inline-block;
+        padding: 5px 12px;
+        margin: 3px;
+        border: 1px solid #ccc;
+        background-color: #fff;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 13px;
+        color: #333;
+    }
+    .ward-setting-btn:hover:not([disabled]) {
+        background-color: #f0f0f0;
+    }
+    .ward-setting-btn.selected {
+        background-color: #f39c12;
+        color: #fff;
+        border-color: #e67e22;
+        font-weight: bold;
+    }
+    .ward-setting-btn[disabled] {
+        cursor: not-allowed;
+        opacity: 0.6;
+    }
+    /* --- 薬歴ツール用スタイル --- */
+    .yr-container { background: white; padding: 15px; position: relative; }
+    .yr-btn { display: inline-block; font-weight: bold; text-align: center; cursor: pointer; border: 1px solid transparent; padding: 0.25rem 0.75rem; font-size: 0.95rem; border-radius: 0.25rem; transition: all 0.15s; text-decoration: none;}
+    .yr-btn-primary { color: #fff; background-color: #0d6efd; border-color: #0d6efd; }
+    .yr-btn-primary:hover { background-color: #0b5ed7; }
+    .yr-btn-success { color: #fff; background-color: #198754; border-color: #198754; }
+    .yr-btn-success:hover { background-color: #157347; }
+    .yr-btn-secondary { color: #fff; background-color: #6c757d; border-color: #6c757d; }
+    .yr-btn-secondary:hover { background-color: #5c636a; }
+    .yr-btn-outline-secondary { color: #6c757d; border: 1px solid #6c757d; background: white; padding: 0.2rem 0.5rem; font-size: 0.85rem;}
+    .yr-btn-outline-secondary:hover { color: #fff; background-color: #6c757d; }
+    .yr-btn-danger-sm { color: #fff; background-color: #dc3545; border: none; border-radius: 3px; cursor: pointer; padding: 2px 6px; font-weight: bold; font-size: 0.8rem; }
+    .yr-btn-danger-sm:hover { background-color: #bb2d3b; }
+    .yr-btn-success-sm { color: #fff; background-color: #198754; border: none; border-radius: 3px; cursor: pointer; padding: 2px 6px; font-weight: bold; font-size: 0.8rem; }
+    .yr-btn-success-sm:hover { background-color: #157347; }
+    .yr-form-control { display: block; width: 100%; padding: 0.25rem 0.5rem; font-size: 0.95rem; border: 1px solid #ced4da; border-radius: 0.25rem; box-sizing:border-box; }
+    .yr-form-select { padding: 0.15rem 1.5rem 0.15rem 0.5rem; font-size: 0.85rem; border: 1px solid #ced4da; border-radius: 0.25rem; cursor: pointer; background-color: #fff; }
+    textarea.yr-form-control { resize: vertical; min-height: 250px; font-family: monospace; font-size: 0.9rem; white-space: pre; overflow-wrap: normal; overflow-x: scroll;}
+    .yr-alert-info { color: #055160; background-color: #cff4fc; border: 1px solid #b6effb; padding: 0.75rem; border-radius: 0.25rem; margin-bottom: 1rem; font-size: 0.9rem;}
+    .yr-sticky-tabs { margin-bottom: 15px; border-bottom: 1px solid #dee2e6; }
+    .yr-nav-tabs { display: flex; list-style: none; padding-left: 0; margin-bottom: 0; }
+    .yr-nav-link { display: block; padding: 0.5rem 1.2rem; text-decoration: none; background-color: #e9ecef; border: 1px solid #dee2e6; margin-right: 4px; color: #555; font-weight: bold; border-top-left-radius: 0.4rem; border-top-right-radius: 0.4rem; cursor: pointer; font-size: 13px !important; margin-bottom:-1px;}
+    .yr-nav-link:hover { background-color: #dde0e3; }
+    .yr-nav-link.yr-active { color: #0d6efd !important; background-color: #fff !important; border-bottom-color: #fff !important; }
+    .yr-nav-link-result { background-color: #e3f2fd; border-color: #bbdefb; color: #0d6efd; }
+    .yr-tab-pane { display: none; }
+    .yr-tab-pane.yr-show { display: block; }
+    .yr-table { width: 100%; margin-bottom: 1rem; border-collapse: collapse; font-size: 13px; }
+    .yr-table th, .yr-table td { border: 1px solid #a0a0a0; padding: 4px 6px; vertical-align: middle; line-height: 1.2; box-sizing:border-box; }
+    .yr-table th { background-color: #f0f0f0; color: #333; text-align: center; white-space: nowrap; border-bottom: 2px solid #808080; }
+    .yr-cat-header { display: flex; justify-content: space-between; align-items: center; width: 100%; padding: 2px 5px; }
+    .yr-cat-title { font-weight: bold; font-size: 14px; }
+    .yr-row-regular td { background-color: #f8f9fa !important; color: #333; }
+    .yr-row-brought-in td { background-color: #e9ecef !important; color: #333; }
+    .yr-row-iv td { background-color: #ddebf7 !important; color: #055160; }
+    .yr-editable-cell { white-space: nowrap; overflow-x: auto; border: 1px solid transparent; background-color: transparent; padding: 3px 5px; outline: none; width: 100%; display: block; box-sizing:border-box; }
+    .yr-editable-cell:hover { border: 1px dashed #ccc; background-color: #fafafa; cursor: text; }
+    .yr-editable-cell:focus { background-color: #fff; border: 2px solid #0d6efd; box-shadow: inset 0 1px 2px rgba(0,0,0,0.1); }
+    .yr-split-pane { display: flex; gap: 20px; height: 600px; }
+    .yr-pane-half { flex: 1; display: flex; flex-direction: column; width:45%; }
+    .yr-pane-header { font-weight: bold; margin-bottom: 5px; display: flex; justify-content: space-between; align-items: center; }
+    .yr-pane-textarea { flex-grow: 1; resize: none; font-size: 14px; line-height: 1.4; padding: 10px; border: 1px solid #ccc; border-radius: 4px; font-family: "MS Gothic", monospace; white-space: pre; box-sizing:border-box;}
+    .yr-setting-box { background: #fff; border: 1px solid #dee2e6; border-radius: 6px; padding: 20px; margin-bottom: 20px; }
+    .yr-setting-item { display: flex; align-items: center; justify-content: space-between; padding: 15px 0; border-bottom: 1px dashed #eee; }
+    .yr-setting-item:last-child { border-bottom: none; }
+    .yr-setting-label { font-weight: bold; font-size: 1rem; }
+    .yr-setting-desc { font-size: 0.85rem; color: #666; margin-top: 4px; line-height: 1.4; }
+    .yr-toggle-switch { position: relative; display: inline-block; width: 50px; height: 24px; flex-shrink: 0; margin-left: 15px;}
+    .yr-toggle-switch input { opacity: 0; width: 0; height: 0; }
+    .yr-slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #ccc; transition: .3s; border-radius: 24px; }
+    .yr-slider:before { position: absolute; content: ""; height: 18px; width: 18px; left: 3px; bottom: 3px; background-color: white; transition: .3s; border-radius: 50%; }
+    .yr-toggle-switch input:checked + .yr-slider { background-color: #0d6efd; }
+    .yr-toggle-switch input:checked + .yr-slider:before { left: 29px; }
+    .yr-radio-group { display: flex; flex-direction: column; gap: 8px; margin-left: 15px; flex-shrink: 0; }
+    .yr-radio-label { cursor: pointer; font-size: 0.95rem; display: flex; align-items: center; gap: 6px; font-weight: normal; margin: 0; }
+    .yr-d-flex { display: flex; }
+    .yr-gap-3 { gap: 1rem; }
+    .yr-align-items-end { align-items: flex-end; }
+    .yr-mt-3 { margin-top: 1rem; }
+    .yr-mb-3 { margin-bottom: 1rem; }
+    .yr-text-center { text-align: center; }
+    .yr-text-muted { color: #6c757d; }
+    .yr-small { font-size: 0.85rem; }
+    .yr-modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.6); z-index: 10000; align-items: center; justify-content: center; }
+    .yr-modal-content { background-color: white; width: 85%; max-width: 900px; height: 85vh; max-height: 800px; border-radius: 8px; display: flex; flex-direction: column; box-shadow: 0 10px 25px rgba(0,0,0,0.3); }
+    .yr-modal-header { padding: 15px 20px; border-bottom: 1px solid #dee2e6; display: flex; justify-content: space-between; align-items: center; background-color: #f8f9fa; border-top-left-radius: 8px; border-top-right-radius: 8px; }
+    .yr-modal-body { padding: 20px; overflow-y: auto; flex-grow: 1; background-color: #f4f6f9; }
+    .yr-modal-close { cursor: pointer; font-size: 1.5rem; font-weight: bold; border: none; background: transparent; color: #555; line-height: 1; }
+    .yr-history-item { background: white; border: 1px solid #ccc; border-radius: 6px; padding: 15px; margin-bottom: 15px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+    .yr-history-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; border-bottom: 1px dashed #eee; padding-bottom: 8px; }
+    .yr-history-time { font-weight: bold; color: #0d6efd; font-size: 1.1rem; }
+    .yr-history-textarea { width: 100%; height: 120px; resize: vertical; font-family: monospace; font-size: 0.85rem; padding: 10px; background-color: #fdfdfd; border: 1px solid #e0e0e0; border-radius: 4px; line-height: 1.4; box-sizing:border-box;}
+    
+    /* ノート用スタイル */
+    .note-item { padding: 8px 10px; border-bottom: 1px solid #eee; cursor: pointer; display: flex; flex-direction: column; }
+    .note-item:hover { background-color: #e9ecef; }
+    .note-item.active { background-color: #3498db; color: white; }
+    .note-item-title { font-weight: bold; font-size: 13px; margin-bottom: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .note-item-meta { font-size: 10px; opacity: 0.8; }
+    
+    /* 印刷用スタイル */
+    @media print {
+        @page { margin: 0; }
+        .header, .tabs, .sub-tabs, button.btn {
+            display: none !important;
+        }
+        .fixed-top-wrap { display: none !important; }
+        .container { padding: 0 !important; margin: 0 !important; max-width: 100%; width: 100%; border: none; box-shadow: none; }
+        .tab-content { border: none; box-shadow: none; padding: 0; min-height: auto; }
+        #tab-todo, #tab-history, #tab-settings, #tab-yakureki, #tab-kartelink { display: none !important; }
+        #tab-patients { display: block !important; border: none; padding: 0; }
+        .hide-on-print { display: none !important; }
+        .sort-icon { display: none !important; }
+        table { font-size: 8px !important; width: 100%; margin: 0; padding: 0; border: 1px solid #000; border-collapse: collapse; table-layout: fixed; }
+        th, td { border: 1px solid #000; padding: 0 !important; word-wrap: break-word; line-height: 1.0 !important; }
+        textarea { border: none; resize: none; overflow: hidden; height: auto; background: transparent; color: #000; width: 100%; font-size: 9px !important; line-height: 1.0 !important; }
+        h2 { display: none !important; }
+        p { display: none !important; }
+        
+        /* 印刷時は列幅をさらに固定し、情報共有列を限界まで大きくとる */
+        #tbl-patients th:nth-child(1) { width: 45px !important; } /* ID */
+        #tbl-patients th:nth-child(2) { width: 65px !important; } /* 氏名 */
+        #tbl-patients th:nth-child(5) { width: 65px !important; } /* 主病名 */
+        #tbl-patients th:nth-child(6) { width: 35px !important; } /* 在院日 */
+        #tbl-patients th:nth-child(7) { width: 35px !important; } /* 介入状況 */
+        #tbl-patients th:nth-child(8) { width: 25px !important; } /* 処方 */
+        #tbl-patients th:nth-child(9) { width: 25px !important; } /* 強調マーク */
+        #tbl-patients th:nth-child(11) { width: 150px !important; } /* 更新履歴 */
+        /* 情報共有列(auto)が残り幅を最大限占める */
+        tr.highlight-row td { background-color: #fffde7 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        .status-cell { border: 1px solid #000; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    }
+    /* --- 全体フォントサイズ強制変更用クラス (薬歴ツール・インライン持参対応) --- */
+    /* 中サイズ */
+    body.font-medium, body.font-medium table, body.font-medium p, body.font-medium label,
+    body.font-medium .tab, body.font-medium .user-info, body.font-medium .tab-content, body.font-medium .sub-tab,
+    body.font-medium .yr-nav-link, body.font-medium .yr-table, body.font-medium .yr-setting-desc,
+    body.font-medium .yr-radio-label, body.font-medium .yr-small, body.font-medium .yr-alert-info { font-size: 14px !important; }
+
+    body.font-medium .btn, body.font-medium .yr-btn, body.font-medium .yr-btn-outline-secondary, body.font-medium .yr-btn-danger-sm, body.font-medium .yr-btn-success-sm,
+    body.font-medium textarea, body.font-medium input, body.font-medium select, body.font-medium .yr-form-control, body.font-medium .yr-form-select { font-size: 14px !important; }
+
+    body.font-medium h3, body.font-medium h4, body.font-medium .yr-cat-title, body.font-medium .yr-setting-label { font-size: 16px !important; }
+
+    /* インラインスタイル(style="font-size:...")を強制上書き */
+    body.font-medium span[style*="font-size"], body.font-medium div[style*="font-size"], body.font-medium td[style*="font-size"] { font-size: 14px !important; }
+
+    /* 大サイズ */
+    body.font-large, body.font-large table, body.font-large p, body.font-large label,
+    body.font-large .tab, body.font-large .user-info, body.font-large .tab-content, body.font-large .sub-tab,
+    body.font-large .yr-nav-link, body.font-large .yr-table, body.font-large .yr-setting-desc,
+    body.font-large .yr-radio-label, body.font-large .yr-small, body.font-large .yr-alert-info { font-size: 16px !important; }
+
+    body.font-large .btn, body.font-large .yr-btn, body.font-large .yr-btn-outline-secondary, body.font-large .yr-btn-danger-sm, body.font-large .yr-btn-success-sm,
+    body.font-large textarea, body.font-large input, body.font-large select, body.font-large .yr-form-control, body.font-large .yr-form-select { font-size: 16px !important; }
+
+    body.font-large h3, body.font-large h4, body.font-large .yr-cat-title, body.font-large .yr-setting-label { font-size: 18px !important; }
+
+    /* インラインスタイル(style="font-size:...")を強制上書き */
+    body.font-large span[style*="font-size"], body.font-large div[style*="font-size"], body.font-large td[style*="font-size"] { font-size: 16px !important; }
+    /* 退院はオレンジのまま、タグは青に設定 */
+    .status-discharge { color: #fd7e14; } 
+    /* タグのミニバッジ化（コンパクト表示） */
+    .memo-tag { 
+        display: inline-block;
+        background-color: #e3f2fd; /* 淡い青色の背景 */
+        color: #0d47a1 !important; /* 濃い青色の文字 */
+        border: 1px solid #bbdefb; /* 薄い青の枠線 */
+        border-radius: 4px;        /* 角を丸くする */
+        padding: 1px 4px;          /* 文字の周りの余白 */
+        margin: 1px 3px 1px 0;     /* バッジ同士の隙間 */
+        font-size: 10px;           /* 少し小さめの文字 */
+        font-weight: bold;
+        line-height: 1.2;
+    }
+    
+    /* 画面の文字サイズ（中・大）に合わせてバッジも大きくする設定 */
+    body.font-medium .memo-tag { font-size: 12px; padding: 2px 5px; }
+    body.font-large .memo-tag  { font-size: 14px; padding: 2px 6px; }
