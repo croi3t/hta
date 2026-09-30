@@ -334,6 +334,7 @@ var DataManager = (function() {
                     if (!appData.patientMeta) appData.patientMeta = {};
                     if (!appData.patientMeta[nId]) appData.patientMeta[nId] = {};
                     appData.patientMeta[nId][field] = value;
+                    appData.patientMeta[nId].lastUpdateTime = txTs || new Date().getTime();
                 };
 
                                 var updateMetaAuthors = function(pid, author, tsVal) {
@@ -362,6 +363,7 @@ var DataManager = (function() {
                     }
                     if (meta.memoAuthors.length > 3) meta.memoAuthors = meta.memoAuthors.slice(0, 3);
                     meta.memoAuthor = authorText;
+                    meta.lastUpdateTime = tsVal || new Date().getTime();
                 };
 
                 var updateMetaDict = function(pid, dictField, key, value) {
@@ -371,6 +373,7 @@ var DataManager = (function() {
                     if (!appData.patientMeta[nId]) appData.patientMeta[nId] = {};
                     if (!appData.patientMeta[nId][dictField]) appData.patientMeta[nId][dictField] = {};
                     appData.patientMeta[nId][dictField][key] = value;
+                    appData.patientMeta[nId].lastUpdateTime = txTs || new Date().getTime();
                 };
 
                 var needsInject = false;
