@@ -169,7 +169,7 @@ var PatientLogic = {
                     
                     if (!alreadyInDischarged) {
                     
-                        var dischargedPatient = Object.assign({}, op);
+                        var dischargedPatient = JSON.parse(JSON.stringify(op));
                     
                         appData.patients["退院"].push(dischargedPatient);
                     
