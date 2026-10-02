@@ -3124,7 +3124,7 @@ function createNewCustomTab() {
     // ラジオボタンにIDを付与して安全に判定できるようにする
     html += '<div style="margin-bottom:12px; background:#f8f9fa; padding:8px; border-radius:4px; font-size:12px;">';
     html += '<b>🔍 検索するメモの範囲:</b><br>';
-    html += '<label style="cursor:pointer; margin-right:15px;"><input type="radio" name="rad-tag-scope" id="rad-scope-all" value="all" checked> 全員の共有メモ</label>';
+    html += '<label style="cursor:pointer; margin-right:15px;"><input type="radio" name="rad-tag-scope" id="rad-scope-all" value="all" checked> すべてのメモ(共有+個人)</label>';
     html += '<label style="cursor:pointer;"><input type="radio" name="rad-tag-scope" id="rad-scope-personal" value="personal"> 自分の個人メモ</label>';
     html += '</div>';
     
