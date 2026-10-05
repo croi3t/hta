@@ -1320,19 +1320,42 @@ function fetchAllActiveWardsData(callback, silent) {
  */
 function filterPatientTable() {
     var input = document.getElementById("ipt-patient-search");
-    if (!input) return;
-    var filter = input.value.toLowerCase();
+    var filter = input ? input.value.toLowerCase() : "";
+    var sel = document.getElementById("sel-update-filter");
+    var updateFilter = sel ? sel.value : "";
     var tbody = document.getElementById("tbody-patients");
     if (!tbody) return;
     var tr = tbody.getElementsByTagName("tr");
+    
+    var now = new Date().getTime();
 
     for (var i = 0; i < tr.length; i++) {
         var row = tr[i];
-        // データなしメッセージなどを判定するためのセル数チェック
         if (row.cells.length < 5) continue; 
         
         var text = (row.textContent || row.innerText || "").toLowerCase();
-        if (text.indexOf(filter) > -1) {
+        var matchSearch = (text.indexOf(filter) > -1);
+        
+        var matchUpdate = true;
+        if (updateFilter === "other") {
+            matchUpdate = (row.getAttribute("data-updated-by-other") === "true");
+        } else if (updateFilter === "3h" || updateFilter === "24h") {
+            var tsStr = row.getAttribute("data-last-update-time");
+            if (!tsStr) {
+                matchUpdate = false;
+            } else {
+                var ts = parseInt(tsStr, 10);
+                if (!isNaN(ts)) {
+                    var diffH = (now - ts) / (1000 * 60 * 60);
+                    if (updateFilter === "3h" && diffH > 3) matchUpdate = false;
+                    if (updateFilter === "24h" && diffH > 24) matchUpdate = false;
+                } else {
+                    matchUpdate = false;
+                }
+            }
+        }
+        
+        if (matchSearch && matchUpdate) {
             row.style.display = "";
         } else {
             row.style.display = "none";
@@ -2900,4 +2923,3 @@ function removeClass(el, className) {
     el.className = updated.replace(/^\s+|\s+$/g, "");
 }
 // --------------------------------
-
