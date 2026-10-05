@@ -17,6 +17,7 @@ if exist "%SRC_DIR%%HTA_NAME%" (
     rem 変更があったファイルのみコピーします (/D /Y)
     xcopy /d /y "%SRC_DIR%%HTA_NAME%" "%DEST_DIR%\" >nul
     xcopy /d /y /e /i "%SRC_DIR%js" "%DEST_DIR%\js" >nul
+    xcopy /d /y /e /i "%SRC_DIR%css" "%DEST_DIR%\css" >nul
     echo [完了] 最新版を一時フォルダに同期しました。
 ) else (
     if not exist "%DEST_DIR%\%HTA_NAME%" (
