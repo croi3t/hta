@@ -1337,22 +1337,27 @@ function filterPatientTable() {
         var matchSearch = (text.indexOf(filter) > -1);
         
         var matchUpdate = true;
-        if (updateFilter === "other") {
-            matchUpdate = (row.getAttribute("data-updated-by-other") === "true");
-        } else if (updateFilter === "3h" || updateFilter === "24h") {
-            var tsStr = row.getAttribute("data-last-update-time");
-            if (!tsStr) {
-                matchUpdate = false;
-            } else {
-                var ts = parseInt(tsStr, 10);
-                if (!isNaN(ts)) {
-                    var diffH = (now - ts) / (1000 * 60 * 60);
-                    if (updateFilter === "3h" && diffH > 3) matchUpdate = false;
-                    if (updateFilter === "24h" && diffH > 24) matchUpdate = false;
-                } else {
-                    matchUpdate = false;
-                }
+        
+        var isOther = (row.getAttribute("data-updated-by-other") === "true");
+        var tsStr = row.getAttribute("data-last-update-time");
+        var diffH = -1;
+        if (tsStr) {
+            var ts = parseInt(tsStr, 10);
+            if (!isNaN(ts)) {
+                diffH = (now - ts) / (1000 * 60 * 60);
             }
+        }
+        
+        if (updateFilter === "other") {
+            matchUpdate = isOther;
+        } else if (updateFilter === "3h") {
+            matchUpdate = (diffH >= 0 && diffH <= 3);
+        } else if (updateFilter === "24h") {
+            matchUpdate = (diffH >= 0 && diffH <= 24);
+        } else if (updateFilter === "other_3h") {
+            matchUpdate = isOther && (diffH >= 0 && diffH <= 3);
+        } else if (updateFilter === "other_24h") {
+            matchUpdate = isOther && (diffH >= 0 && diffH <= 24);
         }
         
         if (matchSearch && matchUpdate) {
