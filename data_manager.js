@@ -334,7 +334,7 @@ var DataManager = (function() {
                     if (!appData.patientMeta) appData.patientMeta = {};
                     if (!appData.patientMeta[nId]) appData.patientMeta[nId] = {};
                     appData.patientMeta[nId][field] = value;
-                    appData.patientMeta[nId].lastUpdateTime = txTs || new Date().getTime();
+                    appData.patientMeta[nId].lastUpdateTime = txTs || new Date().getTime();\n                    if (uName) appData.patientMeta[nId].lastUpdateAuthor = uName;
                 };
 
                                 var updateMetaAuthors = function(pid, author, tsVal) {
@@ -363,7 +363,7 @@ var DataManager = (function() {
                     }
                     if (meta.memoAuthors.length > 3) meta.memoAuthors = meta.memoAuthors.slice(0, 3);
                     meta.memoAuthor = authorText;
-                    meta.lastUpdateTime = tsVal || new Date().getTime();
+                    meta.lastUpdateTime = tsVal || new Date().getTime();\n                    if (uName) meta.lastUpdateAuthor = uName;
                 };
 
                 var updateMetaDict = function(pid, dictField, key, value) {
@@ -373,7 +373,7 @@ var DataManager = (function() {
                     if (!appData.patientMeta[nId]) appData.patientMeta[nId] = {};
                     if (!appData.patientMeta[nId][dictField]) appData.patientMeta[nId][dictField] = {};
                     appData.patientMeta[nId][dictField][key] = value;
-                    appData.patientMeta[nId].lastUpdateTime = txTs || new Date().getTime();
+                    appData.patientMeta[nId].lastUpdateTime = txTs || new Date().getTime();\n                    if (uName) appData.patientMeta[nId].lastUpdateAuthor = uName;
                 };
 
                 var needsInject = false;

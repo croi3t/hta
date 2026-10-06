@@ -27,7 +27,7 @@ var PatientLogic = {
                 if (m.bloodDetail) p.bloodDetail = m.bloodDetail;
                 if (m.chkPrescription !== undefined) p.chkPrescription = m.chkPrescription;
                   if (m.personalMemos) p.personalMemos = m.personalMemos;
-                  if (m.lastUpdateTime) p.lastUpdateTime = m.lastUpdateTime;
+                  if (m.lastUpdateTime) p.lastUpdateTime = m.lastUpdateTime;\n                        if (m.lastUpdateAuthor) p.lastUpdateAuthor = m.lastUpdateAuthor;
                   
                   if (m.surgeryDate !== undefined) p.surgeryDate = m.surgeryDate;
                   if (m.surgeryDisease !== undefined) p.surgeryDisease = m.surgeryDisease;
@@ -36,7 +36,7 @@ var PatientLogic = {
                   if (m.surgeryHasEpi !== undefined) p.surgeryHasEpi = m.surgeryHasEpi;
                   if (m.surgeryLixiana !== undefined) p.surgeryLixiana = m.surgeryLixiana;
                 if (m.personalMemos) p.personalMemos = m.personalMemos;
-                  if (m.lastUpdateTime) p.lastUpdateTime = m.lastUpdateTime;
+                  if (m.lastUpdateTime) p.lastUpdateTime = m.lastUpdateTime;\n                        if (m.lastUpdateAuthor) p.lastUpdateAuthor = m.lastUpdateAuthor;
             }
         }
     },

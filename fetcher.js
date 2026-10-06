@@ -407,9 +407,11 @@ function renderPatients() {
 
         var rowHtmlArr = [];
         var otherUpdatedAttr = "";
-        if (p.memoAuthors && p.memoAuthors.length > 0 && p.memoAuthors[0].indexOf(currentUserName) !== 0) {
-            otherUpdatedAttr = ' data-updated-by-other="true"';
-        }
+        if (p.lastUpdateAuthor && p.lastUpdateAuthor !== currentUserName) {
+    otherUpdatedAttr = ' data-updated-by-other="true"';
+} else if (!p.lastUpdateAuthor && p.memoAuthors && p.memoAuthors.length > 0 && p.memoAuthors[0].indexOf(currentUserName) !== 0) {
+    otherUpdatedAttr = ' data-updated-by-other="true"';
+}
         
         var updateTimeAttr = p.lastUpdateTime ? ' data-last-update-time="' + p.lastUpdateTime + '"' : '';
         rowHtmlArr.push('<tr id="tr-patient-' + escapeHtml(p.id) + '"' + otherUpdatedAttr + updateTimeAttr + '>');
