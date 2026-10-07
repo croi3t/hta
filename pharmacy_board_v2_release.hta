@@ -1,4 +1,4 @@
-﻿﻿<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html>
 <head>
 <meta charset="UTF-8">
@@ -1385,7 +1385,7 @@ function generateAbbreviation() {}
 <!-- プログラムモジュールの読み込み -->
 <script>
 /* --- BUNDLED: js/data_manager.js --- */
-var DataManager = (function() {
+﻿var DataManager = (function() {
     var fso = null;
     var lastReplayTs = 0;
     var lastArchiveTs = 0;
@@ -2244,6 +2244,7 @@ var DataManager = (function() {
         }
     };
 })();
+
 
 
 
@@ -6761,7 +6762,7 @@ var SurgeryFetcher = {
 </script>
 <script>
 /* --- BUNDLED: js/patient_logic.js --- */
-// ==========================================
+﻿// ==========================================
 // Patient Logic
 // ==========================================
 
@@ -7023,6 +7024,7 @@ var PatientLogic = {
         }
     }
 };
+
 
 
 
@@ -7039,7 +7041,7 @@ var PatientLogic = {
 </script>
 <script>
 /* --- BUNDLED: js/patient_logic.js --- */
-// ==========================================
+﻿// ==========================================
 // Patient Logic
 // ==========================================
 
@@ -7301,6 +7303,7 @@ var PatientLogic = {
         }
     }
 };
+
 
 
 
@@ -12991,7 +12994,7 @@ function insertTagSuggest(event, tag) {
 </script>
 <script>
 /* --- BUNDLED: js/fetcher.js --- */
-function importFromExcel() {
+﻿function importFromExcel() {
     if (!isEditMode) {
         alert('編集モードでのみ利用できます。');
         return;
@@ -13485,18 +13488,18 @@ function renderPatients() {
         
         // 共有メモ
         rowHtmlArr.push('<div class="memo-wrap" style="position:relative; margin-bottom:0;">');
-        rowHtmlArr.push('<div class="memo-display" style="font-size:12px; padding:2px 4px; background:#f9f9f9; line-height:1.4; min-height:18px; white-space:pre-wrap; cursor:text; word-break:break-all;" onclick="if(isEditMode){this.style.display=\'none\'; this.nextElementSibling.style.display=\'block\'; this.nextElementSibling.focus(); this.nextElementSibling.style.height=\'auto\'; this.nextElementSibling.style.height=this.nextElementSibling.scrollHeight+\'px\';}">' + (displaySharedMemo || '<span style="color:#aaa;">（共有）メモ...</span>') + '</div>');
+        rowHtmlArr.push('<div class="memo-display" style="font-size:12px; padding:2px 4px; background:#f9f9f9; line-height:1.4; min-height:18px; white-space:pre-wrap; cursor:text; word-break:break-all;" onclick="if(isEditMode){this.style.display=\'none\'; if(!this.parentNode) return; var ta=this.parentNode.getElementsByTagName(\'textarea\')[0]; if(ta){ta.style.display=\'block\'; ta.focus(); ta.style.height=\'auto\'; ta.style.height=ta.scrollHeight+\'px\';}}">' + (displaySharedMemo || '<span style="color:#aaa;">（共有）メモ...</span>') + '</div>');
         var ta1 = '<textarea rows="1" ' + memoDisabled + ' ' + memoChangeShared;
-        var ta2 = ' placeholder="（共有）メモ..." style="display:none; min-height:18px; padding:2px 4px; font-size:12px; line-height:1.4; border:1px solid #3498db; background:#fff; width:100%; box-sizing:border-box;" onblur="this.style.display=\'none\'; this.previousElementSibling.style.display=\'block\'; this.previousElementSibling.innerHTML = escapeHtml(this.value || \'\').replace(/(#[^\\s　#]+)/g, \'<span class=\\\'memo-tag\\\'>$1</span>\') || \'<span style=\\\'color:#aaa;\\\'>（共有）メモ...</span>\';">';
+        var ta2 = ' placeholder="（共有）メモ..." style="display:none; min-height:18px; padding:2px 4px; font-size:12px; line-height:1.4; border:1px solid #3498db; background:#fff; width:100%; box-sizing:border-box;" onblur="this.style.display=\'none\'; if(!this.parentNode) return; var d=this.parentNode.getElementsByTagName(\'div\')[0]; if(d){d.style.display=\'block\'; d.innerHTML = escapeHtml(this.value || \'\').replace(/(#[^\\s　#]+)/g, \'<span class=\\\'memo-tag\\\'>$1</span>\') || \'<span style=\\\'color:#aaa;\\\'>（共有）メモ...</span>\';}\">';
         rowHtmlArr.push(ta1 + ta2 + sharedMemoContent + '</textarea>');
         rowHtmlArr.push('</div>');
         
         // 個人メモ
         rowHtmlArr.push('<div class="memo-wrap hide-on-print" style="position:relative; margin-bottom:0;">');
-        rowHtmlArr.push('<div class="memo-display" style="font-size:12px; padding:2px 4px; background:#e1f5fe; line-height:1.4; min-height:18px; white-space:pre-wrap; cursor:text; word-break:break-all;" onclick="if(isEditMode){this.style.display=\'none\'; this.nextElementSibling.style.display=\'block\'; this.nextElementSibling.focus(); this.nextElementSibling.style.height=\'auto\'; this.nextElementSibling.style.height=this.nextElementSibling.scrollHeight+\'px\';}">' + (myDisplayMemo || '<span style="color:#aaa;">（個人）メモ...</span>') + '</div>');
+        rowHtmlArr.push('<div class="memo-display" style="font-size:12px; padding:2px 4px; background:#e1f5fe; line-height:1.4; min-height:18px; white-space:pre-wrap; cursor:text; word-break:break-all;" onclick="if(isEditMode){this.style.display=\'none\'; if(!this.parentNode) return; var ta=this.parentNode.getElementsByTagName(\'textarea\')[0]; if(ta){ta.style.display=\'block\'; ta.focus(); ta.style.height=\'auto\'; ta.style.height=ta.scrollHeight+\'px\';}}">' + (myDisplayMemo || '<span style="color:#aaa;">（個人）メモ...</span>') + '</div>');
         var ta3 = '<textarea rows="1" ' + memoDisabled + ' ' + memoChangePersonal;
         var ta4 = ' placeholder="（個人）メモ..." ';
-        var ta5 = 'style="display:none; min-height:18px; padding:2px 4px; font-size:12px; line-height:1.4; border:1px solid #03a9f4; background:#e1f5fe; width:100%; box-sizing:border-box;" onblur="this.style.display=\'none\'; this.previousElementSibling.style.display=\'block\'; this.previousElementSibling.innerHTML = escapeHtml(this.value || \'\').replace(/(#[^\\s　#]+)/g, \'<span class=\\\'memo-tag\\\'>$1</span>\') || \'<span style=\\\'color:#aaa;\\\'>（個人）メモ...</span>\';">';
+        var ta5 = 'style="display:none; min-height:18px; padding:2px 4px; font-size:12px; line-height:1.4; border:1px solid #03a9f4; background:#e1f5fe; width:100%; box-sizing:border-box;" onblur="this.style.display=\'none\'; if(!this.parentNode) return; var d=this.parentNode.getElementsByTagName(\'div\')[0]; if(d){d.style.display=\'block\'; d.innerHTML = escapeHtml(this.value || \'\').replace(/(#[^\\s　#]+)/g, \'<span class=\\\'memo-tag\\\'>$1</span>\') || \'<span style=\\\'color:#aaa;\\\'>（個人）メモ...</span>\';}\">';
         rowHtmlArr.push(ta3 + ta4 + ta5 + myMemoContent + '</textarea>');
         rowHtmlArr.push('</div>');
         rowHtmlArr.push('</td>');
@@ -15923,6 +15926,7 @@ function removeClass(el, className) {
     el.className = updated.replace(/^\s+|\s+$/g, "");
 }
 // --------------------------------
+
 </script>
 <script>
 </script>
@@ -15937,6 +15941,7 @@ function removeClass(el, className) {
 <div id="tag-suggest-box" style="position:absolute; background:#fff; border:1px solid #ccc; display:none; z-index:999; padding:5px;"></div>
 </body>
 </html>
+
 
 
 

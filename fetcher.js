@@ -407,9 +407,11 @@ function renderPatients() {
 
         var rowHtmlArr = [];
         var otherUpdatedAttr = "";
-        if (p.memoAuthors && p.memoAuthors.length > 0 && p.memoAuthors[0].indexOf(currentUserName) !== 0) {
-            otherUpdatedAttr = ' data-updated-by-other="true"';
-        }
+        if (p.lastUpdateAuthor && p.lastUpdateAuthor !== currentUserName) {
+    otherUpdatedAttr = ' data-updated-by-other="true"';
+} else if (!p.lastUpdateAuthor && p.memoAuthors && p.memoAuthors.length > 0 && p.memoAuthors[0].indexOf(currentUserName) !== 0) {
+    otherUpdatedAttr = ' data-updated-by-other="true"';
+}
         
         var updateTimeAttr = p.lastUpdateTime ? ' data-last-update-time="' + p.lastUpdateTime + '"' : '';
         rowHtmlArr.push('<tr id="tr-patient-' + escapeHtml(p.id) + '"' + otherUpdatedAttr + updateTimeAttr + '>');
@@ -490,18 +492,18 @@ function renderPatients() {
         
         // 共有メモ
         rowHtmlArr.push('<div class="memo-wrap" style="position:relative; margin-bottom:0;">');
-        rowHtmlArr.push('<div class="memo-display" style="font-size:12px; padding:2px 4px; background:#f9f9f9; line-height:1.4; min-height:18px; white-space:pre-wrap; cursor:text; word-break:break-all;" onclick="if(isEditMode){this.style.display=\'none\'; this.nextSibling.style.display=\'block\'; this.nextSibling.focus(); this.nextSibling.style.height=\'auto\'; this.nextSibling.style.height=this.nextSibling.scrollHeight+\'px\';}">' + (displaySharedMemo || '<span style="color:#aaa;">（共有）メモ...</span>') + '</div>');
+        rowHtmlArr.push('<div class="memo-display" style="font-size:12px; padding:2px 4px; background:#f9f9f9; line-height:1.4; min-height:18px; white-space:pre-wrap; cursor:text; word-break:break-all;" onclick="if(isEditMode){this.style.display=\'none\'; if(!this.parentNode) return; var ta=this.parentNode.getElementsByTagName(\'textarea\')[0]; if(ta){ta.style.display=\'block\'; ta.focus(); ta.style.height=\'auto\'; ta.style.height=ta.scrollHeight+\'px\';}}">' + (displaySharedMemo || '<span style="color:#aaa;">（共有）メモ...</span>') + '</div>');
         var ta1 = '<textarea rows="1" ' + memoDisabled + ' ' + memoChangeShared;
-        var ta2 = ' placeholder="（共有）メモ..." style="display:none; min-height:18px; padding:2px 4px; font-size:12px; line-height:1.4; border:1px solid #3498db; background:#fff; width:100%; box-sizing:border-box;" onblur="this.style.display=\'none\'; this.previousSibling.style.display=\'block\'; this.previousSibling.innerHTML = escapeHtml(this.value || \'\').replace(/(#[^\\s　#]+)/g, \'<span class=\\\'memo-tag\\\'>$1</span>\') || \'<span style=\\\'color:#aaa;\\\'>（共有）メモ...</span>\';">';
+        var ta2 = ' placeholder="（共有）メモ..." style="display:none; min-height:18px; padding:2px 4px; font-size:12px; line-height:1.4; border:1px solid #3498db; background:#fff; width:100%; box-sizing:border-box;" onblur="this.style.display=\'none\'; if(!this.parentNode) return; var d=this.parentNode.getElementsByTagName(\'div\')[0]; if(d){d.style.display=\'block\'; d.innerHTML = escapeHtml(this.value || \'\').replace(/(#[^\\s　#]+)/g, \'<span class=\\\'memo-tag\\\'>$1</span>\') || \'<span style=\\\'color:#aaa;\\\'>（共有）メモ...</span>\';}\">';
         rowHtmlArr.push(ta1 + ta2 + sharedMemoContent + '</textarea>');
         rowHtmlArr.push('</div>');
         
         // 個人メモ
         rowHtmlArr.push('<div class="memo-wrap hide-on-print" style="position:relative; margin-bottom:0;">');
-        rowHtmlArr.push('<div class="memo-display" style="font-size:12px; padding:2px 4px; background:#e1f5fe; line-height:1.4; min-height:18px; white-space:pre-wrap; cursor:text; word-break:break-all;" onclick="if(isEditMode){this.style.display=\'none\'; this.nextSibling.style.display=\'block\'; this.nextSibling.focus(); this.nextSibling.style.height=\'auto\'; this.nextSibling.style.height=this.nextSibling.scrollHeight+\'px\';}">' + (myDisplayMemo || '<span style="color:#aaa;">（個人）メモ...</span>') + '</div>');
+        rowHtmlArr.push('<div class="memo-display" style="font-size:12px; padding:2px 4px; background:#e1f5fe; line-height:1.4; min-height:18px; white-space:pre-wrap; cursor:text; word-break:break-all;" onclick="if(isEditMode){this.style.display=\'none\'; if(!this.parentNode) return; var ta=this.parentNode.getElementsByTagName(\'textarea\')[0]; if(ta){ta.style.display=\'block\'; ta.focus(); ta.style.height=\'auto\'; ta.style.height=ta.scrollHeight+\'px\';}}">' + (myDisplayMemo || '<span style="color:#aaa;">（個人）メモ...</span>') + '</div>');
         var ta3 = '<textarea rows="1" ' + memoDisabled + ' ' + memoChangePersonal;
         var ta4 = ' placeholder="（個人）メモ..." ';
-        var ta5 = 'style="display:none; min-height:18px; padding:2px 4px; font-size:12px; line-height:1.4; border:1px solid #03a9f4; background:#e1f5fe; width:100%; box-sizing:border-box;" onblur="this.style.display=\'none\'; this.previousSibling.style.display=\'block\'; this.previousSibling.innerHTML = escapeHtml(this.value || \'\').replace(/(#[^\\s　#]+)/g, \'<span class=\\\'memo-tag\\\'>$1</span>\') || \'<span style=\\\'color:#aaa;\\\'>（個人）メモ...</span>\';">';
+        var ta5 = 'style="display:none; min-height:18px; padding:2px 4px; font-size:12px; line-height:1.4; border:1px solid #03a9f4; background:#e1f5fe; width:100%; box-sizing:border-box;" onblur="this.style.display=\'none\'; if(!this.parentNode) return; var d=this.parentNode.getElementsByTagName(\'div\')[0]; if(d){d.style.display=\'block\'; d.innerHTML = escapeHtml(this.value || \'\').replace(/(#[^\\s　#]+)/g, \'<span class=\\\'memo-tag\\\'>$1</span>\') || \'<span style=\\\'color:#aaa;\\\'>（個人）メモ...</span>\';}\">';
         rowHtmlArr.push(ta3 + ta4 + ta5 + myMemoContent + '</textarea>');
         rowHtmlArr.push('</div>');
         rowHtmlArr.push('</td>');
