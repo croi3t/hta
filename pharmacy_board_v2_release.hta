@@ -1503,15 +1503,16 @@ function generateAbbreviation() {}
                             <table class="yr-table" style="font-size:12px; margin-bottom:0;">
                                 <thead style="background:#f1f3f5;">
                                     <tr>
+                                        <th style="width:26px; text-align:center; padding:3px 2px;" title="ドラッグ＆ドロップで上下に並び替えできます">順</th>
                                         <th style="width:32px; text-align:center; padding:3px 2px;">選択</th>
                                         <th style="width:48px; text-align:center; padding:3px 2px;">区分</th>
-                                        <th style="width:44%; padding:3px 4px;">薬品名 (直接編集可)</th>
-                                        <th style="width:28%; padding:3px 4px;">使用期間 (直接編集可)</th>
+                                        <th style="width:42%; padding:3px 4px;">薬品名 (直接編集可)</th>
+                                        <th style="width:26%; padding:3px 4px;">使用期間 (直接編集可)</th>
                                         <th style="width:18%; padding:3px 4px;">備考</th>
                                     </tr>
                                 </thead>
                                 <tbody id="tbody-summary-inhosp-drugs">
-                                    <tr><td colspan="5" style="text-align:center; color:#999; padding:12px;">患者IDを入力して「カルテから情報収集」をクリックしてください</td></tr>
+                                    <tr><td colspan="6" style="text-align:center; color:#999; padding:12px;">患者IDを入力して「カルテから情報収集」をクリックしてください</td></tr>
                                 </tbody>
                             </table>
                         </div>
@@ -13240,22 +13241,13 @@ var summaryState = {
     activeIframeIds: []
 };
 
-// テキストエリア（②退院処方・③持参薬・⑤転記用テキスト）を行数に応じて自動伸長させ、コンテナ内スクロールを不要にする
+// テキストエリア（②退院処方・③持参薬・⑤転記用テキスト）を行数に応じて自動伸長（height="auto"による画面スクロール崩れを防止）
 function calcSummaryTextareaTargetHeight(el, minH) {
     if (!el) return minH || 200;
     var val = el.value || "";
     var lineCount = val ? val.replace(/\r\n/g, "\n").replace(/\r/g, "\n").split("\n").length : 1;
     var byLines = lineCount * 19 + 24;
-    var target = Math.max(minH || 200, byLines);
-    try {
-        if (el.offsetHeight > 0 || el.scrollHeight > 0) {
-            el.style.height = "auto";
-            if (el.scrollHeight && el.scrollHeight + 8 > target) {
-                target = el.scrollHeight + 8;
-            }
-        }
-    } catch(e) {}
-    return target;
+    return Math.max(minH || 200, byLines);
 }
 
 function autoResizeSummaryTextareas() {
@@ -13264,14 +13256,43 @@ function autoResizeSummaryTextareas() {
     if (dEl || bEl) {
         var hD = calcSummaryTextareaTargetHeight(dEl, 200);
         var hB = calcSummaryTextareaTargetHeight(bEl, 200);
-        var maxH23 = Math.max(200, hD, hB);
-        if (dEl) dEl.style.height = maxH23 + "px";
-        if (bEl) bEl.style.height = maxH23 + "px";
+        var maxH23 = Math.max(200, hD, hB) + "px";
+        if (dEl && dEl.style.height !== maxH23) dEl.style.height = maxH23;
+        if (bEl && bEl.style.height !== maxH23) bEl.style.height = maxH23;
     }
     var pEl = document.getElementById("txt-summary-combined-preview");
     if (pEl) {
-        var hP = calcSummaryTextareaTargetHeight(pEl, 260);
-        pEl.style.height = hP + "px";
+        var hP = calcSummaryTextareaTargetHeight(pEl, 260) + "px";
+        if (pEl.style.height !== hP) pEl.style.height = hP;
+    }
+}
+
+// サマリタブのスクロール位置を保持・復元するヘルパー（チェック外しや並び替え時の画面ジャンプを防止）
+function getSummaryScrollPositions() {
+    var docScroll = (window.pageYOffset !== undefined) ? window.pageYOffset :
+                    ((document.documentElement && document.documentElement.scrollTop !== undefined) ? document.documentElement.scrollTop :
+                    ((document.body && document.body.scrollTop !== undefined) ? document.body.scrollTop : 0));
+    var scEl = document.getElementById("yr-scroll-area");
+    var scScroll = scEl ? scEl.scrollTop : 0;
+    return { doc: docScroll, sc: scScroll };
+}
+
+function restoreSummaryScrollPositions(pos) {
+    if (!pos) return;
+    if (pos.sc !== undefined) {
+        var scEl = document.getElementById("yr-scroll-area");
+        if (scEl) scEl.scrollTop = pos.sc;
+    }
+    if (pos.doc !== undefined) {
+        if (window.scrollTo) {
+            window.scrollTo(0, pos.doc);
+        }
+        if (document.documentElement && document.documentElement.scrollTop !== undefined) {
+            document.documentElement.scrollTop = pos.doc;
+        }
+        if (document.body && document.body.scrollTop !== undefined) {
+            document.body.scrollTop = pos.doc;
+        }
     }
 }
 
@@ -13553,7 +13574,7 @@ function clearSummaryTab() {
     }
     var tbody = document.getElementById("tbody-summary-inhosp-drugs");
     if (tbody) {
-        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:#999; padding:12px;">患者IDを入力して「カルテから情報収集」をクリックしてください</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:#999; padding:12px;">患者IDを入力して「カルテから情報収集」をクリックしてください</td></tr>';
     }
     autoResizeSummaryTextareas();
 }
@@ -14936,23 +14957,158 @@ function getSummaryDrugRowStdLine(r) {
     return n + (p ? " " + p : "");
 }
 
+// ④ 薬剤一覧のバッジ表示を更新
+function updateSummaryInHospBadge() {
+    var badge = document.getElementById("summary-inhosp-count-badge");
+    if (!badge) return;
+    var rows = summaryState.inHospDrugRows || [];
+    var selectedCount = 0;
+    for (var i = 0; i < rows.length; i++) {
+        if (rows[i].checked) selectedCount++;
+    }
+    badge.innerHTML = '全 <b>' + rows.length + '</b> 剤中 <b style="color:#00838f;">' + selectedCount + '</b> 剤を選択中';
+}
+
+// チェックボックス操作時に対象行のDOMのみピンポイント更新（全再描画を回避してスクロールジャンプを完全防止）
+function updateSummaryInHospRowVisual(idx) {
+    var rows = summaryState.inHospDrugRows || [];
+    var r = rows[idx];
+    if (!r) return;
+    var tr = document.getElementById("sum-inhosp-tr-" + idx);
+    var chk = document.getElementById("sum-inhosp-chk-" + idx);
+    if (chk && chk.checked !== !!r.checked) chk.checked = !!r.checked;
+    if (tr) {
+        var rowBg = r.checked ? "#ffffff" : "#f8f9fa";
+        var rowColor = r.checked ? "#212529" : "#888888";
+        tr.style.background = rowBg;
+        tr.style.color = rowColor;
+        var inputs = tr.getElementsByTagName("input");
+        for (var k = 0; k < inputs.length; k++) {
+            if (inputs[k].type === "text") {
+                inputs[k].style.color = rowColor;
+                if (k === 0) inputs[k].style.fontWeight = r.checked ? "bold" : "normal";
+            }
+        }
+    }
+    updateSummaryInHospBadge();
+}
+
+// ドラッグ＆ドロップによる行並び替え用変数・ヘルパー
+var summaryDragSrcIndex = null;
+
+function reorderSummaryInHospRow(rows, srcIdx, targetIdx, isBelow) {
+    if (!rows || !rows[srcIdx] || !rows[targetIdx]) return;
+    if (srcIdx === targetIdx) return;
+
+    var item = rows.splice(srcIdx, 1)[0];
+    var dest = targetIdx;
+    if (srcIdx < targetIdx) {
+        dest = isBelow ? targetIdx : (targetIdx - 1);
+    } else {
+        dest = isBelow ? (targetIdx + 1) : targetIdx;
+    }
+    if (dest < 0) dest = 0;
+    if (dest > rows.length) dest = rows.length;
+    rows.splice(dest, 0, item);
+}
+
+function onSummaryInHospDragStart(idx, evt) {
+    var e = evt || window.event;
+    summaryDragSrcIndex = idx;
+    if (e.dataTransfer) {
+        e.dataTransfer.effectAllowed = "move";
+        try { e.dataTransfer.setData("text", "inhosp_drug_" + idx); } catch(ex) {}
+    }
+    var tr = document.getElementById("sum-inhosp-tr-" + idx);
+    if (tr) tr.style.opacity = "0.45";
+}
+
+function onSummaryInHospDragOver(idx, evt) {
+    var e = evt || window.event;
+    if (e.preventDefault) e.preventDefault();
+    if (e.dataTransfer) e.dataTransfer.dropEffect = "move";
+    var tr = document.getElementById("sum-inhosp-tr-" + idx);
+    if (tr && summaryDragSrcIndex !== null && summaryDragSrcIndex !== idx) {
+        var rect = (tr.getBoundingClientRect) ? tr.getBoundingClientRect() : null;
+        var isBelow = false;
+        if (rect && e.clientY) {
+            isBelow = (e.clientY > (rect.top + rect.height / 2));
+        }
+        if (isBelow) {
+            tr.style.borderBottom = "2px solid #00838f";
+            tr.style.borderTop = "";
+        } else {
+            tr.style.borderTop = "2px solid #00838f";
+            tr.style.borderBottom = "";
+        }
+    }
+    return false;
+}
+
+function onSummaryInHospDragLeave(idx, evt) {
+    var tr = document.getElementById("sum-inhosp-tr-" + idx);
+    if (tr) {
+        tr.style.borderTop = "";
+        tr.style.borderBottom = "";
+    }
+}
+
+function onSummaryInHospDrop(targetIdx, evt) {
+    var e = evt || window.event;
+    if (e.preventDefault) e.preventDefault();
+    if (e.stopPropagation) e.stopPropagation();
+    else if (window.event) window.event.cancelBubble = true;
+
+    var tr = document.getElementById("sum-inhosp-tr-" + targetIdx);
+    var isBelow = false;
+    if (tr) {
+        var rect = (tr.getBoundingClientRect) ? tr.getBoundingClientRect() : null;
+        if (rect && e.clientY) {
+            isBelow = (e.clientY > (rect.top + rect.height / 2));
+        }
+        tr.style.borderTop = "";
+        tr.style.borderBottom = "";
+    }
+
+    var srcIdx = summaryDragSrcIndex;
+    summaryDragSrcIndex = null;
+    if (srcIdx !== null && srcIdx !== undefined && srcIdx !== targetIdx) {
+        var scrollPos = getSummaryScrollPositions();
+        reorderSummaryInHospRow(summaryState.inHospDrugRows, srcIdx, targetIdx, isBelow);
+        renderSummaryInHospTable();
+        updateSummaryCombinedPreview("inhosp");
+        restoreSummaryScrollPositions(scrollPos);
+    }
+    return false;
+}
+
+function onSummaryInHospDragEnd(idx, evt) {
+    summaryDragSrcIndex = null;
+    var tbody = document.getElementById("tbody-summary-inhosp-drugs");
+    if (tbody) {
+        var trs = tbody.getElementsByTagName("tr");
+        for (var t = 0; t < trs.length; t++) {
+            trs[t].style.opacity = "1.0";
+            trs[t].style.borderTop = "";
+            trs[t].style.borderBottom = "";
+        }
+    }
+}
+
 function renderSummaryInHospTable() {
     var tbody = document.getElementById("tbody-summary-inhosp-drugs");
-    var badge = document.getElementById("summary-inhosp-count-badge");
     if (!tbody) return;
     var rows = summaryState.inHospDrugRows || [];
 
     if (rows.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:#999; padding:12px;">対象期間内の入院処方・退院処方・注射データはありません（「➕ 行追加」で手動追加も可能です）</td></tr>';
-        if (badge) badge.innerHTML = "(0件)";
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:#999; padding:12px;">対象期間内の入院処方・退院処方・注射データはありません（「➕ 行追加」で手動追加も可能です）</td></tr>';
+        updateSummaryInHospBadge();
         return;
     }
 
-    var selectedCount = 0;
     var html = "";
     for (var i = 0; i < rows.length; i++) {
         var r = rows[i];
-        if (r.checked) selectedCount++;
         var rowBg = r.checked ? "#ffffff" : "#f8f9fa";
         var rowColor = r.checked ? "#212529" : "#888888";
 
@@ -14963,21 +15119,40 @@ function renderSummaryInHospTable() {
         else if (r.category === "外用") { catBg = "#e0f2f1"; catFg = "#00695c"; }
         else if (r.category === "持参薬") { catBg = "#e8f5e9"; catFg = "#1b5e20"; }
 
-        html += '<tr id="sum-inhosp-tr-' + i + '" style="background:' + rowBg + '; color:' + rowColor + ';">';
+        html += '<tr id="sum-inhosp-tr-' + i + '" draggable="true" ' +
+                'ondragstart="onSummaryInHospDragStart(' + i + ', event)" ' +
+                'ondragover="onSummaryInHospDragOver(' + i + ', event)" ' +
+                'ondragleave="onSummaryInHospDragLeave(' + i + ', event)" ' +
+                'ondrop="onSummaryInHospDrop(' + i + ', event)" ' +
+                'ondragend="onSummaryInHospDragEnd(' + i + ', event)" ' +
+                'style="background:' + rowBg + '; color:' + rowColor + '; cursor:default;">';
+
+        // 1. ドラッグハンドル
+        html += '<td style="width:26px; text-align:center; vertical-align:middle; cursor:grab; user-select:none; color:#00838f; font-weight:bold; font-size:15px; padding:2px;" title="ドラッグして上下に並び替え">⋮⋮</td>';
+
+        // 2. 選択チェックボックス
         html += '<td style="text-align:center; vertical-align:middle; cursor:pointer; padding:2px;" onclick="toggleSummaryInHospRow(' + i + ', event)">' +
                 '<input type="checkbox" id="sum-inhosp-chk-' + i + '" ' + (r.checked ? 'checked' : '') + ' onclick="onSummaryInHospCheckChange(' + i + ', this, event)" style="cursor:pointer; width:14px; height:14px; margin:0;">' +
                 '</td>';
+
+        // 3. 区分バッジ
         html += '<td style="text-align:center; vertical-align:middle; cursor:pointer; padding:2px;" onclick="toggleSummaryInHospRow(' + i + ', event)">' +
                 '<span style="background:' + catBg + '; color:' + catFg + '; font-size:10px; font-weight:bold; padding:1px 5px; border-radius:3px;">' + escapeHtml(r.category || "内服") + '</span>' +
                 '</td>';
+
+        // 4. 薬品名（直接編集可・入力中はドラッグイベントを伝播させない）
         html += '<td style="vertical-align:middle; padding:2px 4px;">' +
-                '<input type="text" class="yr-form-control" style="width:100%; height:23px; padding:1px 5px; font-size:12px; color:' + rowColor + '; font-weight:' + (r.checked ? 'bold' : 'normal') + ';" ' +
+                '<input type="text" class="yr-form-control" draggable="false" onmousedown="if(event.stopPropagation)event.stopPropagation();else event.cancelBubble=true;" style="width:100%; height:23px; padding:1px 5px; font-size:12px; color:' + rowColor + '; font-weight:' + (r.checked ? 'bold' : 'normal') + ';" ' +
                 'value="' + escapeHtml(r.name) + '" oninput="onSummaryInHospNameEdit(' + i + ', this.value)" onchange="onSummaryInHospNameEdit(' + i + ', this.value)">' +
                 '</td>';
+
+        // 5. 使用期間（直接編集可）
         html += '<td style="vertical-align:middle; padding:2px 4px;">' +
-                '<input type="text" class="yr-form-control" style="width:100%; height:23px; padding:1px 5px; font-size:12px; color:' + rowColor + ';" ' +
+                '<input type="text" class="yr-form-control" draggable="false" onmousedown="if(event.stopPropagation)event.stopPropagation();else event.cancelBubble=true;" style="width:100%; height:23px; padding:1px 5px; font-size:12px; color:' + rowColor + ';" ' +
                 'value="' + escapeHtml(r.period) + '" placeholder="MM/DD～MM/DD / 頓用" oninput="onSummaryInHospPeriodEdit(' + i + ', this.value)" onchange="onSummaryInHospPeriodEdit(' + i + ', this.value)">' +
                 '</td>';
+
+        // 6. 備考
         html += '<td style="vertical-align:middle; padding:2px 4px; font-size:10px; color:' + (r.autoExcluded ? '#d81b60' : '#666') + ';">' +
                 escapeHtml(r.note || "") +
                 '</td>';
@@ -14985,9 +15160,7 @@ function renderSummaryInHospTable() {
     }
 
     tbody.innerHTML = html;
-    if (badge) {
-        badge.innerHTML = '全 <b>' + rows.length + '</b> 剤中 <b style="color:#00838f;">' + selectedCount + '</b> 剤を選択中';
-    }
+    updateSummaryInHospBadge();
 }
 
 function toggleSummaryInHospRow(idx, evt) {
@@ -14996,18 +15169,11 @@ function toggleSummaryInHospRow(idx, evt) {
     var rows = summaryState.inHospDrugRows || [];
     if (!rows[idx]) return;
     rows[idx].checked = !rows[idx].checked;
-    renderSummaryInHospTable();
-    updateSummaryCombinedPreview("inhosp");
+    updateSummaryInHospRowVisual(idx);
 
-    // 次回受診予定の再計算・反映（退院日以降で最も早い1件/科）
-    if (summaryState.saishinOrders && summaryState.saishinOrders.length > 0) {
-        var nextVisitText = calcSummaryNextVisitText(summaryState.saishinOrders, summaryState.admitEndDate);
-        var saishinEl = document.getElementById("ipt-summary-saishin");
-        if (saishinEl) {
-            saishinEl.value = nextVisitText;
-        }
-        updateSummaryCombinedPreview("saishin");
-    }
+    var scrollPos = getSummaryScrollPositions();
+    updateSummaryCombinedPreview("inhosp");
+    restoreSummaryScrollPositions(scrollPos);
 }
 
 function onSummaryInHospCheckChange(idx, chkEl, evt) {
@@ -15017,18 +15183,11 @@ function onSummaryInHospCheckChange(idx, chkEl, evt) {
     var rows = summaryState.inHospDrugRows || [];
     if (!rows[idx]) return;
     rows[idx].checked = !!chkEl.checked;
-    renderSummaryInHospTable();
-    updateSummaryCombinedPreview("inhosp");
+    updateSummaryInHospRowVisual(idx);
 
-    // 次回受診予定の再計算・反映（退院日以降で最も早い1件/科）
-    if (summaryState.saishinOrders && summaryState.saishinOrders.length > 0) {
-        var nextVisitText = calcSummaryNextVisitText(summaryState.saishinOrders, summaryState.admitEndDate);
-        var saishinEl = document.getElementById("ipt-summary-saishin");
-        if (saishinEl) {
-            saishinEl.value = nextVisitText;
-        }
-        updateSummaryCombinedPreview("saishin");
-    }
+    var scrollPos = getSummaryScrollPositions();
+    updateSummaryCombinedPreview("inhosp");
+    restoreSummaryScrollPositions(scrollPos);
 }
 
 function onSummaryInHospNameEdit(idx, val) {
@@ -15041,7 +15200,9 @@ function onSummaryInHospNameEdit(idx, val) {
         if (!summaryState.knownAutoDrugLines) summaryState.knownAutoDrugLines = {};
         summaryState.knownAutoDrugLines[newStd] = true;
     }
+    var scrollPos = getSummaryScrollPositions();
     updateSummaryCombinedPreview("inhosp");
+    restoreSummaryScrollPositions(scrollPos);
 }
 
 function onSummaryInHospPeriodEdit(idx, val) {
@@ -15054,12 +15215,15 @@ function onSummaryInHospPeriodEdit(idx, val) {
         if (!summaryState.knownAutoDrugLines) summaryState.knownAutoDrugLines = {};
         summaryState.knownAutoDrugLines[newStd] = true;
     }
+    var scrollPos = getSummaryScrollPositions();
     updateSummaryCombinedPreview("inhosp");
+    restoreSummaryScrollPositions(scrollPos);
 }
 
 function setSummaryInHospSelection(mode) {
     if (summaryState.isFetching) return;
     var rows = summaryState.inHospDrugRows || [];
+    var scrollPos = getSummaryScrollPositions();
     for (var i = 0; i < rows.length; i++) {
         if (mode === "all") {
             rows[i].checked = true;
@@ -15075,21 +15239,13 @@ function setSummaryInHospSelection(mode) {
     }
     renderSummaryInHospTable();
     updateSummaryCombinedPreview("inhosp");
-
-    // 次回受診予定の再計算・反映（退院日以降で最も早い1件/科）
-    if (summaryState.saishinOrders && summaryState.saishinOrders.length > 0) {
-        var nextVisitText = calcSummaryNextVisitText(summaryState.saishinOrders, summaryState.admitEndDate);
-        var saishinEl = document.getElementById("ipt-summary-saishin");
-        if (saishinEl) {
-            saishinEl.value = nextVisitText;
-        }
-        updateSummaryCombinedPreview("saishin");
-    }
+    restoreSummaryScrollPositions(scrollPos);
 }
 
 function addSummaryManualDrugRow() {
     if (summaryState.isFetching) return;
     if (!summaryState.inHospDrugRows) summaryState.inHospDrugRows = [];
+    var scrollPos = getSummaryScrollPositions();
     summaryState.inHospDrugRows.push({
         checked: true,
         category: "内服",
@@ -15103,16 +15259,7 @@ function addSummaryManualDrugRow() {
     });
     renderSummaryInHospTable();
     updateSummaryCombinedPreview("inhosp");
-
-    // 次回受診予定の再計算・反映（退院日以降で最も早い1件/科）
-    if (summaryState.saishinOrders && summaryState.saishinOrders.length > 0) {
-        var nextVisitText = calcSummaryNextVisitText(summaryState.saishinOrders, summaryState.admitEndDate);
-        var saishinEl = document.getElementById("ipt-summary-saishin");
-        if (saishinEl) {
-            saishinEl.value = nextVisitText;
-        }
-        updateSummaryCombinedPreview("saishin");
-    }
+    restoreSummaryScrollPositions(scrollPos);
 }
 
 // 入院中使用薬（選択分）の整形テキスト生成
