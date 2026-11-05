@@ -975,7 +975,7 @@ function generateAbbreviation() {}
                     <li><a class="yr-nav-link" onclick="yrSwitchTab('yr-tab-settings', this)">ツール設定</a></li>
                 </ul>
             </div>
-            <div id="yr-scroll-area" style="overflow-y:auto; max-height:calc(100vh - 170px); padding-top:6px;">
+            <div id="yr-scroll-area" style="padding-top:6px;">
             <div id="yr-main-controls" class="yr-d-flex yr-gap-3 yr-align-items-end yr-mb-3" style="background: #f8f9fa; padding: 8px 15px; border-radius: 4px; border: 1px solid #dee2e6;">
                 <div style="position:relative;">
                     <label style="font-weight: bold; font-size: 0.85rem; color: #d9534f;">📅 基準日</label>
@@ -1427,7 +1427,7 @@ function generateAbbreviation() {}
                                     <input type="checkbox" id="chk-summary-exclude-suspected" checked onchange="renderSummaryByomeiChips()"> 疑い病名を非表示
                                 </label>
                             </div>
-                            <div id="summary-byomei-chips" style="display:flex; flex-wrap:wrap; gap:4px; min-height:20px; max-height:58px; overflow-y:auto; align-items:center;">
+                            <div id="summary-byomei-chips" style="display:flex; flex-wrap:wrap; gap:4px; min-height:22px; align-items:center;">
                                 <span style="font-size:11px; color:#999;">（患者情報を収集すると有効病名が表示されます）</span>
                             </div>
                         </div>
@@ -1446,8 +1446,11 @@ function generateAbbreviation() {}
                             <span id="summary-brought-in-badge" style="font-size:11px; color:#666;"></span>
                             <span style="font-size:10px; color:#888;">(クリックで開閉)</span>
                         </div>
-                        <div style="display:flex; gap:6px;">
+                        <div style="display:flex; align-items:center; gap:6px;">
                             <button class="yr-btn yr-btn-success" style="font-size:11px; padding:1px 8px;" onclick="copySummarySection('discharge_rx')">📋 ②退院処方をコピー</button>
+                            <label style="font-size:11px; font-weight:bold; cursor:pointer; color:#2e7d32; background:#fff; border:1px dashed #66bb6a; padding:1px 6px; border-radius:3px; margin:0; display:inline-flex; align-items:center; gap:3px;" title="チェックを入れると③入院時持参薬の各Rpに 1) 2) ... のようにRp番号を付与します">
+                                <input type="checkbox" id="chk-summary-jisan-rp-num" onchange="reRenderSummaryBroughtInRx()"> ③にRp番号を付与
+                            </label>
                             <button class="yr-btn yr-btn-success" style="font-size:11px; padding:1px 8px;" onclick="copySummarySection('brought_in_rx')">📋 ③持参薬をコピー</button>
                         </div>
                     </div>
@@ -1455,17 +1458,17 @@ function generateAbbreviation() {}
                     <div id="summary-sec23-body" style="display:flex; justify-content:space-between; gap:8px; padding:6px 8px;">
                         <!-- 左枠: <退院処方> -->
                         <div style="width:49.5%; box-sizing:border-box;">
-                            <textarea id="txt-summary-discharge-rx" class="yr-form-control" style="width:100%; height:95px; min-height:60px; box-sizing:border-box; font-family:monospace; font-size:12px; white-space:pre; resize:vertical;" placeholder="退院処方（[退院]区分）が自動収集されます。未入力の場合は「なし」と表示されます。"></textarea>
+                            <textarea id="txt-summary-discharge-rx" class="yr-form-control" style="width:100%; height:200px; min-height:200px; line-height:1.45; box-sizing:border-box; font-family:monospace; font-size:12px; white-space:pre; overflow-y:hidden; overflow-x:auto; resize:vertical;" oninput="autoResizeSummaryTextareas()" onchange="autoResizeSummaryTextareas()" placeholder="退院処方（[退院]区分）が自動収集されます。未入力の場合は「なし」と表示されます。"></textarea>
                         </div>
                         <!-- 右枠: <入院時持参薬> -->
                         <div style="width:49.5%; box-sizing:border-box;">
-                            <textarea id="txt-summary-brought-in-rx" class="yr-form-control" style="width:100%; height:95px; min-height:60px; box-sizing:border-box; font-family:monospace; font-size:12px; white-space:pre; resize:vertical;" placeholder="【持参薬】（検認）が優先して自動収集されます。複数回入力されている場合は全て結合され、区切りが表示されます。"></textarea>
+                            <textarea id="txt-summary-brought-in-rx" class="yr-form-control" style="width:100%; height:200px; min-height:200px; line-height:1.45; box-sizing:border-box; font-family:monospace; font-size:12px; white-space:pre; overflow-y:hidden; overflow-x:auto; resize:vertical;" oninput="autoResizeSummaryTextareas()" onchange="autoResizeSummaryTextareas()" placeholder="【持参薬】（検認）が優先して自動収集されます。複数回入力されている場合は全て結合され、区切りが表示されます。"></textarea>
                         </div>
                     </div>
                 </div>
 
                 <!-- ④ 入院中に使用した薬剤一覧（左列 56%） ＆ ⑤ ＜特記事項・入院中薬剤＞転記用テキスト（右列 44%）の2カラム並列配置 -->
-                <div style="display:flex; justify-content:space-between; align-items:stretch; gap:8px;">
+                <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:8px;">
                     <!-- 左カラム: ④ 入院中に使用した薬剤一覧 -->
                     <div style="width:56%; border:1px solid #dee2e6; border-top:3px solid #4527a0; border-radius:4px; padding:6px 8px; background:#fff; box-sizing:border-box; display:flex; flex-direction:column;">
                         <div style="display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center; gap:4px; margin-bottom:4px;">
@@ -1477,6 +1480,7 @@ function generateAbbreviation() {}
                                 <button class="yr-btn yr-btn-outline-secondary" style="font-size:10px; padding:1px 6px;" onclick="setSummaryInHospSelection('all')">全選択</button>
                                 <button class="yr-btn yr-btn-outline-secondary" style="font-size:10px; padding:1px 6px;" onclick="setSummaryInHospSelection('none')">全解除</button>
                                 <button class="yr-btn yr-btn-outline-secondary" style="font-size:10px; padding:1px 6px;" onclick="setSummaryInHospSelection('default')" title="生食・維持輸液・単回検査薬などのチェックを外した初期状態に戻します">輸液等を除外</button>
+                                <button class="yr-btn yr-btn-outline-secondary" style="font-size:10px; padding:1px 6px; color:#856404; border-color:#d39e00; font-weight:bold;" onclick="setSummaryInHospSelection('exclude_tonyo')" title="頓用（頓服）薬剤のチェックを一括で外します">頓用を除外</button>
                                 <button class="yr-btn yr-btn-outline-secondary" style="font-size:10px; padding:1px 6px;" onclick="addSummaryManualDrugRow()">➕ 行追加</button>
                                 <button class="yr-btn yr-btn-success" style="font-size:10px; padding:2px 8px;" onclick="copySummarySection('inhosp')">📋 選択薬のみコピー</button>
                             </div>
@@ -1490,9 +1494,9 @@ function generateAbbreviation() {}
                             </label>
                         </div>
 
-                        <div style="height:310px; overflow-y:auto; border:1px solid #eee; flex-grow:1;">
+                        <div style="border:1px solid #eee;">
                             <table class="yr-table" style="font-size:12px; margin-bottom:0;">
-                                <thead style="position:sticky; top:0; background:#f1f3f5; z-index:1;">
+                                <thead style="background:#f1f3f5;">
                                     <tr>
                                         <th style="width:32px; text-align:center; padding:3px 2px;">選択</th>
                                         <th style="width:48px; text-align:center; padding:3px 2px;">区分</th>
@@ -1523,7 +1527,7 @@ function generateAbbreviation() {}
                                 <input type="checkbox" id="chk-summary-lock-combined"> 🔒 ⑤の自動反映をロック
                             </label>
                         </div>
-                        <textarea id="txt-summary-combined-preview" class="yr-form-control" style="width:100%; height:310px; min-height:200px; flex-grow:1; box-sizing:border-box; font-family:monospace; font-size:12px; line-height:1.4; white-space:pre; resize:vertical;" placeholder="主病名・併存疾患・手術日と術式・選択した入院中使用薬剤（期間付き）がここに整形されます。直接追記したコメントや特記事項も保持されます。"></textarea>
+                        <textarea id="txt-summary-combined-preview" class="yr-form-control" style="width:100%; height:260px; min-height:260px; box-sizing:border-box; font-family:monospace; font-size:12px; line-height:1.45; white-space:pre; overflow-y:hidden; overflow-x:auto; resize:vertical;" oninput="autoResizeSummaryTextareas()" onchange="autoResizeSummaryTextareas()" placeholder="主病名・併存疾患・手術日と術式・選択した入院中使用薬剤（期間付き）がここに整形されます。直接追記したコメントや特記事項も保持されます。"></textarea>
                     </div>
                 </div>
             </div>
@@ -10483,14 +10487,20 @@ function updateMyDisplayNameMain() {
 // ==========================================
         // 共通テキスト整理処理 (マクロ・薬剤調整加算 両用)
         // ==========================================
-        function processMacroText(rawInput) {
+        function processMacroText(rawInput, overrideAddNumber) {
             if (!rawInput) return "";
             var text = formatText(rawInput);
             
             text = text.replace(/([^\r\n])([ \t]*)(Rp\d+)/g, '$1\n$3');
             
-            var addNumEl = document.getElementById('set-add-number');
-            if (addNumEl && addNumEl.checked) {
+            var useAddNumber = false;
+            if (typeof overrideAddNumber === "boolean") {
+                useAddNumber = overrideAddNumber;
+            } else {
+                var addNumEl = document.getElementById('set-add-number');
+                useAddNumber = !!(addNumEl && addNumEl.checked);
+            }
+            if (useAddNumber) {
                 text = text.replace(/^[ \t]*Rp(\d+).*?[\r\n]+[ \t]*/gm, '$1) ');
             } else {
                 text = text.replace(/^[ \t]*.*Rp\d+.*?$[\r\n]*/gm, '');
@@ -13225,6 +13235,41 @@ var summaryState = {
     activeIframeIds: []
 };
 
+// テキストエリア（②退院処方・③持参薬・⑤転記用テキスト）を行数に応じて自動伸長させ、コンテナ内スクロールを不要にする
+function calcSummaryTextareaTargetHeight(el, minH) {
+    if (!el) return minH || 200;
+    var val = el.value || "";
+    var lineCount = val ? val.replace(/\r\n/g, "\n").replace(/\r/g, "\n").split("\n").length : 1;
+    var byLines = lineCount * 19 + 24;
+    var target = Math.max(minH || 200, byLines);
+    try {
+        if (el.offsetHeight > 0 || el.scrollHeight > 0) {
+            el.style.height = "auto";
+            if (el.scrollHeight && el.scrollHeight + 8 > target) {
+                target = el.scrollHeight + 8;
+            }
+        }
+    } catch(e) {}
+    return target;
+}
+
+function autoResizeSummaryTextareas() {
+    var dEl = document.getElementById("txt-summary-discharge-rx");
+    var bEl = document.getElementById("txt-summary-brought-in-rx");
+    if (dEl || bEl) {
+        var hD = calcSummaryTextareaTargetHeight(dEl, 200);
+        var hB = calcSummaryTextareaTargetHeight(bEl, 200);
+        var maxH23 = Math.max(200, hD, hB);
+        if (dEl) dEl.style.height = maxH23 + "px";
+        if (bEl) bEl.style.height = maxH23 + "px";
+    }
+    var pEl = document.getElementById("txt-summary-combined-preview");
+    if (pEl) {
+        var hP = calcSummaryTextareaTargetHeight(pEl, 260);
+        pEl.style.height = hP + "px";
+    }
+}
+
 // セクション（①または②・③）の個別折りたたみ・展開
 function toggleSummaryPanel(bodyId, iconId, forceShow) {
     var bodyEl = document.getElementById(bodyId);
@@ -13235,6 +13280,9 @@ function toggleSummaryPanel(bodyId, iconId, forceShow) {
     if (nextShow) {
         bodyEl.style.display = (bodyId === "summary-sec23-body") ? "flex" : "block";
         if (iconEl) iconEl.innerText = "▼";
+        if (bodyId === "summary-sec23-body") {
+            autoResizeSummaryTextareas();
+        }
     } else {
         bodyEl.style.display = "none";
         if (iconEl) iconEl.innerText = "▶";
@@ -13497,6 +13545,7 @@ function clearSummaryTab() {
     if (tbody) {
         tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:#999; padding:12px;">患者IDを入力して「カルテから情報収集」をクリックしてください</td></tr>';
     }
+    autoResizeSummaryTextareas();
 }
 
 // 隠しiframeを用いてカルテURLのHTMLを取得する共通ヘルパー
@@ -14386,28 +14435,29 @@ function recalcSummaryByDateRange() {
 }
 
 // 処方テキストをprocessMacroTextに通したあと、先頭の◇入院・▼持参薬検認・■持参薬見出しを整形するヘルパー
-function formatOrderWithMacro(rawPreText) {
+function formatOrderWithMacro(rawPreText, addRpNum) {
     if (!rawPreText) return "";
-    var formatted = (typeof processMacroText === "function") ? processMacroText(rawPreText) : rawPreText;
+    // addRpNum未指定時は従来通り「テキスト整理」タブのRp番号設定に従う
+    var useRpNum = (typeof addRpNum === "boolean") ? addRpNum : undefined;
+    var formatted = (typeof processMacroText === "function") ? processMacroText(rawPreText, useRpNum) : rawPreText;
     // 先頭の「◇入院」「▼持参薬検認」「■持参薬」「◆外来」単独行を除去してスッキリさせる
     formatted = formatted.replace(/^(?:[\s\r\n]*)(?:◇入院|▼持参薬検認|■持参薬|◆外来)\s*[\r\n]+/g, "");
     formatted = formatted.replace(/\n(?:◇入院|▼持参薬検認|■持参薬|◆外来)\s*\n/g, "\n");
+    // Rp番号付与時に「1) 　薬品名」のように残る番号直後の余分な空白を1つに詰める
+    formatted = formatted.replace(/^(\d+\))[ \t\u3000]+/gm, "$1 ");
     return trimSummaryStr(formatted);
 }
 
-// 収集した処方・注射データから「持参薬」「退院処方」「入院中使用薬」を生成して描画
-function processAndRenderSummaryMedications() {
+// ③ 入院時持参薬エリアのみを再描画（「③にRp番号を付与」チェック切替時にも呼ばれる）
+function reRenderSummaryBroughtInRx() {
+    if (summaryState.isFetching) return;
     var startDate = summaryState.admitStartDate || "0000/00/00";
     var endDate = summaryState.admitEndDate || "9999/99/99";
     var shohoOrders = summaryState.shohoOrders || [];
-
-    // 持参薬は入院日の数日前に事前入力されるケースもあるため、開始日の7日前から許容
     var jisanAllowStart = (startDate !== "0000/00/00") ? addSummaryDaysStr(startDate, -7) : "0000/00/00";
 
     var kenninOrders = [];
     var jisanDocOrders = [];
-    var taiinOrders = [];
-
     for (var i = 0; i < shohoOrders.length; i++) {
         var ord = shohoOrders[i];
         if (ord.category === "jisan_kennin") {
@@ -14418,16 +14468,12 @@ function processAndRenderSummaryMedications() {
             if (ord.orderDate >= jisanAllowStart && ord.orderDate <= endDate) {
                 jisanDocOrders.push(ord);
             }
-        } else if (ord.category === "taiin") {
-            if (ord.orderDate >= startDate && ord.orderDate <= addSummaryDaysStr(endDate, 7)) {
-                taiinOrders.push(ord);
-            }
         }
     }
 
-    // ---------------------------------------------------------
-    // A. 入院時持参薬の生成（【持参薬】（検認）を最優先、複数件は結合して明示）
-    // ---------------------------------------------------------
+    var chkRp = document.getElementById("chk-summary-jisan-rp-num");
+    var addRpNum = !!(chkRp && chkRp.checked);
+
     var broughtInEl = document.getElementById("txt-summary-brought-in-rx");
     var broughtInBadge = document.getElementById("summary-brought-in-badge");
     var targetJisanList = [];
@@ -14445,7 +14491,7 @@ function processAndRenderSummaryMedications() {
         if (broughtInEl) broughtInEl.value = "なし";
         if (broughtInBadge) broughtInBadge.innerHTML = '<span style="color:#777;">(該当なし)</span>';
     } else if (targetJisanList.length === 1) {
-        var singleText = formatOrderWithMacro(targetJisanList[0].rawPreText);
+        var singleText = formatOrderWithMacro(targetJisanList[0].rawPreText, addRpNum);
         if (broughtInEl) broughtInEl.value = singleText || "なし";
         if (broughtInBadge) {
             broughtInBadge.innerHTML = '<span style="color:#2e7d32; font-weight:bold;">✔ ' + escapeHtml(jisanTypeLabel) + ' 1件取得 (' + escapeHtml(targetJisanList[0].orderDate) + ')</span>';
@@ -14455,7 +14501,7 @@ function processAndRenderSummaryMedications() {
         var combinedBlocks = [];
         for (var k = 0; k < targetJisanList.length; k++) {
             var kOrd = targetJisanList[k];
-            var kFormatted = formatOrderWithMacro(kOrd.rawPreText);
+            var kFormatted = formatOrderWithMacro(kOrd.rawPreText, addRpNum);
             if (!kFormatted) continue;
             var stampInfo = kOrd.issueStamp ? (" / " + kOrd.issueStamp) : "";
             var headerLine = "▼" + jisanTypeLabel + " (" + (k + 1) + "/" + targetJisanList.length + "件目: " + kOrd.orderDate + (kOrd.orderTimeSlot ? " " + kOrd.orderTimeSlot : "") + stampInfo + ")";
@@ -14467,6 +14513,29 @@ function processAndRenderSummaryMedications() {
                 escapeHtml(jisanTypeLabel) + ' が複数回（' + targetJisanList.length + '件）入力されているため全て結合しました</span>';
         }
     }
+    autoResizeSummaryTextareas();
+}
+
+// 収集した処方・注射データから「持参薬」「退院処方」「入院中使用薬」を生成して描画
+function processAndRenderSummaryMedications() {
+    var startDate = summaryState.admitStartDate || "0000/00/00";
+    var endDate = summaryState.admitEndDate || "9999/99/99";
+    var shohoOrders = summaryState.shohoOrders || [];
+
+    var taiinOrders = [];
+    for (var i = 0; i < shohoOrders.length; i++) {
+        var ord = shohoOrders[i];
+        if (ord.category === "taiin") {
+            if (ord.orderDate >= startDate && ord.orderDate <= addSummaryDaysStr(endDate, 7)) {
+                taiinOrders.push(ord);
+            }
+        }
+    }
+
+    // ---------------------------------------------------------
+    // A. 入院時持参薬の生成（【持参薬】（検認）を最優先、複数件は結合して明示）
+    // ---------------------------------------------------------
+    reRenderSummaryBroughtInRx();
 
     // ---------------------------------------------------------
     // B. 退院処方の生成（[退院]区分、未入力時は「なし」）
@@ -14498,14 +14567,15 @@ function processAndRenderSummaryMedications() {
     // C. 入院中に使用した薬剤一覧の集計
     // ---------------------------------------------------------
     recalcSummaryInHospList();
+    autoResizeSummaryTextareas();
 }
 
 function detectSummaryRpSubCategory(orderKind, drugsText, usageText) {
     if (orderKind === "0031") return "注射";
     var u = String(usageText || "");
     var d = String(drugsText || "");
-    if (/回分|不眠時|痛む時|疼痛時|発熱時|頓用|頓服|発作時|嘔気時|便秘時|不穏時|血圧上昇時/.test(u)) {
-        return "頓服";
+    if (/回分|不眠時|痛む時|疼痛時|発熱時|頓用|頓服|発作時|嘔気時|悪心時|便秘時|下痢時|不穏時|興奮時|血圧上昇時|頭痛時|腹痛時|胸痛時|呼吸苦時|めまい時|かゆみ時|痙攣時|けいれん時|動悸時|血糖[^\s]*時|症状[^\s]*時/.test(u)) {
+        return "頓用";
     }
     if (!/日分/.test(u) && /塗布|貼付|点眼|点鼻|点耳|吸入|うがい|含嗽|坐剤|注腸|湿布|テープ|パップ|クリーム|軟膏|ローション|ゲル|スプレー/.test(u + " " + d)) {
         return "外用";
@@ -14542,27 +14612,45 @@ function recalcSummaryInHospList() {
 
                 var clampedStart = (startDate !== "0000/00/00" && rp.startDate < startDate) ? startDate : rp.startDate;
                 var clampedEnd = rp.endDate;
+                // 入院中の使用期間は入院期間の終了日を超えないよう丸める（退院処方は除く）
+                if (ord.category !== "taiin" && endDate !== "9999/99/99" && clampedEnd > endDate) clampedEnd = endDate;
 
-                var subCat = detectSummaryRpSubCategory(ord.orderKind, rp.drugs.join(" "), rp.usageText);
+                var rawSubCat = detectSummaryRpSubCategory(ord.orderKind, rp.drugs.join(" "), rp.usageText);
+                var isTonyo = (rawSubCat === "頓用");
+                // 持参薬指示分（jisan_order）は区分を「持参薬」とする
+                var subCat = (ord.category === "jisan_order") ? "持参薬" : rawSubCat;
+
                 for (var d = 0; d < rp.drugs.length; d++) {
                     var dName = rp.drugs[d];
                     if (!dName) continue;
-                    var key = (ord.orderKind === "0031" ? "chusha" : "shoho") + "::" + dName;
+                    // 注射・持参薬・頓用・通常内服/外用をそれぞれ別キーとして集計（頓用が定期内服の期間に混ざるのを防ぐ）
+                    var keyPrefix = "shoho";
+                    if (ord.orderKind === "0031") {
+                        keyPrefix = "chusha";
+                    } else if (ord.category === "jisan_order") {
+                        keyPrefix = isTonyo ? "jisan_tonyo" : "jisan";
+                    } else if (isTonyo) {
+                        keyPrefix = "tonyo";
+                    }
+                    var key = keyPrefix + "::" + dName;
                     if (!drugMap[key]) {
                         drugMap[key] = {
                             name: dName,
                             category: subCat,
+                            isTonyo: isTonyo,
                             intervals: [],
                             maxDuration: 0,
                             hasInHosp: false,
                             hasTaiin: false,
+                            hasJisan: (ord.category === "jisan_order"),
                             usageSamples: []
                         };
                         drugKeysOrder.push(key);
                     }
-                    if (subCat === "内服" && drugMap[key].category === "頓服") { drugMap[key].category = "内服"; }
                     if (ord.category === "taiin") {
                         drugMap[key].hasTaiin = true;
+                    } else if (ord.category === "jisan_order") {
+                        drugMap[key].hasJisan = true;
                     } else {
                         drugMap[key].hasInHosp = true;
                     }
@@ -14608,7 +14696,10 @@ function recalcSummaryInHospList() {
         var firstStart = merged.length > 0 ? merged[0].start : "";
         var lastEnd = merged.length > 0 ? merged[merged.length - 1].end : "";
 
-        if (mergeAllSpan && merged.length > 0) {
+        // 頓用の場合は期間を日付（1日等）にするのではなく「頓用」と記載する
+        if (item.isTonyo || item.category === "頓用") {
+            periodStr = "頓用";
+        } else if (mergeAllSpan && merged.length > 0) {
             if (firstStart === lastEnd) {
                 periodStr = formatSummaryShortDate(firstStart);
             } else {
@@ -14631,18 +14722,22 @@ function recalcSummaryInHospList() {
         if (exInfo.excluded) {
             noteParts.push("自動除外: " + exInfo.reason);
         } else {
+            if (item.hasJisan) {
+                noteParts.push("持参薬指示");
+            }
             if (item.hasTaiin && item.hasInHosp) {
                 noteParts.push("退院処方含む");
             } else if (item.hasTaiin) {
                 noteParts.push("退院処方");
             }
-            if (merged.length > 1 && mergeAllSpan) {
+            if (!item.isTonyo && merged.length > 1 && mergeAllSpan) {
                 noteParts.push("計" + merged.length + "期間を結合");
             }
         }
         rows.push({
             checked: !exInfo.excluded,
             category: item.category,
+            isTonyo: !!item.isTonyo,
             name: item.name,
             period: periodStr,
             firstStart: firstStart,
@@ -14651,8 +14746,8 @@ function recalcSummaryInHospList() {
         });
     }
 
-    // 区分順（内服→外用→頓服→注射）＆開始日順でソート
-    var catPriority = { "内服": 1, "外用": 2, "頓服": 3, "注射": 4 };
+    // 区分順（内服→持参薬→外用→頓用→注射）＆開始日順でソート
+    var catPriority = { "内服": 1, "持参薬": 2, "外用": 3, "頓用": 4, "頓服": 4, "注射": 5 };
     rows.sort(function(a, b) {
         var pa = catPriority[a.category] || 9;
         var pb = catPriority[b.category] || 9;
@@ -14704,8 +14799,9 @@ function renderSummaryInHospTable() {
         var catBg = "#e3f2fd";
         var catFg = "#0d47a1";
         if (r.category === "注射") { catBg = "#fce4ec"; catFg = "#c2185b"; }
-        else if (r.category === "頓服") { catBg = "#fff3cd"; catFg = "#856404"; }
-        else if (r.category === "外用") { catBg = "#e8f5e9"; catFg = "#2e7d32"; }
+        else if (r.category === "頓用" || r.category === "頓服") { catBg = "#fff3cd"; catFg = "#856404"; }
+        else if (r.category === "外用") { catBg = "#e0f2f1"; catFg = "#00695c"; }
+        else if (r.category === "持参薬") { catBg = "#e8f5e9"; catFg = "#1b5e20"; }
 
         html += '<tr id="sum-inhosp-tr-' + i + '" style="background:' + rowBg + '; color:' + rowColor + ';">';
         html += '<td style="text-align:center; vertical-align:middle; cursor:pointer; padding:2px;" onclick="toggleSummaryInHospRow(' + i + ', event)">' +
@@ -14720,7 +14816,7 @@ function renderSummaryInHospTable() {
                 '</td>';
         html += '<td style="vertical-align:middle; padding:2px 4px;">' +
                 '<input type="text" class="yr-form-control" style="width:100%; height:23px; padding:1px 5px; font-size:12px; color:' + rowColor + ';" ' +
-                'value="' + escapeHtml(r.period) + '" placeholder="MM/DD～MM/DD" oninput="onSummaryInHospPeriodEdit(' + i + ', this.value)" onchange="onSummaryInHospPeriodEdit(' + i + ', this.value)">' +
+                'value="' + escapeHtml(r.period) + '" placeholder="MM/DD～MM/DD / 頓用" oninput="onSummaryInHospPeriodEdit(' + i + ', this.value)" onchange="onSummaryInHospPeriodEdit(' + i + ', this.value)">' +
                 '</td>';
         html += '<td style="vertical-align:middle; padding:2px 4px; font-size:10px; color:' + (r.autoExcluded ? '#d81b60' : '#666') + ';">' +
                 escapeHtml(r.note || "") +
@@ -14791,6 +14887,10 @@ function setSummaryInHospSelection(mode) {
             rows[i].checked = false;
         } else if (mode === "default") {
             rows[i].checked = !rows[i].autoExcluded;
+        } else if (mode === "exclude_tonyo") {
+            if (rows[i].category === "頓用" || rows[i].category === "頓服" || rows[i].isTonyo || trimSummaryStr(rows[i].period) === "頓用") {
+                rows[i].checked = false;
+            }
         }
     }
     renderSummaryInHospTable();
@@ -14915,6 +15015,7 @@ function updateSummaryCombinedPreview(source) {
             rows[i0]._prevStdLine = s0;
             if (s0) summaryState.knownAutoDrugLines[s0] = true;
         }
+        autoResizeSummaryTextareas();
         return;
     }
 
@@ -14924,16 +15025,19 @@ function updateSummaryCombinedPreview(source) {
     if (source === "main_disease") {
         upsertOrRemoveSummaryHeaderLine(lines, "【主病名】", mainDis, []);
         previewEl.value = lines.join("\n");
+        autoResizeSummaryTextareas();
         return;
     }
     if (source === "comorbidities") {
         upsertOrRemoveSummaryHeaderLine(lines, "【併存疾患】", comorb, ["【主病名】"]);
         previewEl.value = lines.join("\n");
+        autoResizeSummaryTextareas();
         return;
     }
     if (source === "surgery") {
         upsertOrRemoveSummaryHeaderLine(lines, "【手術】", validSurg, ["【主病名】", "【併存疾患】"]);
         previewEl.value = lines.join("\n");
+        autoResizeSummaryTextareas();
         return;
     }
 
@@ -15031,6 +15135,7 @@ function updateSummaryCombinedPreview(source) {
     }
 
     previewEl.value = lines.join("\n");
+    autoResizeSummaryTextareas();
 }
 
 // 各項目および一括テキストのクリップボードコピー
