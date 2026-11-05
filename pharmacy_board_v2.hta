@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+﻿﻿<!DOCTYPE html>
 <html>
 <head>
 <meta charset="UTF-8">
@@ -492,7 +492,7 @@ function generateAbbreviation() {}
                     <li><a class="yr-nav-link" onclick="yrSwitchTab('yr-tab-settings', this)">ツール設定</a></li>
                 </ul>
             </div>
-            <div id="yr-scroll-area" style="overflow-y:auto; max-height:calc(100vh - 170px); padding-top:6px;">
+            <div id="yr-scroll-area" style="padding-top:6px;">
             <div id="yr-main-controls" class="yr-d-flex yr-gap-3 yr-align-items-end yr-mb-3" style="background: #f8f9fa; padding: 8px 15px; border-radius: 4px; border: 1px solid #dee2e6;">
                 <div style="position:relative;">
                     <label style="font-weight: bold; font-size: 0.85rem; color: #d9534f;">📅 基準日</label>
@@ -907,33 +907,38 @@ function generateAbbreviation() {}
                     <div style="display:flex; justify-content:space-between; align-items:center; padding:4px 8px; background:#e0f7fa; border-radius:3px 3px 0 0;">
                         <div onclick="toggleSummaryPanel('summary-sec1-body', 'summary-sec1-toggle-icon')" style="cursor:pointer; user-select:none; display:flex; align-items:center; gap:6px; flex:1;" title="クリックで①を開閉">
                             <span id="summary-sec1-toggle-icon" style="font-size:11px; color:#006064; font-weight:bold;">▼</span>
-                            <span style="font-size:12px; font-weight:bold; color:#006064;">① 主病名・併存疾患（有効病名）・手術情報</span>
+                            <span style="font-size:12px; font-weight:bold; color:#006064;">① 主病名・併存疾患・手術・次回受診</span>
                             <span style="font-size:10px; color:#00838f;">(クリックで開閉)</span>
                         </div>
                         <div style="display:flex; gap:5px;">
                             <button class="yr-btn yr-btn-outline-secondary" style="font-size:11px; padding:1px 7px; background:#fff;" onclick="refetchSummarySurgery()">✂️ 手術のみ再取得</button>
-                            <button class="yr-btn yr-btn-success" style="font-size:11px; padding:1px 8px;" onclick="copySummarySection('disease_surgery')">📋 病名・手術をコピー</button>
+                            <button class="yr-btn yr-btn-success" style="font-size:11px; padding:1px 8px;" onclick="copySummarySection('disease_surgery')">📋 病名・手術・受診をコピー</button>
                         </div>
                     </div>
 
                     <div id="summary-sec1-body" style="padding:6px 8px;">
-                        <!-- 主病名・併存疾患・手術を横1列(3カラム)に配置して縦スペースを大幅削減 -->
+                        <!-- 主病名・併存疾患・手術・次回受診を横1列(4カラム)に配置して縦スペースを大幅削減 -->
                         <div style="display:flex; gap:8px; margin-bottom:5px; align-items:center;">
-                            <div style="width:30%; display:flex; align-items:center; gap:4px;">
+                            <div style="flex:1.1; min-width:0; display:flex; align-items:center; gap:4px;">
                                 <label style="font-size:11px; font-weight:bold; white-space:nowrap;">主病名:</label>
-                                <input type="text" id="ipt-summary-main-disease" class="yr-form-control" style="flex:1; height:25px; font-size:12px;" placeholder="主病名" oninput="updateSummaryCombinedPreview('main_disease')" onchange="updateSummaryCombinedPreview('main_disease')">
+                                <input type="text" id="ipt-summary-main-disease" class="yr-form-control" style="flex:1; min-width:0; height:25px; font-size:12px;" placeholder="主病名" oninput="updateSummaryCombinedPreview('main_disease')" onchange="updateSummaryCombinedPreview('main_disease')">
                                 <button class="yr-btn yr-btn-outline-secondary" style="font-size:10px; padding:1px 5px; white-space:nowrap;" onclick="copySummarySection('main_disease')">コピー</button>
                             </div>
-                            <div style="width:40%; display:flex; align-items:center; gap:4px;">
-                                <label style="font-size:11px; font-weight:bold; white-space:nowrap;">併存疾患:</label>
-                                <input type="text" id="ipt-summary-comorbidities" class="yr-form-control" style="flex:1; height:25px; font-size:12px;" placeholder="下の有効病名クリックで追加 / 直接入力" oninput="updateSummaryCombinedPreview('comorbidities')" onchange="updateSummaryCombinedPreview('comorbidities')">
-                                <button class="yr-btn yr-btn-outline-secondary" style="font-size:10px; padding:1px 5px; white-space:nowrap;" onclick="document.getElementById('ipt-summary-comorbidities').value=''; renderSummaryByomeiChips(); updateSummaryCombinedPreview('comorbidities');">クリア</button>
+                            <div style="flex:1.4; min-width:0; display:flex; align-items:center; gap:4px;">
+                                <label style="font-size:11px; font-weight:bold; white-space:nowrap;">併存:</label>
+                                <input type="text" id="ipt-summary-comorbidities" class="yr-form-control" style="flex:1; min-width:0; height:25px; font-size:12px;" placeholder="有効病名クリックで追加 / 直入力" oninput="updateSummaryCombinedPreview('comorbidities')" onchange="updateSummaryCombinedPreview('comorbidities')">
+                                <button class="yr-btn yr-btn-outline-secondary" style="font-size:10px; padding:1px 4px; white-space:nowrap;" onclick="document.getElementById('ipt-summary-comorbidities').value=''; renderSummaryByomeiChips(); updateSummaryCombinedPreview('comorbidities');">クリア</button>
                                 <button class="yr-btn yr-btn-outline-secondary" style="font-size:10px; padding:1px 5px; white-space:nowrap;" onclick="copySummarySection('comorbidities')">コピー</button>
                             </div>
-                            <div style="width:30%; display:flex; align-items:center; gap:4px;">
+                            <div style="flex:1.2; min-width:0; display:flex; align-items:center; gap:4px;">
                                 <label style="font-size:11px; font-weight:bold; white-space:nowrap;">手術:</label>
-                                <input type="text" id="ipt-summary-surgery" class="yr-form-control" style="flex:1; height:25px; font-size:12px;" placeholder="なし（日付と術式）" oninput="updateSummaryCombinedPreview('surgery')" onchange="updateSummaryCombinedPreview('surgery')">
+                                <input type="text" id="ipt-summary-surgery" class="yr-form-control" style="flex:1; min-width:0; height:25px; font-size:12px;" placeholder="なし（日付と術式）" oninput="updateSummaryCombinedPreview('surgery')" onchange="updateSummaryCombinedPreview('surgery')">
                                 <button class="yr-btn yr-btn-outline-secondary" style="font-size:10px; padding:1px 5px; white-space:nowrap;" onclick="copySummarySection('surgery')">コピー</button>
+                            </div>
+                            <div style="flex:1.3; min-width:0; display:flex; align-items:center; gap:4px;">
+                                <label style="font-size:11px; font-weight:bold; white-space:nowrap;">次回受診:</label>
+                                <input type="text" id="ipt-summary-saishin" class="yr-form-control" style="flex:1; min-width:0; height:25px; font-size:12px;" placeholder="退院後の次回受診予定" oninput="updateSummaryCombinedPreview('saishin')" onchange="updateSummaryCombinedPreview('saishin')">
+                                <button class="yr-btn yr-btn-outline-secondary" style="font-size:10px; padding:1px 5px; white-space:nowrap;" onclick="copySummarySection('saishin')">コピー</button>
                             </div>
                         </div>
 
@@ -944,7 +949,7 @@ function generateAbbreviation() {}
                                     <input type="checkbox" id="chk-summary-exclude-suspected" checked onchange="renderSummaryByomeiChips()"> 疑い病名を非表示
                                 </label>
                             </div>
-                            <div id="summary-byomei-chips" style="display:flex; flex-wrap:wrap; gap:4px; min-height:20px; max-height:58px; overflow-y:auto; align-items:center;">
+                            <div id="summary-byomei-chips" style="display:flex; flex-wrap:wrap; gap:4px; min-height:22px; align-items:center;">
                                 <span style="font-size:11px; color:#999;">（患者情報を収集すると有効病名が表示されます）</span>
                             </div>
                         </div>
@@ -963,8 +968,11 @@ function generateAbbreviation() {}
                             <span id="summary-brought-in-badge" style="font-size:11px; color:#666;"></span>
                             <span style="font-size:10px; color:#888;">(クリックで開閉)</span>
                         </div>
-                        <div style="display:flex; gap:6px;">
+                        <div style="display:flex; align-items:center; gap:6px;">
                             <button class="yr-btn yr-btn-success" style="font-size:11px; padding:1px 8px;" onclick="copySummarySection('discharge_rx')">📋 ②退院処方をコピー</button>
+                            <label style="font-size:11px; font-weight:bold; cursor:pointer; color:#2e7d32; background:#fff; border:1px dashed #66bb6a; padding:1px 6px; border-radius:3px; margin:0; display:inline-flex; align-items:center; gap:3px;" title="チェックを入れると③入院時持参薬の各Rpに 1) 2) ... のようにRp番号を付与します">
+                                <input type="checkbox" id="chk-summary-jisan-rp-num" onchange="reRenderSummaryBroughtInRx()"> ③にRp番号を付与
+                            </label>
                             <button class="yr-btn yr-btn-success" style="font-size:11px; padding:1px 8px;" onclick="copySummarySection('brought_in_rx')">📋 ③持参薬をコピー</button>
                         </div>
                     </div>
@@ -972,17 +980,17 @@ function generateAbbreviation() {}
                     <div id="summary-sec23-body" style="display:flex; justify-content:space-between; gap:8px; padding:6px 8px;">
                         <!-- 左枠: <退院処方> -->
                         <div style="width:49.5%; box-sizing:border-box;">
-                            <textarea id="txt-summary-discharge-rx" class="yr-form-control" style="width:100%; height:95px; min-height:60px; box-sizing:border-box; font-family:monospace; font-size:12px; white-space:pre; resize:vertical;" placeholder="退院処方（[退院]区分）が自動収集されます。未入力の場合は「なし」と表示されます。"></textarea>
+                            <textarea id="txt-summary-discharge-rx" class="yr-form-control" style="width:100%; height:200px; min-height:200px; line-height:1.45; box-sizing:border-box; font-family:monospace; font-size:12px; white-space:pre; overflow-y:hidden; overflow-x:auto; resize:vertical;" oninput="autoResizeSummaryTextareas()" onchange="autoResizeSummaryTextareas()" placeholder="退院処方（[退院]区分）が自動収集されます。未入力の場合は「なし」と表示されます。"></textarea>
                         </div>
                         <!-- 右枠: <入院時持参薬> -->
                         <div style="width:49.5%; box-sizing:border-box;">
-                            <textarea id="txt-summary-brought-in-rx" class="yr-form-control" style="width:100%; height:95px; min-height:60px; box-sizing:border-box; font-family:monospace; font-size:12px; white-space:pre; resize:vertical;" placeholder="【持参薬】（検認）が優先して自動収集されます。複数回入力されている場合は全て結合され、区切りが表示されます。"></textarea>
+                            <textarea id="txt-summary-brought-in-rx" class="yr-form-control" style="width:100%; height:200px; min-height:200px; line-height:1.45; box-sizing:border-box; font-family:monospace; font-size:12px; white-space:pre; overflow-y:hidden; overflow-x:auto; resize:vertical;" oninput="autoResizeSummaryTextareas()" onchange="autoResizeSummaryTextareas()" placeholder="【持参薬】（検認）が優先して自動収集されます。複数回入力されている場合は全て結合され、区切りが表示されます。"></textarea>
                         </div>
                     </div>
                 </div>
 
                 <!-- ④ 入院中に使用した薬剤一覧（左列 56%） ＆ ⑤ ＜特記事項・入院中薬剤＞転記用テキスト（右列 44%）の2カラム並列配置 -->
-                <div style="display:flex; justify-content:space-between; align-items:stretch; gap:8px;">
+                <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:8px;">
                     <!-- 左カラム: ④ 入院中に使用した薬剤一覧 -->
                     <div style="width:56%; border:1px solid #dee2e6; border-top:3px solid #4527a0; border-radius:4px; padding:6px 8px; background:#fff; box-sizing:border-box; display:flex; flex-direction:column;">
                         <div style="display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center; gap:4px; margin-bottom:4px;">
@@ -994,6 +1002,7 @@ function generateAbbreviation() {}
                                 <button class="yr-btn yr-btn-outline-secondary" style="font-size:10px; padding:1px 6px;" onclick="setSummaryInHospSelection('all')">全選択</button>
                                 <button class="yr-btn yr-btn-outline-secondary" style="font-size:10px; padding:1px 6px;" onclick="setSummaryInHospSelection('none')">全解除</button>
                                 <button class="yr-btn yr-btn-outline-secondary" style="font-size:10px; padding:1px 6px;" onclick="setSummaryInHospSelection('default')" title="生食・維持輸液・単回検査薬などのチェックを外した初期状態に戻します">輸液等を除外</button>
+                                <button class="yr-btn yr-btn-outline-secondary" style="font-size:10px; padding:1px 6px; color:#856404; border-color:#d39e00; font-weight:bold;" onclick="setSummaryInHospSelection('exclude_tonyo')" title="頓用（頓服）薬剤のチェックを一括で外します">頓用を除外</button>
                                 <button class="yr-btn yr-btn-outline-secondary" style="font-size:10px; padding:1px 6px;" onclick="addSummaryManualDrugRow()">➕ 行追加</button>
                                 <button class="yr-btn yr-btn-success" style="font-size:10px; padding:2px 8px;" onclick="copySummarySection('inhosp')">📋 選択薬のみコピー</button>
                             </div>
@@ -1007,9 +1016,9 @@ function generateAbbreviation() {}
                             </label>
                         </div>
 
-                        <div style="height:310px; overflow-y:auto; border:1px solid #eee; flex-grow:1;">
+                        <div style="border:1px solid #eee;">
                             <table class="yr-table" style="font-size:12px; margin-bottom:0;">
-                                <thead style="position:sticky; top:0; background:#f1f3f5; z-index:1;">
+                                <thead style="background:#f1f3f5;">
                                     <tr>
                                         <th style="width:32px; text-align:center; padding:3px 2px;">選択</th>
                                         <th style="width:48px; text-align:center; padding:3px 2px;">区分</th>
@@ -1040,7 +1049,7 @@ function generateAbbreviation() {}
                                 <input type="checkbox" id="chk-summary-lock-combined"> 🔒 ⑤の自動反映をロック
                             </label>
                         </div>
-                        <textarea id="txt-summary-combined-preview" class="yr-form-control" style="width:100%; height:310px; min-height:200px; flex-grow:1; box-sizing:border-box; font-family:monospace; font-size:12px; line-height:1.4; white-space:pre; resize:vertical;" placeholder="主病名・併存疾患・手術日と術式・選択した入院中使用薬剤（期間付き）がここに整形されます。直接追記したコメントや特記事項も保持されます。"></textarea>
+                        <textarea id="txt-summary-combined-preview" class="yr-form-control" style="width:100%; height:260px; min-height:260px; box-sizing:border-box; font-family:monospace; font-size:12px; line-height:1.45; white-space:pre; overflow-y:hidden; overflow-x:auto; resize:vertical;" oninput="autoResizeSummaryTextareas()" onchange="autoResizeSummaryTextareas()" placeholder="主病名・併存疾患・手術日と術式・次回受診・選択した入院中使用薬剤（期間付き）がここに整形されます。直接追記したコメントや特記事項も保持されます。"></textarea>
                     </div>
                 </div>
             </div>

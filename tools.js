@@ -1,4 +1,4 @@
-﻿// ---------- 薬管1 対象薬剤判定 ----------
+﻿﻿// ---------- 薬管1 対象薬剤判定 ----------
         // 全角英数記号→半角に変換する正規化関数
         function normalizeDrug(s) {
             if (!s) return '';
@@ -653,14 +653,20 @@
 // ==========================================
         // 共通テキスト整理処理 (マクロ・薬剤調整加算 両用)
         // ==========================================
-        function processMacroText(rawInput) {
+        function processMacroText(rawInput, overrideAddNumber) {
             if (!rawInput) return "";
             var text = formatText(rawInput);
             
             text = text.replace(/([^\r\n])([ \t]*)(Rp\d+)/g, '$1\n$3');
             
-            var addNumEl = document.getElementById('set-add-number');
-            if (addNumEl && addNumEl.checked) {
+            var useAddNumber = false;
+            if (typeof overrideAddNumber === "boolean") {
+                useAddNumber = overrideAddNumber;
+            } else {
+                var addNumEl = document.getElementById('set-add-number');
+                useAddNumber = !!(addNumEl && addNumEl.checked);
+            }
+            if (useAddNumber) {
                 text = text.replace(/^[ \t]*Rp(\d+).*?[\r\n]+[ \t]*/gm, '$1) ');
             } else {
                 text = text.replace(/^[ \t]*.*Rp\d+.*?$[\r\n]*/gm, '');
@@ -3395,6 +3401,41 @@ var summaryState = {
     activeIframeIds: []
 };
 
+// テキストエリア（②退院処方・③持参薬・⑤転記用テキスト）を行数に応じて自動伸長させ、コンテナ内スクロールを不要にする
+function calcSummaryTextareaTargetHeight(el, minH) {
+    if (!el) return minH || 200;
+    var val = el.value || "";
+    var lineCount = val ? val.replace(/\r\n/g, "\n").replace(/\r/g, "\n").split("\n").length : 1;
+    var byLines = lineCount * 19 + 24;
+    var target = Math.max(minH || 200, byLines);
+    try {
+        if (el.offsetHeight > 0 || el.scrollHeight > 0) {
+            el.style.height = "auto";
+            if (el.scrollHeight && el.scrollHeight + 8 > target) {
+                target = el.scrollHeight + 8;
+            }
+        }
+    } catch(e) {}
+    return target;
+}
+
+function autoResizeSummaryTextareas() {
+    var dEl = document.getElementById("txt-summary-discharge-rx");
+    var bEl = document.getElementById("txt-summary-brought-in-rx");
+    if (dEl || bEl) {
+        var hD = calcSummaryTextareaTargetHeight(dEl, 200);
+        var hB = calcSummaryTextareaTargetHeight(bEl, 200);
+        var maxH23 = Math.max(200, hD, hB);
+        if (dEl) dEl.style.height = maxH23 + "px";
+        if (bEl) bEl.style.height = maxH23 + "px";
+    }
+    var pEl = document.getElementById("txt-summary-combined-preview");
+    if (pEl) {
+        var hP = calcSummaryTextareaTargetHeight(pEl, 260);
+        pEl.style.height = hP + "px";
+    }
+}
+
 // セクション（①または②・③）の個別折りたたみ・展開
 function toggleSummaryPanel(bodyId, iconId, forceShow) {
     var bodyEl = document.getElementById(bodyId);
@@ -3405,6 +3446,9 @@ function toggleSummaryPanel(bodyId, iconId, forceShow) {
     if (nextShow) {
         bodyEl.style.display = (bodyId === "summary-sec23-body") ? "flex" : "block";
         if (iconEl) iconEl.innerText = "▼";
+        if (bodyId === "summary-sec23-body") {
+            autoResizeSummaryTextareas();
+        }
     } else {
         bodyEl.style.display = "none";
         if (iconEl) iconEl.innerText = "▶";
@@ -3582,6 +3626,9 @@ function setSummaryLoadingOverlay(visible, stepText, progressPct) {
 function cleanupAllSummaryIframes() {
     var ids = (summaryState && summaryState.activeIframeIds) ? summaryState.activeIframeIds.slice() : [];
     if (summaryState) summaryState.activeIframeIds = [];
+    if (summaryState && summaryState.patientId) {
+        ids.push("surgery-fetch-iframe-" + summaryState.patientId);
+    }
     for (var i = 0; i < ids.length; i++) {
         try {
             var ifr = document.getElementById(ids[i]);
@@ -3625,6 +3672,7 @@ function clearSummaryTab() {
         byomeiList: [],
         shohoOrders: [],
         chushaOrders: [],
+        saishinOrders: [],
         inHospDrugRows: [],
         knownAutoDrugLines: {},
         isFetching: false,
@@ -3640,6 +3688,7 @@ function clearSummaryTab() {
         "ipt-summary-main-disease",
         "ipt-summary-surgery",
         "ipt-summary-comorbidities",
+        "ipt-summary-saishin",
         "txt-summary-discharge-rx",
         "txt-summary-brought-in-rx",
         "txt-summary-combined-preview"
@@ -3667,6 +3716,7 @@ function clearSummaryTab() {
     if (tbody) {
         tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:#999; padding:12px;">患者IDを入力して「カルテから情報収集」をクリックしてください</td></tr>';
     }
+    autoResizeSummaryTextareas();
 }
 
 // 隠しiframeを用いてカルテURLのHTMLを取得する共通ヘルパー
@@ -3760,50 +3810,134 @@ function fetchSummaryHtmlViaIframe(url, timeoutMs, callback) {
     }
 }
 
-// サマリ専用の手術情報取得ヘルパー（ファイル保存競合を起こさず、短時間タイムアウト＆中断トークンに対応）
+// サマリ専用の手術情報取得ヘルパー（SurgeryFetcher.fetchSingleを呼び出し、180日以上の過去手術も漏れなく取得）
 function fetchSummarySurgerySafe(pObj, userId, myToken, callback) {
     if (!pObj || !pObj.id) {
-        callback();
+        if (callback) callback();
         return;
     }
-    var today = new Date();
-    var endDate = today.getFullYear() + "/" + ("0" + (today.getMonth() + 1)).slice(-2) + "/" + ("0" + today.getDate()).slice(-2);
-    var past = new Date(today.getTime() - (180 * 24 * 60 * 60 * 1000));
-    var startDate = past.getFullYear() + "/" + ("0" + (past.getMonth() + 1)).slice(-2) + "/" + ("0" + past.getDate()).slice(-2);
+    if (typeof SurgeryFetcher !== "undefined" && typeof SurgeryFetcher.fetchSingle === "function") {
+        var originalDays = pObj.daysInHosp;
+        // サマリでは入院前・過去の手術も確実に拾えるよう、最低180日以上の検索範囲を一時的に設定
+        var targetDays = Math.max(parseInt(originalDays, 10) || 0, 180);
+        pObj.daysInHosp = targetDays;
 
-    var url = "http://10.5.171.42:8082/karte/karte.php"
-        + "?disp_flgs=1/0/2/0/0/0/1/0/0/1/0/0/0/0/0"
-        + "&kanja_id=" + encodeURIComponent(pObj.id)
-        + "&user_id=" + encodeURIComponent(userId)
-        + "&start_date=" + startDate
-        + "&end_date=" + endDate
-        + "&hakkou_date=" + startDate
-        + "&kijun_date=" + endDate
-        + "&range_date=180/7/1/1"
-        + "&disp_selectsection="
-        + "&disp_selectukind=1,2,3,91"
-        + "&disp_usection_code=0"
-        + "&disp_ukind_code=2122"
-        + "&order_kind_set_code=0220"
-        + "&order_kind_code_str=0220"
-        + "&no_log_flg=1&nyugai_kind=&min_date=&max_date=&disp_zoom=100"
-        + "&_t=" + new Date().getTime();
+        SurgeryFetcher.fetchSingle(pObj, function() {
+            // 在院日数を元に戻す
+            if (originalDays !== undefined) {
+                pObj.daysInHosp = originalDays;
+            } else {
+                delete pObj.daysInHosp;
+            }
+            if (typeof summaryState !== "undefined" && summaryState.fetchToken && myToken !== summaryState.fetchToken) return;
+            if (callback) callback();
+        });
+    } else {
+        if (callback) callback();
+    }
+}
 
-    fetchSummaryHtmlViaIframe(url, 15000, function(bodyHtml, isErr) {
-        if (myToken !== summaryState.fetchToken) return;
-        if (!isErr && bodyHtml) {
-            try {
-                if (typeof SurgeryFetcher !== "undefined" && typeof SurgeryFetcher.parseSurgeryContent === "function") {
-                    var parsed = SurgeryFetcher.parseSurgeryContent(bodyHtml);
-                    if (parsed) {
-                        pObj.surgeryDate = parsed.date || "なし";
-                        pObj.surgeryProcedure = parsed.procedure || "なし";
-                    }
-                }
-            } catch(e) {}
+// カルテHTMLから再診予約(0081)のオーダ情報を抽出
+function parseSummarySaishinOrders(bodyHtml) {
+    if (!bodyHtml) return [];
+    var parts = bodyHtml.split(/<a\s+name=["']#karte_/i);
+    var parsed = [];
+    var dayNames = ["日", "月", "火", "水", "木", "金", "土"];
+
+    for (var i = 1; i < parts.length; i++) {
+        var sec = parts[i];
+        if (!sec || sec.indexOf("再診予約") === -1) continue;
+
+        // 先頭の日付: YYYY/MM/DD
+        var topDateMatch = sec.match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})/);
+        var y = 0, mth = 0, d = 0, dow = "";
+        if (topDateMatch) {
+            y = parseInt(topDateMatch[1], 10);
+            mth = parseInt(topDateMatch[2], 10);
+            d = parseInt(topDateMatch[3], 10);
         }
-        callback();
+
+        // 見出し内の日付・曜日
+        var dateMatch = sec.match(/(\d{4})年(\d{1,2})月(\d{1,2})日(?:\((.+?)\))?/);
+        if (dateMatch) {
+            y = parseInt(dateMatch[1], 10);
+            mth = parseInt(dateMatch[2], 10);
+            d = parseInt(dateMatch[3], 10);
+            dow = dateMatch[4] ? trimSummaryStr(dateMatch[4]) : "";
+        }
+        if (!y || !mth || !d) continue;
+
+        var ymd = ("000" + y).slice(-4) + "/" + ("0" + mth).slice(-2) + "/" + ("0" + d).slice(-2);
+        if (!dow) {
+            var dObj = new Date(y, mth - 1, d);
+            dow = dayNames[dObj.getDay()];
+        }
+
+        // 診療科の抽出（外来見出しの診療科名、または<PRE>医師行から）
+        var dept = "";
+        var headerMatch = sec.match(/<B>[\s\S]*?外来[\s\u3000\xa0]*(?:\d{1,2}:\d{2}[\s\u3000\xa0]*)?([^\s<　\xa0]+)[\s\S]*?<\/B>/i);
+        if (headerMatch) {
+            dept = trimSummaryStr(headerMatch[1]);
+        }
+        if (!dept) {
+            var docMatch = sec.match(/\(([^)]+)\)\s*&lt;医師&gt;/i);
+            if (docMatch) {
+                dept = trimSummaryStr(docMatch[1]);
+            }
+        }
+        if (!dept) {
+            dept = "外来";
+        }
+
+        parsed.push({
+            ymd: ymd,
+            mth: mth,
+            d: d,
+            dow: dow,
+            dept: dept,
+            formatted: mth + "/" + d + "(" + dow + ") " + dept
+        });
+    }
+    return parsed;
+}
+
+// 再診予約リストから退院日以降で最も早い予約を1診療科1件として抽出し、整形文字列を生成
+function calcSummaryNextVisitText(saishinOrders, admitEndDate) {
+    if (!saishinOrders || saishinOrders.length === 0) return "";
+    var today = new Date();
+    var todayStr = ("000" + today.getFullYear()).slice(-4) + "/" + ("0" + (today.getMonth() + 1)).slice(-2) + "/" + ("0" + today.getDate()).slice(-2);
+    var filterDate = admitEndDate || todayStr;
+
+    var deptMap = {};
+    for (var i = 0; i < saishinOrders.length; i++) {
+        var ord = saishinOrders[i];
+        if (ord.ymd >= filterDate) {
+            var dName = ord.dept;
+            if (!deptMap[dName] || ord.ymd < deptMap[dName].ymd) {
+                deptMap[dName] = ord;
+            }
+        }
+    }
+
+    var filtered = [];
+    for (var k in deptMap) {
+        if (deptMap.hasOwnProperty(k)) {
+            filtered.push(deptMap[k]);
+        }
+    }
+    if (filtered.length === 0) return "";
+
+    // 予約日の昇順にソート
+    filtered.sort(function(a, b) {
+        if (a.ymd !== b.ymd) return a.ymd < b.ymd ? -1 : 1;
+        return a.dept < b.dept ? -1 : 1;
     });
+
+    var parts = [];
+    for (var j = 0; j < filtered.length; j++) {
+        parts.push(filtered[j].formatted);
+    }
+    return parts.join("、");
 }
 
 // 患者オブジェクトの手術情報を表示用文字列に整形
@@ -3902,14 +4036,19 @@ function fetchSummaryPatientData() {
 
     var userId = (typeof currentSystemId !== "undefined" && currentSystemId) ? currentSystemId : "16622";
     summaryState.isFetching = true;
-    setSummaryLoadingOverlay(true, "ステップ 1/4: 手術記録を確認中...", 15);
-    setSummaryStatus("1/4 手術情報を確認中...", false);
+    setSummaryLoadingOverlay(true, "ステップ 1/5: 手術記録を確認中...", 15);
+    setSummaryStatus("1/5 手術情報を確認中...", false);
 
-    // ステップ1: 手術情報が未取得の場合はサマリ専用安全取得ヘルパーで取得
+    // ステップ1: 手術情報の取得（未取得または「なし」の場合は180日範囲で確実に取得）
     function step1_surgery(next) {
         if (myToken !== summaryState.fetchToken) return;
-        if (pObj.surgeryDate && pObj.surgeryDate !== "-" && pObj.surgeryProcedure !== "タイムアウト") {
+        var sProc = pObj.surgeryProcedure || "";
+        var sDate = pObj.surgeryDate || "";
+        var hasValidSurgery = (sProc && sProc !== "なし" && sProc !== "タイムアウト" && sProc !== "解析エラー" && sProc !== "情報なし") ||
+                             (sDate && sDate !== "なし" && sDate !== "-" && sDate !== "不明");
+        if (hasValidSurgery) {
             if (surgEl) surgEl.value = formatSummarySurgeryText(pObj);
+            updateSummaryCombinedPreview("surgery");
             next();
             return;
         }
@@ -3924,8 +4063,8 @@ function fetchSummaryPatientData() {
     // ステップ2: 有効病名の取得 (kanja_byomei_info_disp.php)
     function step2_byomei(next) {
         if (myToken !== summaryState.fetchToken) return;
-        setSummaryLoadingOverlay(true, "ステップ 2/4: 有効病名を取得中...", 40);
-        setSummaryStatus("2/4 有効病名を取得中...", false);
+        setSummaryLoadingOverlay(true, "ステップ 2/5: 有効病名を取得中...", 35);
+        setSummaryStatus("2/5 有効病名を取得中...", false);
         var byomeiDate = (summaryState.admitEndDate || todayStr).replace(/\//g, "");
         var byomeiUrl = "http://10.5.171.42:8082/karte/kanja_profile/parts/kanja_byomei_info_disp.php"
             + "?kanja_id=" + encodeURIComponent(pId)
@@ -4030,8 +4169,8 @@ function fetchSummaryPatientData() {
     // ステップ4: 注射データ(0031)の取得
     function step4_chusha(next) {
         if (myToken !== summaryState.fetchToken) return;
-        setSummaryLoadingOverlay(true, "ステップ 4/4: 注射歴を取得中...", 90);
-        setSummaryStatus("4/4 注射歴を取得中...", false);
+        setSummaryLoadingOverlay(true, "ステップ 4/5: 注射歴を取得中...", 90);
+        setSummaryStatus("4/5 注射歴を取得中...", false);
         var rDays = (!isNaN(hospDays) && hospDays > 0) ? Math.min(550, Math.max(hospDays + 14, 21)) : 90;
         var fetchStart = addSummaryDaysStr(todayStr, -rDays);
         if (summaryState.admitStartDate) {
@@ -4074,20 +4213,68 @@ function fetchSummaryPatientData() {
         });
     }
 
+    // ステップ5: 再診予約データ(0081)の取得
+    function step5_saishin(next) {
+        if (myToken !== summaryState.fetchToken) return;
+        setSummaryLoadingOverlay(true, "ステップ 5/5: 再診予約を取得中...", 90);
+        setSummaryStatus("5/5 再診予約を取得中...", false);
+
+        var rDays = 180;
+        var fetchStart = addSummaryDaysStr(todayStr, -rDays);
+        var fetchEnd = addSummaryDaysStr(todayStr, 180);
+
+        var saishinUrl = "http://10.5.171.42:8082/karte/karte.php"
+            + "?disp_flgs=1/0/2/0/0/0/1/0/0/1/0/0/0/0/0"
+            + "&kanja_id=" + encodeURIComponent(pId)
+            + "&user_id=" + encodeURIComponent(userId)
+            + "&start_date=" + fetchStart
+            + "&end_date=" + fetchEnd
+            + "&hakkou_date=" + fetchStart
+            + "&kijun_date=" + todayStr
+            + "&range_date=" + rDays + "/7/1/1"
+            + "&disp_selectsection="
+            + "&disp_selectukind=1,2,3,91"
+            + "&disp_usection_code=0"
+            + "&disp_ukind_code=2122"
+            + "&order_kind_set_code=0081"
+            + "&order_kind_code_str=0081"
+            + "&no_log_flg=1&nyugai_kind=&min_date=&max_date=&disp_zoom=100"
+            + "&_t=" + new Date().getTime();
+
+        fetchSummaryHtmlViaIframe(saishinUrl, 30000, function(bodyHtml, isErr) {
+            if (myToken !== summaryState.fetchToken) return;
+            try {
+                if (!isErr && bodyHtml) {
+                    var parsedSaishin = parseSummarySaishinOrders(bodyHtml);
+                    summaryState.saishinOrders = parsedSaishin;
+                    var nextVisitText = calcSummaryNextVisitText(parsedSaishin, summaryState.admitEndDate);
+                    var saishinEl = document.getElementById("ipt-summary-saishin");
+                    if (saishinEl) {
+                        saishinEl.value = nextVisitText;
+                    }
+                    updateSummaryCombinedPreview("saishin");
+                }
+            } catch(e) {}
+            next();
+        });
+    }
+
     step1_surgery(function() {
         step2_byomei(function() {
             step3_shoho(function() {
                 step4_chusha(function() {
-                    if (myToken !== summaryState.fetchToken) return;
-                    summaryState.isFetching = false;
-                    setSummaryLoadingOverlay(false, "", 100);
-                    try {
-                        updateSummaryPatientBadge();
-                        processAndRenderSummaryMedications();
-                        setSummaryStatus("✔ 情報収集完了 (" + getTimeString() + ")", false);
-                    } catch(e) {
-                        setSummaryStatus("⚠ 情報収集完了（一部表示処理でエラー）", true);
-                    }
+                    step5_saishin(function() {
+                        if (myToken !== summaryState.fetchToken) return;
+                        summaryState.isFetching = false;
+                        setSummaryLoadingOverlay(false, "", 100);
+                        try {
+                            updateSummaryPatientBadge();
+                            processAndRenderSummaryMedications();
+                            setSummaryStatus("✔ 情報収集完了 (" + getTimeString() + ")", false);
+                        } catch(e) {
+                            setSummaryStatus("⚠ 情報収集完了（一部表示処理でエラー）", true);
+                        }
+                    });
                 });
             });
         });
@@ -4123,6 +4310,9 @@ function refetchSummarySurgery() {
     summaryState.isFetching = true;
     setSummaryLoadingOverlay(true, "手術記録を再取得中...", 50);
     setSummaryStatus("手術情報を再取得中...", false);
+    // 既存の値をクリアして確実に最新を取得
+    summaryState.patientObj.surgeryDate = undefined;
+    summaryState.patientObj.surgeryProcedure = undefined;
     fetchSummarySurgerySafe(summaryState.patientObj, userId, myToken, function() {
         if (myToken !== summaryState.fetchToken) return;
         summaryState.isFetching = false;
@@ -4556,28 +4746,29 @@ function recalcSummaryByDateRange() {
 }
 
 // 処方テキストをprocessMacroTextに通したあと、先頭の◇入院・▼持参薬検認・■持参薬見出しを整形するヘルパー
-function formatOrderWithMacro(rawPreText) {
+function formatOrderWithMacro(rawPreText, addRpNum) {
     if (!rawPreText) return "";
-    var formatted = (typeof processMacroText === "function") ? processMacroText(rawPreText) : rawPreText;
+    // addRpNum未指定時は従来通り「テキスト整理」タブのRp番号設定に従う
+    var useRpNum = (typeof addRpNum === "boolean") ? addRpNum : undefined;
+    var formatted = (typeof processMacroText === "function") ? processMacroText(rawPreText, useRpNum) : rawPreText;
     // 先頭の「◇入院」「▼持参薬検認」「■持参薬」「◆外来」単独行を除去してスッキリさせる
     formatted = formatted.replace(/^(?:[\s\r\n]*)(?:◇入院|▼持参薬検認|■持参薬|◆外来)\s*[\r\n]+/g, "");
     formatted = formatted.replace(/\n(?:◇入院|▼持参薬検認|■持参薬|◆外来)\s*\n/g, "\n");
+    // Rp番号付与時に「1) 　薬品名」のように残る番号直後の余分な空白を1つに詰める
+    formatted = formatted.replace(/^(\d+\))[ \t\u3000]+/gm, "$1 ");
     return trimSummaryStr(formatted);
 }
 
-// 収集した処方・注射データから「持参薬」「退院処方」「入院中使用薬」を生成して描画
-function processAndRenderSummaryMedications() {
+// ③ 入院時持参薬エリアのみを再描画（「③にRp番号を付与」チェック切替時にも呼ばれる）
+function reRenderSummaryBroughtInRx() {
+    if (summaryState.isFetching) return;
     var startDate = summaryState.admitStartDate || "0000/00/00";
     var endDate = summaryState.admitEndDate || "9999/99/99";
     var shohoOrders = summaryState.shohoOrders || [];
-
-    // 持参薬は入院日の数日前に事前入力されるケースもあるため、開始日の7日前から許容
     var jisanAllowStart = (startDate !== "0000/00/00") ? addSummaryDaysStr(startDate, -7) : "0000/00/00";
 
     var kenninOrders = [];
     var jisanDocOrders = [];
-    var taiinOrders = [];
-
     for (var i = 0; i < shohoOrders.length; i++) {
         var ord = shohoOrders[i];
         if (ord.category === "jisan_kennin") {
@@ -4588,16 +4779,12 @@ function processAndRenderSummaryMedications() {
             if (ord.orderDate >= jisanAllowStart && ord.orderDate <= endDate) {
                 jisanDocOrders.push(ord);
             }
-        } else if (ord.category === "taiin") {
-            if (ord.orderDate >= startDate && ord.orderDate <= addSummaryDaysStr(endDate, 7)) {
-                taiinOrders.push(ord);
-            }
         }
     }
 
-    // ---------------------------------------------------------
-    // A. 入院時持参薬の生成（【持参薬】（検認）を最優先、複数件は結合して明示）
-    // ---------------------------------------------------------
+    var chkRp = document.getElementById("chk-summary-jisan-rp-num");
+    var addRpNum = !!(chkRp && chkRp.checked);
+
     var broughtInEl = document.getElementById("txt-summary-brought-in-rx");
     var broughtInBadge = document.getElementById("summary-brought-in-badge");
     var targetJisanList = [];
@@ -4615,7 +4802,7 @@ function processAndRenderSummaryMedications() {
         if (broughtInEl) broughtInEl.value = "なし";
         if (broughtInBadge) broughtInBadge.innerHTML = '<span style="color:#777;">(該当なし)</span>';
     } else if (targetJisanList.length === 1) {
-        var singleText = formatOrderWithMacro(targetJisanList[0].rawPreText);
+        var singleText = formatOrderWithMacro(targetJisanList[0].rawPreText, addRpNum);
         if (broughtInEl) broughtInEl.value = singleText || "なし";
         if (broughtInBadge) {
             broughtInBadge.innerHTML = '<span style="color:#2e7d32; font-weight:bold;">✔ ' + escapeHtml(jisanTypeLabel) + ' 1件取得 (' + escapeHtml(targetJisanList[0].orderDate) + ')</span>';
@@ -4625,7 +4812,7 @@ function processAndRenderSummaryMedications() {
         var combinedBlocks = [];
         for (var k = 0; k < targetJisanList.length; k++) {
             var kOrd = targetJisanList[k];
-            var kFormatted = formatOrderWithMacro(kOrd.rawPreText);
+            var kFormatted = formatOrderWithMacro(kOrd.rawPreText, addRpNum);
             if (!kFormatted) continue;
             var stampInfo = kOrd.issueStamp ? (" / " + kOrd.issueStamp) : "";
             var headerLine = "▼" + jisanTypeLabel + " (" + (k + 1) + "/" + targetJisanList.length + "件目: " + kOrd.orderDate + (kOrd.orderTimeSlot ? " " + kOrd.orderTimeSlot : "") + stampInfo + ")";
@@ -4637,6 +4824,29 @@ function processAndRenderSummaryMedications() {
                 escapeHtml(jisanTypeLabel) + ' が複数回（' + targetJisanList.length + '件）入力されているため全て結合しました</span>';
         }
     }
+    autoResizeSummaryTextareas();
+}
+
+// 収集した処方・注射データから「持参薬」「退院処方」「入院中使用薬」を生成して描画
+function processAndRenderSummaryMedications() {
+    var startDate = summaryState.admitStartDate || "0000/00/00";
+    var endDate = summaryState.admitEndDate || "9999/99/99";
+    var shohoOrders = summaryState.shohoOrders || [];
+
+    var taiinOrders = [];
+    for (var i = 0; i < shohoOrders.length; i++) {
+        var ord = shohoOrders[i];
+        if (ord.category === "taiin") {
+            if (ord.orderDate >= startDate && ord.orderDate <= addSummaryDaysStr(endDate, 7)) {
+                taiinOrders.push(ord);
+            }
+        }
+    }
+
+    // ---------------------------------------------------------
+    // A. 入院時持参薬の生成（【持参薬】（検認）を最優先、複数件は結合して明示）
+    // ---------------------------------------------------------
+    reRenderSummaryBroughtInRx();
 
     // ---------------------------------------------------------
     // B. 退院処方の生成（[退院]区分、未入力時は「なし」）
@@ -4668,14 +4878,15 @@ function processAndRenderSummaryMedications() {
     // C. 入院中に使用した薬剤一覧の集計
     // ---------------------------------------------------------
     recalcSummaryInHospList();
+    autoResizeSummaryTextareas();
 }
 
 function detectSummaryRpSubCategory(orderKind, drugsText, usageText) {
     if (orderKind === "0031") return "注射";
     var u = String(usageText || "");
     var d = String(drugsText || "");
-    if (/回分|不眠時|痛む時|疼痛時|発熱時|頓用|頓服|発作時|嘔気時|便秘時|不穏時|血圧上昇時/.test(u)) {
-        return "頓服";
+    if (/回分|不眠時|痛む時|疼痛時|発熱時|頓用|頓服|発作時|嘔気時|悪心時|便秘時|下痢時|不穏時|興奮時|血圧上昇時|頭痛時|腹痛時|胸痛時|呼吸苦時|めまい時|かゆみ時|痙攣時|けいれん時|動悸時|血糖[^\s]*時|症状[^\s]*時/.test(u)) {
+        return "頓用";
     }
     if (!/日分/.test(u) && /塗布|貼付|点眼|点鼻|点耳|吸入|うがい|含嗽|坐剤|注腸|湿布|テープ|パップ|クリーム|軟膏|ローション|ゲル|スプレー/.test(u + " " + d)) {
         return "外用";
@@ -4712,27 +4923,45 @@ function recalcSummaryInHospList() {
 
                 var clampedStart = (startDate !== "0000/00/00" && rp.startDate < startDate) ? startDate : rp.startDate;
                 var clampedEnd = rp.endDate;
+                // 入院中の使用期間は入院期間の終了日を超えないよう丸める（退院処方は除く）
+                if (ord.category !== "taiin" && endDate !== "9999/99/99" && clampedEnd > endDate) clampedEnd = endDate;
 
-                var subCat = detectSummaryRpSubCategory(ord.orderKind, rp.drugs.join(" "), rp.usageText);
+                var rawSubCat = detectSummaryRpSubCategory(ord.orderKind, rp.drugs.join(" "), rp.usageText);
+                var isTonyo = (rawSubCat === "頓用");
+                // 持参薬指示分（jisan_order）は区分を「持参薬」とする
+                var subCat = (ord.category === "jisan_order") ? "持参薬" : rawSubCat;
+
                 for (var d = 0; d < rp.drugs.length; d++) {
                     var dName = rp.drugs[d];
                     if (!dName) continue;
-                    var key = (ord.orderKind === "0031" ? "chusha" : "shoho") + "::" + dName;
+                    // 注射・持参薬・頓用・通常内服/外用をそれぞれ別キーとして集計（頓用が定期内服の期間に混ざるのを防ぐ）
+                    var keyPrefix = "shoho";
+                    if (ord.orderKind === "0031") {
+                        keyPrefix = "chusha";
+                    } else if (ord.category === "jisan_order") {
+                        keyPrefix = isTonyo ? "jisan_tonyo" : "jisan";
+                    } else if (isTonyo) {
+                        keyPrefix = "tonyo";
+                    }
+                    var key = keyPrefix + "::" + dName;
                     if (!drugMap[key]) {
                         drugMap[key] = {
                             name: dName,
                             category: subCat,
+                            isTonyo: isTonyo,
                             intervals: [],
                             maxDuration: 0,
                             hasInHosp: false,
                             hasTaiin: false,
+                            hasJisan: (ord.category === "jisan_order"),
                             usageSamples: []
                         };
                         drugKeysOrder.push(key);
                     }
-                    if (subCat === "内服" && drugMap[key].category === "頓服") { drugMap[key].category = "内服"; }
                     if (ord.category === "taiin") {
                         drugMap[key].hasTaiin = true;
+                    } else if (ord.category === "jisan_order") {
+                        drugMap[key].hasJisan = true;
                     } else {
                         drugMap[key].hasInHosp = true;
                     }
@@ -4778,7 +5007,10 @@ function recalcSummaryInHospList() {
         var firstStart = merged.length > 0 ? merged[0].start : "";
         var lastEnd = merged.length > 0 ? merged[merged.length - 1].end : "";
 
-        if (mergeAllSpan && merged.length > 0) {
+        // 頓用の場合は期間を日付（1日等）にするのではなく「頓用」と記載する
+        if (item.isTonyo || item.category === "頓用") {
+            periodStr = "頓用";
+        } else if (mergeAllSpan && merged.length > 0) {
             if (firstStart === lastEnd) {
                 periodStr = formatSummaryShortDate(firstStart);
             } else {
@@ -4801,18 +5033,22 @@ function recalcSummaryInHospList() {
         if (exInfo.excluded) {
             noteParts.push("自動除外: " + exInfo.reason);
         } else {
+            if (item.hasJisan) {
+                noteParts.push("持参薬指示");
+            }
             if (item.hasTaiin && item.hasInHosp) {
                 noteParts.push("退院処方含む");
             } else if (item.hasTaiin) {
                 noteParts.push("退院処方");
             }
-            if (merged.length > 1 && mergeAllSpan) {
+            if (!item.isTonyo && merged.length > 1 && mergeAllSpan) {
                 noteParts.push("計" + merged.length + "期間を結合");
             }
         }
         rows.push({
             checked: !exInfo.excluded,
             category: item.category,
+            isTonyo: !!item.isTonyo,
             name: item.name,
             period: periodStr,
             firstStart: firstStart,
@@ -4821,8 +5057,8 @@ function recalcSummaryInHospList() {
         });
     }
 
-    // 区分順（内服→外用→頓服→注射）＆開始日順でソート
-    var catPriority = { "内服": 1, "外用": 2, "頓服": 3, "注射": 4 };
+    // 区分順（内服→持参薬→外用→頓用→注射）＆開始日順でソート
+    var catPriority = { "内服": 1, "持参薬": 2, "外用": 3, "頓用": 4, "頓服": 4, "注射": 5 };
     rows.sort(function(a, b) {
         var pa = catPriority[a.category] || 9;
         var pb = catPriority[b.category] || 9;
@@ -4841,6 +5077,16 @@ function recalcSummaryInHospList() {
     }
     renderSummaryInHospTable();
     updateSummaryCombinedPreview("inhosp");
+
+    // 次回受診予定の再計算・反映（退院日以降で最も早い1件/科）
+    if (summaryState.saishinOrders && summaryState.saishinOrders.length > 0) {
+        var nextVisitText = calcSummaryNextVisitText(summaryState.saishinOrders, summaryState.admitEndDate);
+        var saishinEl = document.getElementById("ipt-summary-saishin");
+        if (saishinEl) {
+            saishinEl.value = nextVisitText;
+        }
+        updateSummaryCombinedPreview("saishin");
+    }
 }
 
 function getSummaryDrugRowStdLine(r) {
@@ -4874,8 +5120,9 @@ function renderSummaryInHospTable() {
         var catBg = "#e3f2fd";
         var catFg = "#0d47a1";
         if (r.category === "注射") { catBg = "#fce4ec"; catFg = "#c2185b"; }
-        else if (r.category === "頓服") { catBg = "#fff3cd"; catFg = "#856404"; }
-        else if (r.category === "外用") { catBg = "#e8f5e9"; catFg = "#2e7d32"; }
+        else if (r.category === "頓用" || r.category === "頓服") { catBg = "#fff3cd"; catFg = "#856404"; }
+        else if (r.category === "外用") { catBg = "#e0f2f1"; catFg = "#00695c"; }
+        else if (r.category === "持参薬") { catBg = "#e8f5e9"; catFg = "#1b5e20"; }
 
         html += '<tr id="sum-inhosp-tr-' + i + '" style="background:' + rowBg + '; color:' + rowColor + ';">';
         html += '<td style="text-align:center; vertical-align:middle; cursor:pointer; padding:2px;" onclick="toggleSummaryInHospRow(' + i + ', event)">' +
@@ -4890,7 +5137,7 @@ function renderSummaryInHospTable() {
                 '</td>';
         html += '<td style="vertical-align:middle; padding:2px 4px;">' +
                 '<input type="text" class="yr-form-control" style="width:100%; height:23px; padding:1px 5px; font-size:12px; color:' + rowColor + ';" ' +
-                'value="' + escapeHtml(r.period) + '" placeholder="MM/DD～MM/DD" oninput="onSummaryInHospPeriodEdit(' + i + ', this.value)" onchange="onSummaryInHospPeriodEdit(' + i + ', this.value)">' +
+                'value="' + escapeHtml(r.period) + '" placeholder="MM/DD～MM/DD / 頓用" oninput="onSummaryInHospPeriodEdit(' + i + ', this.value)" onchange="onSummaryInHospPeriodEdit(' + i + ', this.value)">' +
                 '</td>';
         html += '<td style="vertical-align:middle; padding:2px 4px; font-size:10px; color:' + (r.autoExcluded ? '#d81b60' : '#666') + ';">' +
                 escapeHtml(r.note || "") +
@@ -4912,6 +5159,16 @@ function toggleSummaryInHospRow(idx, evt) {
     rows[idx].checked = !rows[idx].checked;
     renderSummaryInHospTable();
     updateSummaryCombinedPreview("inhosp");
+
+    // 次回受診予定の再計算・反映（退院日以降で最も早い1件/科）
+    if (summaryState.saishinOrders && summaryState.saishinOrders.length > 0) {
+        var nextVisitText = calcSummaryNextVisitText(summaryState.saishinOrders, summaryState.admitEndDate);
+        var saishinEl = document.getElementById("ipt-summary-saishin");
+        if (saishinEl) {
+            saishinEl.value = nextVisitText;
+        }
+        updateSummaryCombinedPreview("saishin");
+    }
 }
 
 function onSummaryInHospCheckChange(idx, chkEl, evt) {
@@ -4923,6 +5180,16 @@ function onSummaryInHospCheckChange(idx, chkEl, evt) {
     rows[idx].checked = !!chkEl.checked;
     renderSummaryInHospTable();
     updateSummaryCombinedPreview("inhosp");
+
+    // 次回受診予定の再計算・反映（退院日以降で最も早い1件/科）
+    if (summaryState.saishinOrders && summaryState.saishinOrders.length > 0) {
+        var nextVisitText = calcSummaryNextVisitText(summaryState.saishinOrders, summaryState.admitEndDate);
+        var saishinEl = document.getElementById("ipt-summary-saishin");
+        if (saishinEl) {
+            saishinEl.value = nextVisitText;
+        }
+        updateSummaryCombinedPreview("saishin");
+    }
 }
 
 function onSummaryInHospNameEdit(idx, val) {
@@ -4961,10 +5228,24 @@ function setSummaryInHospSelection(mode) {
             rows[i].checked = false;
         } else if (mode === "default") {
             rows[i].checked = !rows[i].autoExcluded;
+        } else if (mode === "exclude_tonyo") {
+            if (rows[i].category === "頓用" || rows[i].category === "頓服" || rows[i].isTonyo || trimSummaryStr(rows[i].period) === "頓用") {
+                rows[i].checked = false;
+            }
         }
     }
     renderSummaryInHospTable();
     updateSummaryCombinedPreview("inhosp");
+
+    // 次回受診予定の再計算・反映（退院日以降で最も早い1件/科）
+    if (summaryState.saishinOrders && summaryState.saishinOrders.length > 0) {
+        var nextVisitText = calcSummaryNextVisitText(summaryState.saishinOrders, summaryState.admitEndDate);
+        var saishinEl = document.getElementById("ipt-summary-saishin");
+        if (saishinEl) {
+            saishinEl.value = nextVisitText;
+        }
+        updateSummaryCombinedPreview("saishin");
+    }
 }
 
 function addSummaryManualDrugRow() {
@@ -4983,6 +5264,16 @@ function addSummaryManualDrugRow() {
     });
     renderSummaryInHospTable();
     updateSummaryCombinedPreview("inhosp");
+
+    // 次回受診予定の再計算・反映（退院日以降で最も早い1件/科）
+    if (summaryState.saishinOrders && summaryState.saishinOrders.length > 0) {
+        var nextVisitText = calcSummaryNextVisitText(summaryState.saishinOrders, summaryState.admitEndDate);
+        var saishinEl = document.getElementById("ipt-summary-saishin");
+        if (saishinEl) {
+            saishinEl.value = nextVisitText;
+        }
+        updateSummaryCombinedPreview("saishin");
+    }
 }
 
 // 入院中使用薬（選択分）の整形テキスト生成
@@ -5060,11 +5351,13 @@ function updateSummaryCombinedPreview(source) {
     var mainDisEl = document.getElementById("ipt-summary-main-disease");
     var comorbEl = document.getElementById("ipt-summary-comorbidities");
     var surgEl = document.getElementById("ipt-summary-surgery");
+    var saishinEl = document.getElementById("ipt-summary-saishin");
 
     var mainDis = mainDisEl ? trimSummaryStr(mainDisEl.value) : "";
     var comorb = comorbEl ? trimSummaryStr(comorbEl.value) : "";
     var surg = surgEl ? trimSummaryStr(surgEl.value) : "";
     var validSurg = (surg && surg !== "なし") ? surg : "";
+    var saishinVal = saishinEl ? trimSummaryStr(saishinEl.value) : "";
     var rows = summaryState.inHospDrugRows || [];
 
     var currentVal = previewEl.value || "";
@@ -5076,6 +5369,7 @@ function updateSummaryCombinedPreview(source) {
         if (mainDis) parts.push("【主病名】" + mainDis);
         if (comorb) parts.push("【併存疾患】" + comorb);
         if (validSurg) parts.push("【手術】" + validSurg);
+        if (saishinVal) parts.push("【次回受診】" + saishinVal);
         if (inhospTxt) parts.push("【入院中に使用した主な薬剤】\n" + inhospTxt);
         previewEl.value = parts.join("\n");
         if (!summaryState.knownAutoDrugLines) summaryState.knownAutoDrugLines = {};
@@ -5085,6 +5379,7 @@ function updateSummaryCombinedPreview(source) {
             rows[i0]._prevStdLine = s0;
             if (s0) summaryState.knownAutoDrugLines[s0] = true;
         }
+        autoResizeSummaryTextareas();
         return;
     }
 
@@ -5094,16 +5389,25 @@ function updateSummaryCombinedPreview(source) {
     if (source === "main_disease") {
         upsertOrRemoveSummaryHeaderLine(lines, "【主病名】", mainDis, []);
         previewEl.value = lines.join("\n");
+        autoResizeSummaryTextareas();
         return;
     }
     if (source === "comorbidities") {
         upsertOrRemoveSummaryHeaderLine(lines, "【併存疾患】", comorb, ["【主病名】"]);
         previewEl.value = lines.join("\n");
+        autoResizeSummaryTextareas();
         return;
     }
     if (source === "surgery") {
         upsertOrRemoveSummaryHeaderLine(lines, "【手術】", validSurg, ["【主病名】", "【併存疾患】"]);
         previewEl.value = lines.join("\n");
+        autoResizeSummaryTextareas();
+        return;
+    }
+    if (source === "saishin") {
+        upsertOrRemoveSummaryHeaderLine(lines, "【次回受診】", saishinVal, ["【主病名】", "【併存疾患】", "【手術】"]);
+        previewEl.value = lines.join("\n");
+        autoResizeSummaryTextareas();
         return;
     }
 
@@ -5113,6 +5417,7 @@ function updateSummaryCombinedPreview(source) {
         upsertOrRemoveSummaryHeaderLine(lines, "【主病名】", mainDis, []);
         upsertOrRemoveSummaryHeaderLine(lines, "【併存疾患】", comorb, ["【主病名】"]);
         upsertOrRemoveSummaryHeaderLine(lines, "【手術】", validSurg, ["【主病名】", "【併存疾患】"]);
+        upsertOrRemoveSummaryHeaderLine(lines, "【次回受診】", saishinVal, ["【主病名】", "【併存疾患】", "【手術】"]);
     }
 
     var drugHeader = "【入院中に使用した主な薬剤】";
@@ -5201,6 +5506,7 @@ function updateSummaryCombinedPreview(source) {
     }
 
     previewEl.value = lines.join("\n");
+    autoResizeSummaryTextareas();
 }
 
 // 各項目および一括テキストのクリップボードコピー
@@ -5221,16 +5527,22 @@ function copySummarySection(sectionType) {
         var sEl = document.getElementById("ipt-summary-surgery");
         textToCopy = sEl ? trimSummaryStr(sEl.value) : "";
         label = "手術情報";
+    } else if (sectionType === "saishin") {
+        var saiEl = document.getElementById("ipt-summary-saishin");
+        textToCopy = saiEl ? trimSummaryStr(saiEl.value) : "";
+        label = "次回受診予定";
     } else if (sectionType === "disease_surgery") {
         var mVal = trimSummaryStr((document.getElementById("ipt-summary-main-disease") || {}).value || "");
         var cVal = trimSummaryStr((document.getElementById("ipt-summary-comorbidities") || {}).value || "");
         var sVal = trimSummaryStr((document.getElementById("ipt-summary-surgery") || {}).value || "");
+        var saiVal = trimSummaryStr((document.getElementById("ipt-summary-saishin") || {}).value || "");
         var dsLines = [];
         if (mVal) dsLines.push("【主病名】" + mVal);
         if (cVal) dsLines.push("【併存疾患】" + cVal);
         if (sVal && sVal !== "なし") dsLines.push("【手術】" + sVal);
+        if (saiVal) dsLines.push("【次回受診】" + saiVal);
         textToCopy = dsLines.join("\n");
-        label = "病名・手術情報";
+        label = "病名・手術・受診情報";
     } else if (sectionType === "discharge_rx") {
         var dEl = document.getElementById("txt-summary-discharge-rx");
         textToCopy = dEl ? trimSummaryStr(dEl.value) : "";

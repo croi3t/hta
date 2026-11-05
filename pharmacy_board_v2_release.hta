@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+﻿﻿<!DOCTYPE html>
 <html>
 <head>
 <meta charset="UTF-8">
@@ -1390,33 +1390,38 @@ function generateAbbreviation() {}
                     <div style="display:flex; justify-content:space-between; align-items:center; padding:4px 8px; background:#e0f7fa; border-radius:3px 3px 0 0;">
                         <div onclick="toggleSummaryPanel('summary-sec1-body', 'summary-sec1-toggle-icon')" style="cursor:pointer; user-select:none; display:flex; align-items:center; gap:6px; flex:1;" title="クリックで①を開閉">
                             <span id="summary-sec1-toggle-icon" style="font-size:11px; color:#006064; font-weight:bold;">▼</span>
-                            <span style="font-size:12px; font-weight:bold; color:#006064;">① 主病名・併存疾患（有効病名）・手術情報</span>
+                            <span style="font-size:12px; font-weight:bold; color:#006064;">① 主病名・併存疾患・手術・次回受診</span>
                             <span style="font-size:10px; color:#00838f;">(クリックで開閉)</span>
                         </div>
                         <div style="display:flex; gap:5px;">
                             <button class="yr-btn yr-btn-outline-secondary" style="font-size:11px; padding:1px 7px; background:#fff;" onclick="refetchSummarySurgery()">✂️ 手術のみ再取得</button>
-                            <button class="yr-btn yr-btn-success" style="font-size:11px; padding:1px 8px;" onclick="copySummarySection('disease_surgery')">📋 病名・手術をコピー</button>
+                            <button class="yr-btn yr-btn-success" style="font-size:11px; padding:1px 8px;" onclick="copySummarySection('disease_surgery')">📋 病名・手術・受診をコピー</button>
                         </div>
                     </div>
 
                     <div id="summary-sec1-body" style="padding:6px 8px;">
-                        <!-- 主病名・併存疾患・手術を横1列(3カラム)に配置して縦スペースを大幅削減 -->
+                        <!-- 主病名・併存疾患・手術・次回受診を横1列(4カラム)に配置して縦スペースを大幅削減 -->
                         <div style="display:flex; gap:8px; margin-bottom:5px; align-items:center;">
-                            <div style="width:30%; display:flex; align-items:center; gap:4px;">
+                            <div style="flex:1.1; min-width:0; display:flex; align-items:center; gap:4px;">
                                 <label style="font-size:11px; font-weight:bold; white-space:nowrap;">主病名:</label>
-                                <input type="text" id="ipt-summary-main-disease" class="yr-form-control" style="flex:1; height:25px; font-size:12px;" placeholder="主病名" oninput="updateSummaryCombinedPreview('main_disease')" onchange="updateSummaryCombinedPreview('main_disease')">
+                                <input type="text" id="ipt-summary-main-disease" class="yr-form-control" style="flex:1; min-width:0; height:25px; font-size:12px;" placeholder="主病名" oninput="updateSummaryCombinedPreview('main_disease')" onchange="updateSummaryCombinedPreview('main_disease')">
                                 <button class="yr-btn yr-btn-outline-secondary" style="font-size:10px; padding:1px 5px; white-space:nowrap;" onclick="copySummarySection('main_disease')">コピー</button>
                             </div>
-                            <div style="width:40%; display:flex; align-items:center; gap:4px;">
-                                <label style="font-size:11px; font-weight:bold; white-space:nowrap;">併存疾患:</label>
-                                <input type="text" id="ipt-summary-comorbidities" class="yr-form-control" style="flex:1; height:25px; font-size:12px;" placeholder="下の有効病名クリックで追加 / 直接入力" oninput="updateSummaryCombinedPreview('comorbidities')" onchange="updateSummaryCombinedPreview('comorbidities')">
-                                <button class="yr-btn yr-btn-outline-secondary" style="font-size:10px; padding:1px 5px; white-space:nowrap;" onclick="document.getElementById('ipt-summary-comorbidities').value=''; renderSummaryByomeiChips(); updateSummaryCombinedPreview('comorbidities');">クリア</button>
+                            <div style="flex:1.4; min-width:0; display:flex; align-items:center; gap:4px;">
+                                <label style="font-size:11px; font-weight:bold; white-space:nowrap;">併存:</label>
+                                <input type="text" id="ipt-summary-comorbidities" class="yr-form-control" style="flex:1; min-width:0; height:25px; font-size:12px;" placeholder="有効病名クリックで追加 / 直入力" oninput="updateSummaryCombinedPreview('comorbidities')" onchange="updateSummaryCombinedPreview('comorbidities')">
+                                <button class="yr-btn yr-btn-outline-secondary" style="font-size:10px; padding:1px 4px; white-space:nowrap;" onclick="document.getElementById('ipt-summary-comorbidities').value=''; renderSummaryByomeiChips(); updateSummaryCombinedPreview('comorbidities');">クリア</button>
                                 <button class="yr-btn yr-btn-outline-secondary" style="font-size:10px; padding:1px 5px; white-space:nowrap;" onclick="copySummarySection('comorbidities')">コピー</button>
                             </div>
-                            <div style="width:30%; display:flex; align-items:center; gap:4px;">
+                            <div style="flex:1.2; min-width:0; display:flex; align-items:center; gap:4px;">
                                 <label style="font-size:11px; font-weight:bold; white-space:nowrap;">手術:</label>
-                                <input type="text" id="ipt-summary-surgery" class="yr-form-control" style="flex:1; height:25px; font-size:12px;" placeholder="なし（日付と術式）" oninput="updateSummaryCombinedPreview('surgery')" onchange="updateSummaryCombinedPreview('surgery')">
+                                <input type="text" id="ipt-summary-surgery" class="yr-form-control" style="flex:1; min-width:0; height:25px; font-size:12px;" placeholder="なし（日付と術式）" oninput="updateSummaryCombinedPreview('surgery')" onchange="updateSummaryCombinedPreview('surgery')">
                                 <button class="yr-btn yr-btn-outline-secondary" style="font-size:10px; padding:1px 5px; white-space:nowrap;" onclick="copySummarySection('surgery')">コピー</button>
+                            </div>
+                            <div style="flex:1.3; min-width:0; display:flex; align-items:center; gap:4px;">
+                                <label style="font-size:11px; font-weight:bold; white-space:nowrap;">次回受診:</label>
+                                <input type="text" id="ipt-summary-saishin" class="yr-form-control" style="flex:1; min-width:0; height:25px; font-size:12px;" placeholder="退院後の次回受診予定" oninput="updateSummaryCombinedPreview('saishin')" onchange="updateSummaryCombinedPreview('saishin')">
+                                <button class="yr-btn yr-btn-outline-secondary" style="font-size:10px; padding:1px 5px; white-space:nowrap;" onclick="copySummarySection('saishin')">コピー</button>
                             </div>
                         </div>
 
@@ -1527,7 +1532,7 @@ function generateAbbreviation() {}
                                 <input type="checkbox" id="chk-summary-lock-combined"> 🔒 ⑤の自動反映をロック
                             </label>
                         </div>
-                        <textarea id="txt-summary-combined-preview" class="yr-form-control" style="width:100%; height:260px; min-height:260px; box-sizing:border-box; font-family:monospace; font-size:12px; line-height:1.45; white-space:pre; overflow-y:hidden; overflow-x:auto; resize:vertical;" oninput="autoResizeSummaryTextareas()" onchange="autoResizeSummaryTextareas()" placeholder="主病名・併存疾患・手術日と術式・選択した入院中使用薬剤（期間付き）がここに整形されます。直接追記したコメントや特記事項も保持されます。"></textarea>
+                        <textarea id="txt-summary-combined-preview" class="yr-form-control" style="width:100%; height:260px; min-height:260px; box-sizing:border-box; font-family:monospace; font-size:12px; line-height:1.45; white-space:pre; overflow-y:hidden; overflow-x:auto; resize:vertical;" oninput="autoResizeSummaryTextareas()" onchange="autoResizeSummaryTextareas()" placeholder="主病名・併存疾患・手術日と術式・次回受診・選択した入院中使用薬剤（期間付き）がここに整形されます。直接追記したコメントや特記事項も保持されます。"></textarea>
                     </div>
                 </div>
             </div>
@@ -9832,7 +9837,7 @@ function updateMyDisplayNameMain() {
 </script>
 <script>
 /* --- BUNDLED: js/tools.js --- */
-// ---------- 薬管1 対象薬剤判定 ----------
+﻿// ---------- 薬管1 対象薬剤判定 ----------
         // 全角英数記号→半角に変換する正規化関数
         function normalizeDrug(s) {
             if (!s) return '';
@@ -13460,6 +13465,9 @@ function setSummaryLoadingOverlay(visible, stepText, progressPct) {
 function cleanupAllSummaryIframes() {
     var ids = (summaryState && summaryState.activeIframeIds) ? summaryState.activeIframeIds.slice() : [];
     if (summaryState) summaryState.activeIframeIds = [];
+    if (summaryState && summaryState.patientId) {
+        ids.push("surgery-fetch-iframe-" + summaryState.patientId);
+    }
     for (var i = 0; i < ids.length; i++) {
         try {
             var ifr = document.getElementById(ids[i]);
@@ -13503,6 +13511,7 @@ function clearSummaryTab() {
         byomeiList: [],
         shohoOrders: [],
         chushaOrders: [],
+        saishinOrders: [],
         inHospDrugRows: [],
         knownAutoDrugLines: {},
         isFetching: false,
@@ -13518,6 +13527,7 @@ function clearSummaryTab() {
         "ipt-summary-main-disease",
         "ipt-summary-surgery",
         "ipt-summary-comorbidities",
+        "ipt-summary-saishin",
         "txt-summary-discharge-rx",
         "txt-summary-brought-in-rx",
         "txt-summary-combined-preview"
@@ -13639,50 +13649,134 @@ function fetchSummaryHtmlViaIframe(url, timeoutMs, callback) {
     }
 }
 
-// サマリ専用の手術情報取得ヘルパー（ファイル保存競合を起こさず、短時間タイムアウト＆中断トークンに対応）
+// サマリ専用の手術情報取得ヘルパー（SurgeryFetcher.fetchSingleを呼び出し、180日以上の過去手術も漏れなく取得）
 function fetchSummarySurgerySafe(pObj, userId, myToken, callback) {
     if (!pObj || !pObj.id) {
-        callback();
+        if (callback) callback();
         return;
     }
-    var today = new Date();
-    var endDate = today.getFullYear() + "/" + ("0" + (today.getMonth() + 1)).slice(-2) + "/" + ("0" + today.getDate()).slice(-2);
-    var past = new Date(today.getTime() - (180 * 24 * 60 * 60 * 1000));
-    var startDate = past.getFullYear() + "/" + ("0" + (past.getMonth() + 1)).slice(-2) + "/" + ("0" + past.getDate()).slice(-2);
+    if (typeof SurgeryFetcher !== "undefined" && typeof SurgeryFetcher.fetchSingle === "function") {
+        var originalDays = pObj.daysInHosp;
+        // サマリでは入院前・過去の手術も確実に拾えるよう、最低180日以上の検索範囲を一時的に設定
+        var targetDays = Math.max(parseInt(originalDays, 10) || 0, 180);
+        pObj.daysInHosp = targetDays;
 
-    var url = "http://10.5.171.42:8082/karte/karte.php"
-        + "?disp_flgs=1/0/2/0/0/0/1/0/0/1/0/0/0/0/0"
-        + "&kanja_id=" + encodeURIComponent(pObj.id)
-        + "&user_id=" + encodeURIComponent(userId)
-        + "&start_date=" + startDate
-        + "&end_date=" + endDate
-        + "&hakkou_date=" + startDate
-        + "&kijun_date=" + endDate
-        + "&range_date=180/7/1/1"
-        + "&disp_selectsection="
-        + "&disp_selectukind=1,2,3,91"
-        + "&disp_usection_code=0"
-        + "&disp_ukind_code=2122"
-        + "&order_kind_set_code=0220"
-        + "&order_kind_code_str=0220"
-        + "&no_log_flg=1&nyugai_kind=&min_date=&max_date=&disp_zoom=100"
-        + "&_t=" + new Date().getTime();
+        SurgeryFetcher.fetchSingle(pObj, function() {
+            // 在院日数を元に戻す
+            if (originalDays !== undefined) {
+                pObj.daysInHosp = originalDays;
+            } else {
+                delete pObj.daysInHosp;
+            }
+            if (typeof summaryState !== "undefined" && summaryState.fetchToken && myToken !== summaryState.fetchToken) return;
+            if (callback) callback();
+        });
+    } else {
+        if (callback) callback();
+    }
+}
 
-    fetchSummaryHtmlViaIframe(url, 15000, function(bodyHtml, isErr) {
-        if (myToken !== summaryState.fetchToken) return;
-        if (!isErr && bodyHtml) {
-            try {
-                if (typeof SurgeryFetcher !== "undefined" && typeof SurgeryFetcher.parseSurgeryContent === "function") {
-                    var parsed = SurgeryFetcher.parseSurgeryContent(bodyHtml);
-                    if (parsed) {
-                        pObj.surgeryDate = parsed.date || "なし";
-                        pObj.surgeryProcedure = parsed.procedure || "なし";
-                    }
-                }
-            } catch(e) {}
+// カルテHTMLから再診予約(0081)のオーダ情報を抽出
+function parseSummarySaishinOrders(bodyHtml) {
+    if (!bodyHtml) return [];
+    var parts = bodyHtml.split(/<a\s+name=["']#karte_/i);
+    var parsed = [];
+    var dayNames = ["日", "月", "火", "水", "木", "金", "土"];
+
+    for (var i = 1; i < parts.length; i++) {
+        var sec = parts[i];
+        if (!sec || sec.indexOf("再診予約") === -1) continue;
+
+        // 先頭の日付: YYYY/MM/DD
+        var topDateMatch = sec.match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})/);
+        var y = 0, mth = 0, d = 0, dow = "";
+        if (topDateMatch) {
+            y = parseInt(topDateMatch[1], 10);
+            mth = parseInt(topDateMatch[2], 10);
+            d = parseInt(topDateMatch[3], 10);
         }
-        callback();
+
+        // 見出し内の日付・曜日
+        var dateMatch = sec.match(/(\d{4})年(\d{1,2})月(\d{1,2})日(?:\((.+?)\))?/);
+        if (dateMatch) {
+            y = parseInt(dateMatch[1], 10);
+            mth = parseInt(dateMatch[2], 10);
+            d = parseInt(dateMatch[3], 10);
+            dow = dateMatch[4] ? trimSummaryStr(dateMatch[4]) : "";
+        }
+        if (!y || !mth || !d) continue;
+
+        var ymd = ("000" + y).slice(-4) + "/" + ("0" + mth).slice(-2) + "/" + ("0" + d).slice(-2);
+        if (!dow) {
+            var dObj = new Date(y, mth - 1, d);
+            dow = dayNames[dObj.getDay()];
+        }
+
+        // 診療科の抽出（外来見出しの診療科名、または<PRE>医師行から）
+        var dept = "";
+        var headerMatch = sec.match(/<B>[\s\S]*?外来[\s\u3000\xa0]*(?:\d{1,2}:\d{2}[\s\u3000\xa0]*)?([^\s<　\xa0]+)[\s\S]*?<\/B>/i);
+        if (headerMatch) {
+            dept = trimSummaryStr(headerMatch[1]);
+        }
+        if (!dept) {
+            var docMatch = sec.match(/\(([^)]+)\)\s*&lt;医師&gt;/i);
+            if (docMatch) {
+                dept = trimSummaryStr(docMatch[1]);
+            }
+        }
+        if (!dept) {
+            dept = "外来";
+        }
+
+        parsed.push({
+            ymd: ymd,
+            mth: mth,
+            d: d,
+            dow: dow,
+            dept: dept,
+            formatted: mth + "/" + d + "(" + dow + ") " + dept
+        });
+    }
+    return parsed;
+}
+
+// 再診予約リストから退院日以降で最も早い予約を1診療科1件として抽出し、整形文字列を生成
+function calcSummaryNextVisitText(saishinOrders, admitEndDate) {
+    if (!saishinOrders || saishinOrders.length === 0) return "";
+    var today = new Date();
+    var todayStr = ("000" + today.getFullYear()).slice(-4) + "/" + ("0" + (today.getMonth() + 1)).slice(-2) + "/" + ("0" + today.getDate()).slice(-2);
+    var filterDate = admitEndDate || todayStr;
+
+    var deptMap = {};
+    for (var i = 0; i < saishinOrders.length; i++) {
+        var ord = saishinOrders[i];
+        if (ord.ymd >= filterDate) {
+            var dName = ord.dept;
+            if (!deptMap[dName] || ord.ymd < deptMap[dName].ymd) {
+                deptMap[dName] = ord;
+            }
+        }
+    }
+
+    var filtered = [];
+    for (var k in deptMap) {
+        if (deptMap.hasOwnProperty(k)) {
+            filtered.push(deptMap[k]);
+        }
+    }
+    if (filtered.length === 0) return "";
+
+    // 予約日の昇順にソート
+    filtered.sort(function(a, b) {
+        if (a.ymd !== b.ymd) return a.ymd < b.ymd ? -1 : 1;
+        return a.dept < b.dept ? -1 : 1;
     });
+
+    var parts = [];
+    for (var j = 0; j < filtered.length; j++) {
+        parts.push(filtered[j].formatted);
+    }
+    return parts.join("、");
 }
 
 // 患者オブジェクトの手術情報を表示用文字列に整形
@@ -13781,14 +13875,19 @@ function fetchSummaryPatientData() {
 
     var userId = (typeof currentSystemId !== "undefined" && currentSystemId) ? currentSystemId : "16622";
     summaryState.isFetching = true;
-    setSummaryLoadingOverlay(true, "ステップ 1/4: 手術記録を確認中...", 15);
-    setSummaryStatus("1/4 手術情報を確認中...", false);
+    setSummaryLoadingOverlay(true, "ステップ 1/5: 手術記録を確認中...", 15);
+    setSummaryStatus("1/5 手術情報を確認中...", false);
 
-    // ステップ1: 手術情報が未取得の場合はサマリ専用安全取得ヘルパーで取得
+    // ステップ1: 手術情報の取得（未取得または「なし」の場合は180日範囲で確実に取得）
     function step1_surgery(next) {
         if (myToken !== summaryState.fetchToken) return;
-        if (pObj.surgeryDate && pObj.surgeryDate !== "-" && pObj.surgeryProcedure !== "タイムアウト") {
+        var sProc = pObj.surgeryProcedure || "";
+        var sDate = pObj.surgeryDate || "";
+        var hasValidSurgery = (sProc && sProc !== "なし" && sProc !== "タイムアウト" && sProc !== "解析エラー" && sProc !== "情報なし") ||
+                             (sDate && sDate !== "なし" && sDate !== "-" && sDate !== "不明");
+        if (hasValidSurgery) {
             if (surgEl) surgEl.value = formatSummarySurgeryText(pObj);
+            updateSummaryCombinedPreview("surgery");
             next();
             return;
         }
@@ -13803,8 +13902,8 @@ function fetchSummaryPatientData() {
     // ステップ2: 有効病名の取得 (kanja_byomei_info_disp.php)
     function step2_byomei(next) {
         if (myToken !== summaryState.fetchToken) return;
-        setSummaryLoadingOverlay(true, "ステップ 2/4: 有効病名を取得中...", 40);
-        setSummaryStatus("2/4 有効病名を取得中...", false);
+        setSummaryLoadingOverlay(true, "ステップ 2/5: 有効病名を取得中...", 35);
+        setSummaryStatus("2/5 有効病名を取得中...", false);
         var byomeiDate = (summaryState.admitEndDate || todayStr).replace(/\//g, "");
         var byomeiUrl = "http://10.5.171.42:8082/karte/kanja_profile/parts/kanja_byomei_info_disp.php"
             + "?kanja_id=" + encodeURIComponent(pId)
@@ -13909,8 +14008,8 @@ function fetchSummaryPatientData() {
     // ステップ4: 注射データ(0031)の取得
     function step4_chusha(next) {
         if (myToken !== summaryState.fetchToken) return;
-        setSummaryLoadingOverlay(true, "ステップ 4/4: 注射歴を取得中...", 90);
-        setSummaryStatus("4/4 注射歴を取得中...", false);
+        setSummaryLoadingOverlay(true, "ステップ 4/5: 注射歴を取得中...", 90);
+        setSummaryStatus("4/5 注射歴を取得中...", false);
         var rDays = (!isNaN(hospDays) && hospDays > 0) ? Math.min(550, Math.max(hospDays + 14, 21)) : 90;
         var fetchStart = addSummaryDaysStr(todayStr, -rDays);
         if (summaryState.admitStartDate) {
@@ -13953,20 +14052,68 @@ function fetchSummaryPatientData() {
         });
     }
 
+    // ステップ5: 再診予約データ(0081)の取得
+    function step5_saishin(next) {
+        if (myToken !== summaryState.fetchToken) return;
+        setSummaryLoadingOverlay(true, "ステップ 5/5: 再診予約を取得中...", 90);
+        setSummaryStatus("5/5 再診予約を取得中...", false);
+
+        var rDays = 180;
+        var fetchStart = addSummaryDaysStr(todayStr, -rDays);
+        var fetchEnd = addSummaryDaysStr(todayStr, 180);
+
+        var saishinUrl = "http://10.5.171.42:8082/karte/karte.php"
+            + "?disp_flgs=1/0/2/0/0/0/1/0/0/1/0/0/0/0/0"
+            + "&kanja_id=" + encodeURIComponent(pId)
+            + "&user_id=" + encodeURIComponent(userId)
+            + "&start_date=" + fetchStart
+            + "&end_date=" + fetchEnd
+            + "&hakkou_date=" + fetchStart
+            + "&kijun_date=" + todayStr
+            + "&range_date=" + rDays + "/7/1/1"
+            + "&disp_selectsection="
+            + "&disp_selectukind=1,2,3,91"
+            + "&disp_usection_code=0"
+            + "&disp_ukind_code=2122"
+            + "&order_kind_set_code=0081"
+            + "&order_kind_code_str=0081"
+            + "&no_log_flg=1&nyugai_kind=&min_date=&max_date=&disp_zoom=100"
+            + "&_t=" + new Date().getTime();
+
+        fetchSummaryHtmlViaIframe(saishinUrl, 30000, function(bodyHtml, isErr) {
+            if (myToken !== summaryState.fetchToken) return;
+            try {
+                if (!isErr && bodyHtml) {
+                    var parsedSaishin = parseSummarySaishinOrders(bodyHtml);
+                    summaryState.saishinOrders = parsedSaishin;
+                    var nextVisitText = calcSummaryNextVisitText(parsedSaishin, summaryState.admitEndDate);
+                    var saishinEl = document.getElementById("ipt-summary-saishin");
+                    if (saishinEl) {
+                        saishinEl.value = nextVisitText;
+                    }
+                    updateSummaryCombinedPreview("saishin");
+                }
+            } catch(e) {}
+            next();
+        });
+    }
+
     step1_surgery(function() {
         step2_byomei(function() {
             step3_shoho(function() {
                 step4_chusha(function() {
-                    if (myToken !== summaryState.fetchToken) return;
-                    summaryState.isFetching = false;
-                    setSummaryLoadingOverlay(false, "", 100);
-                    try {
-                        updateSummaryPatientBadge();
-                        processAndRenderSummaryMedications();
-                        setSummaryStatus("✔ 情報収集完了 (" + getTimeString() + ")", false);
-                    } catch(e) {
-                        setSummaryStatus("⚠ 情報収集完了（一部表示処理でエラー）", true);
-                    }
+                    step5_saishin(function() {
+                        if (myToken !== summaryState.fetchToken) return;
+                        summaryState.isFetching = false;
+                        setSummaryLoadingOverlay(false, "", 100);
+                        try {
+                            updateSummaryPatientBadge();
+                            processAndRenderSummaryMedications();
+                            setSummaryStatus("✔ 情報収集完了 (" + getTimeString() + ")", false);
+                        } catch(e) {
+                            setSummaryStatus("⚠ 情報収集完了（一部表示処理でエラー）", true);
+                        }
+                    });
                 });
             });
         });
@@ -14002,6 +14149,9 @@ function refetchSummarySurgery() {
     summaryState.isFetching = true;
     setSummaryLoadingOverlay(true, "手術記録を再取得中...", 50);
     setSummaryStatus("手術情報を再取得中...", false);
+    // 既存の値をクリアして確実に最新を取得
+    summaryState.patientObj.surgeryDate = undefined;
+    summaryState.patientObj.surgeryProcedure = undefined;
     fetchSummarySurgerySafe(summaryState.patientObj, userId, myToken, function() {
         if (myToken !== summaryState.fetchToken) return;
         summaryState.isFetching = false;
@@ -14766,6 +14916,16 @@ function recalcSummaryInHospList() {
     }
     renderSummaryInHospTable();
     updateSummaryCombinedPreview("inhosp");
+
+    // 次回受診予定の再計算・反映（退院日以降で最も早い1件/科）
+    if (summaryState.saishinOrders && summaryState.saishinOrders.length > 0) {
+        var nextVisitText = calcSummaryNextVisitText(summaryState.saishinOrders, summaryState.admitEndDate);
+        var saishinEl = document.getElementById("ipt-summary-saishin");
+        if (saishinEl) {
+            saishinEl.value = nextVisitText;
+        }
+        updateSummaryCombinedPreview("saishin");
+    }
 }
 
 function getSummaryDrugRowStdLine(r) {
@@ -14838,6 +14998,16 @@ function toggleSummaryInHospRow(idx, evt) {
     rows[idx].checked = !rows[idx].checked;
     renderSummaryInHospTable();
     updateSummaryCombinedPreview("inhosp");
+
+    // 次回受診予定の再計算・反映（退院日以降で最も早い1件/科）
+    if (summaryState.saishinOrders && summaryState.saishinOrders.length > 0) {
+        var nextVisitText = calcSummaryNextVisitText(summaryState.saishinOrders, summaryState.admitEndDate);
+        var saishinEl = document.getElementById("ipt-summary-saishin");
+        if (saishinEl) {
+            saishinEl.value = nextVisitText;
+        }
+        updateSummaryCombinedPreview("saishin");
+    }
 }
 
 function onSummaryInHospCheckChange(idx, chkEl, evt) {
@@ -14849,6 +15019,16 @@ function onSummaryInHospCheckChange(idx, chkEl, evt) {
     rows[idx].checked = !!chkEl.checked;
     renderSummaryInHospTable();
     updateSummaryCombinedPreview("inhosp");
+
+    // 次回受診予定の再計算・反映（退院日以降で最も早い1件/科）
+    if (summaryState.saishinOrders && summaryState.saishinOrders.length > 0) {
+        var nextVisitText = calcSummaryNextVisitText(summaryState.saishinOrders, summaryState.admitEndDate);
+        var saishinEl = document.getElementById("ipt-summary-saishin");
+        if (saishinEl) {
+            saishinEl.value = nextVisitText;
+        }
+        updateSummaryCombinedPreview("saishin");
+    }
 }
 
 function onSummaryInHospNameEdit(idx, val) {
@@ -14895,6 +15075,16 @@ function setSummaryInHospSelection(mode) {
     }
     renderSummaryInHospTable();
     updateSummaryCombinedPreview("inhosp");
+
+    // 次回受診予定の再計算・反映（退院日以降で最も早い1件/科）
+    if (summaryState.saishinOrders && summaryState.saishinOrders.length > 0) {
+        var nextVisitText = calcSummaryNextVisitText(summaryState.saishinOrders, summaryState.admitEndDate);
+        var saishinEl = document.getElementById("ipt-summary-saishin");
+        if (saishinEl) {
+            saishinEl.value = nextVisitText;
+        }
+        updateSummaryCombinedPreview("saishin");
+    }
 }
 
 function addSummaryManualDrugRow() {
@@ -14913,6 +15103,16 @@ function addSummaryManualDrugRow() {
     });
     renderSummaryInHospTable();
     updateSummaryCombinedPreview("inhosp");
+
+    // 次回受診予定の再計算・反映（退院日以降で最も早い1件/科）
+    if (summaryState.saishinOrders && summaryState.saishinOrders.length > 0) {
+        var nextVisitText = calcSummaryNextVisitText(summaryState.saishinOrders, summaryState.admitEndDate);
+        var saishinEl = document.getElementById("ipt-summary-saishin");
+        if (saishinEl) {
+            saishinEl.value = nextVisitText;
+        }
+        updateSummaryCombinedPreview("saishin");
+    }
 }
 
 // 入院中使用薬（選択分）の整形テキスト生成
@@ -14990,11 +15190,13 @@ function updateSummaryCombinedPreview(source) {
     var mainDisEl = document.getElementById("ipt-summary-main-disease");
     var comorbEl = document.getElementById("ipt-summary-comorbidities");
     var surgEl = document.getElementById("ipt-summary-surgery");
+    var saishinEl = document.getElementById("ipt-summary-saishin");
 
     var mainDis = mainDisEl ? trimSummaryStr(mainDisEl.value) : "";
     var comorb = comorbEl ? trimSummaryStr(comorbEl.value) : "";
     var surg = surgEl ? trimSummaryStr(surgEl.value) : "";
     var validSurg = (surg && surg !== "なし") ? surg : "";
+    var saishinVal = saishinEl ? trimSummaryStr(saishinEl.value) : "";
     var rows = summaryState.inHospDrugRows || [];
 
     var currentVal = previewEl.value || "";
@@ -15006,6 +15208,7 @@ function updateSummaryCombinedPreview(source) {
         if (mainDis) parts.push("【主病名】" + mainDis);
         if (comorb) parts.push("【併存疾患】" + comorb);
         if (validSurg) parts.push("【手術】" + validSurg);
+        if (saishinVal) parts.push("【次回受診】" + saishinVal);
         if (inhospTxt) parts.push("【入院中に使用した主な薬剤】\n" + inhospTxt);
         previewEl.value = parts.join("\n");
         if (!summaryState.knownAutoDrugLines) summaryState.knownAutoDrugLines = {};
@@ -15040,6 +15243,12 @@ function updateSummaryCombinedPreview(source) {
         autoResizeSummaryTextareas();
         return;
     }
+    if (source === "saishin") {
+        upsertOrRemoveSummaryHeaderLine(lines, "【次回受診】", saishinVal, ["【主病名】", "【併存疾患】", "【手術】"]);
+        previewEl.value = lines.join("\n");
+        autoResizeSummaryTextareas();
+        return;
+    }
 
     // 2. ④（入院中に使用した薬剤一覧）が変更された場合（または引数なし呼び出し時）：
     //    ⑤内の手書き特記事項・フリーコメント・各薬剤行末への手書き追記を保持したまま薬剤リスト部分のみを更新する
@@ -15047,6 +15256,7 @@ function updateSummaryCombinedPreview(source) {
         upsertOrRemoveSummaryHeaderLine(lines, "【主病名】", mainDis, []);
         upsertOrRemoveSummaryHeaderLine(lines, "【併存疾患】", comorb, ["【主病名】"]);
         upsertOrRemoveSummaryHeaderLine(lines, "【手術】", validSurg, ["【主病名】", "【併存疾患】"]);
+        upsertOrRemoveSummaryHeaderLine(lines, "【次回受診】", saishinVal, ["【主病名】", "【併存疾患】", "【手術】"]);
     }
 
     var drugHeader = "【入院中に使用した主な薬剤】";
@@ -15156,16 +15366,22 @@ function copySummarySection(sectionType) {
         var sEl = document.getElementById("ipt-summary-surgery");
         textToCopy = sEl ? trimSummaryStr(sEl.value) : "";
         label = "手術情報";
+    } else if (sectionType === "saishin") {
+        var saiEl = document.getElementById("ipt-summary-saishin");
+        textToCopy = saiEl ? trimSummaryStr(saiEl.value) : "";
+        label = "次回受診予定";
     } else if (sectionType === "disease_surgery") {
         var mVal = trimSummaryStr((document.getElementById("ipt-summary-main-disease") || {}).value || "");
         var cVal = trimSummaryStr((document.getElementById("ipt-summary-comorbidities") || {}).value || "");
         var sVal = trimSummaryStr((document.getElementById("ipt-summary-surgery") || {}).value || "");
+        var saiVal = trimSummaryStr((document.getElementById("ipt-summary-saishin") || {}).value || "");
         var dsLines = [];
         if (mVal) dsLines.push("【主病名】" + mVal);
         if (cVal) dsLines.push("【併存疾患】" + cVal);
         if (sVal && sVal !== "なし") dsLines.push("【手術】" + sVal);
+        if (saiVal) dsLines.push("【次回受診】" + saiVal);
         textToCopy = dsLines.join("\n");
-        label = "病名・手術情報";
+        label = "病名・手術・受診情報";
     } else if (sectionType === "discharge_rx") {
         var dEl = document.getElementById("txt-summary-discharge-rx");
         textToCopy = dEl ? trimSummaryStr(dEl.value) : "";
