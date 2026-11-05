@@ -515,6 +515,10 @@
         
 
         function yrSwitchTab(tabId, el) {
+            if (typeof summaryState !== "undefined" && summaryState.isFetching) {
+                yrShowAlert("現在サマリ情報を収集中です。完了または中断してから操作してください。", "error");
+                return;
+            }
             // yr-nav-link経由の呼び出し（旧方式互換）
             var navs = document.querySelectorAll('.yr-nav-link');
             for(var i=0; i<navs.length; i++) removeClass(navs[i], 'yr-active');
@@ -523,6 +527,10 @@
         }
         
         function yrSwitchTabInline(tabId, el) {
+            if (typeof summaryState !== "undefined" && summaryState.isFetching) {
+                yrShowAlert("現在サマリ情報を収集中です。完了または中断してから操作してください。", "error");
+                return;
+            }
             // メインタブバー内のサブタブ切替
             var subs = document.querySelectorAll('#yr-subtabs-inline .yr-sub');
             for(var i=0; i<subs.length; i++) removeClass(subs[i], 'active');
@@ -2964,6 +2972,9 @@ function changeBoardFontSize() {
     if (size === "medium") addClass(document.body, "font-medium");
     else if (size === "large") addClass(document.body, "font-large");
     
+    if (typeof adjustMainContainerTopPadding === "function") {
+        adjustMainContainerTopPadding();
+    }
     // ローカルストレージ領域へ保存
     try { myStorage.setItem('boardFontSize', size); } catch(e){}
 }
@@ -3378,8 +3389,36 @@ var summaryState = {
     shohoOrders: [],
     chushaOrders: [],
     inHospDrugRows: [],
-    isFetching: false
+    knownAutoDrugLines: {},
+    isFetching: false,
+    fetchToken: 0,
+    activeIframeIds: []
 };
+
+// セクション（①または②・③）の個別折りたたみ・展開
+function toggleSummaryPanel(bodyId, iconId, forceShow) {
+    var bodyEl = document.getElementById(bodyId);
+    var iconEl = document.getElementById(iconId);
+    if (!bodyEl) return;
+    var isHidden = (bodyEl.style.display === "none");
+    var nextShow = (typeof forceShow === "boolean") ? forceShow : isHidden;
+    if (nextShow) {
+        bodyEl.style.display = (bodyId === "summary-sec23-body") ? "flex" : "block";
+        if (iconEl) iconEl.innerText = "▼";
+    } else {
+        bodyEl.style.display = "none";
+        if (iconEl) iconEl.innerText = "▶";
+    }
+}
+
+// ①～③を一括で折りたたみ／展開して④・⑤の作業領域を最大化する
+function toggleAllSummaryUpperPanels() {
+    var b1 = document.getElementById("summary-sec1-body");
+    var b23 = document.getElementById("summary-sec23-body");
+    var anyVisible = (b1 && b1.style.display !== "none") || (b23 && b23.style.display !== "none");
+    toggleSummaryPanel("summary-sec1-body", "summary-sec1-toggle-icon", !anyVisible);
+    toggleSummaryPanel("summary-sec23-body", "summary-sec23-toggle-icon", !anyVisible);
+}
 
 function padSummaryDateStr(s) {
     if (!s) return "";
@@ -3514,7 +3553,68 @@ function setSummaryStatus(msg, isError) {
     el.innerText = msg || "";
 }
 
+// 収集中の画面操作ロック用オーバーレイ＆進捗バー制御
+function setSummaryLoadingOverlay(visible, stepText, progressPct) {
+    var overlay = document.getElementById("summary-loading-overlay");
+    if (overlay) {
+        overlay.style.display = visible ? "block" : "none";
+    }
+    if (stepText !== undefined && stepText !== null) {
+        var stepEl = document.getElementById("summary-loading-step-text");
+        if (stepEl) stepEl.innerText = stepText;
+    }
+    if (progressPct !== undefined && progressPct !== null) {
+        var barEl = document.getElementById("summary-loading-progress-bar");
+        if (barEl) barEl.style.width = Math.max(0, Math.min(100, progressPct)) + "%";
+    }
+    var btnFetch = document.getElementById("btn-summary-fetch");
+    if (btnFetch) {
+        btnFetch.disabled = !!visible;
+        btnFetch.innerText = visible ? "⏳ 収集中..." : "🔍 カルテから情報収集";
+    }
+    // アイドル自動取得タイマーの誤発火を防ぐため最終操作時刻を更新
+    if (typeof lastActivityTime !== "undefined") {
+        lastActivityTime = new Date().getTime();
+    }
+}
+
+// 収集中の隠しiframeをすべて安全に破棄するヘルパー
+function cleanupAllSummaryIframes() {
+    var ids = (summaryState && summaryState.activeIframeIds) ? summaryState.activeIframeIds.slice() : [];
+    if (summaryState) summaryState.activeIframeIds = [];
+    for (var i = 0; i < ids.length; i++) {
+        try {
+            var ifr = document.getElementById(ids[i]);
+            if (ifr) {
+                try { ifr.onload = null; ifr.src = "about:blank"; } catch(e1) {}
+                if (ifr.parentNode) ifr.parentNode.removeChild(ifr);
+            }
+        } catch(e) {}
+    }
+}
+
+// 収集の中断ボタン処理
+function cancelSummaryFetch() {
+    if (!summaryState.isFetching) {
+        setSummaryLoadingOverlay(false);
+        return;
+    }
+    summaryState.fetchToken = (summaryState.fetchToken || 0) + 1;
+    summaryState.isFetching = false;
+    cleanupAllSummaryIframes();
+    setSummaryLoadingOverlay(false);
+    setSummaryStatus("⏹ 情報収集を中断しました（取得済みの項目まで反映しています）", true);
+    try {
+        updateSummaryPatientBadge();
+        processAndRenderSummaryMedications();
+    } catch(e) {}
+}
+
 function clearSummaryTab() {
+    if (summaryState && summaryState.isFetching) {
+        cancelSummaryFetch();
+    }
+    var nextToken = (summaryState && summaryState.fetchToken ? summaryState.fetchToken : 0) + 1;
     summaryState = {
         patientId: "",
         patientName: "",
@@ -3526,8 +3626,13 @@ function clearSummaryTab() {
         shohoOrders: [],
         chushaOrders: [],
         inHospDrugRows: [],
-        isFetching: false
+        knownAutoDrugLines: {},
+        isFetching: false,
+        fetchToken: nextToken,
+        activeIframeIds: []
     };
+    var lockChk = document.getElementById("chk-summary-lock-combined");
+    if (lockChk) lockChk.checked = false;
     var ids = [
         "ipt-summary-patient-search",
         "ipt-summary-start-date",
@@ -3573,43 +3678,79 @@ function fetchSummaryHtmlViaIframe(url, timeoutMs, callback) {
     iframe.application = "yes";
     document.body.appendChild(iframe);
 
+    if (!summaryState.activeIframeIds) summaryState.activeIframeIds = [];
+    summaryState.activeIframeIds.push(iframeId);
+
     var isDone = false;
     var timer = null;
+
+    function removeActiveId() {
+        if (!summaryState || !summaryState.activeIframeIds) return;
+        for (var i = summaryState.activeIframeIds.length - 1; i >= 0; i--) {
+            if (summaryState.activeIframeIds[i] === iframeId) {
+                summaryState.activeIframeIds.splice(i, 1);
+            }
+        }
+    }
+
+    function collectFrameText(win) {
+        var text = "";
+        try {
+            if (win.document && win.document.body) {
+                text += (win.document.body.innerHTML || win.document.body.innerText || "") + "\n";
+            }
+        } catch(e) {}
+        try {
+            if (win.frames && win.frames.length > 0) {
+                for (var f = 0; f < win.frames.length; f++) {
+                    text += collectFrameText(win.frames[f]);
+                }
+            }
+        } catch(e2) {}
+        return text;
+    }
 
     function finish(htmlStr, isErr) {
         if (isDone) return;
         isDone = true;
         if (timer) clearTimeout(timer);
+        removeActiveId();
+        if (typeof lastActivityTime !== "undefined") {
+            lastActivityTime = new Date().getTime();
+        }
         setTimeout(function() {
-            var ifr = document.getElementById(iframeId);
-            if (ifr && ifr.parentNode) ifr.parentNode.removeChild(ifr);
-        }, 300);
+            try {
+                var ifr = document.getElementById(iframeId);
+                if (ifr) {
+                    try { ifr.onload = null; ifr.src = "about:blank"; } catch(e1) {}
+                    if (ifr.parentNode) ifr.parentNode.removeChild(ifr);
+                }
+            } catch(e) {}
+        }, 200);
         callback(htmlStr || "", !!isErr);
     }
 
     timer = setTimeout(function() {
         try {
-            var docT = iframe.contentWindow ? iframe.contentWindow.document : null;
-            var htmlT = (docT && docT.body) ? (docT.body.innerHTML || "") : "";
-            if (htmlT) {
+            var htmlT = iframe.contentWindow ? collectFrameText(iframe.contentWindow) : "";
+            if (htmlT && trimSummaryStr(htmlT) !== "") {
                 finish(htmlT, false);
                 return;
             }
         } catch(e) {}
         finish("", true);
-    }, timeoutMs || 35000);
+    }, timeoutMs || 25000);
 
     iframe.onload = function() {
         setTimeout(function() {
             if (isDone) return;
             try {
-                var doc = iframe.contentWindow.document;
-                var bodyHtml = (doc && doc.body) ? (doc.body.innerHTML || "") : "";
+                var bodyHtml = iframe.contentWindow ? collectFrameText(iframe.contentWindow) : "";
                 finish(bodyHtml, false);
             } catch(e) {
                 finish("", true);
             }
-        }, 450);
+        }, 350);
     };
 
     try {
@@ -3617,6 +3758,52 @@ function fetchSummaryHtmlViaIframe(url, timeoutMs, callback) {
     } catch(e) {
         finish("", true);
     }
+}
+
+// サマリ専用の手術情報取得ヘルパー（ファイル保存競合を起こさず、短時間タイムアウト＆中断トークンに対応）
+function fetchSummarySurgerySafe(pObj, userId, myToken, callback) {
+    if (!pObj || !pObj.id) {
+        callback();
+        return;
+    }
+    var today = new Date();
+    var endDate = today.getFullYear() + "/" + ("0" + (today.getMonth() + 1)).slice(-2) + "/" + ("0" + today.getDate()).slice(-2);
+    var past = new Date(today.getTime() - (180 * 24 * 60 * 60 * 1000));
+    var startDate = past.getFullYear() + "/" + ("0" + (past.getMonth() + 1)).slice(-2) + "/" + ("0" + past.getDate()).slice(-2);
+
+    var url = "http://10.5.171.42:8082/karte/karte.php"
+        + "?disp_flgs=1/0/2/0/0/0/1/0/0/1/0/0/0/0/0"
+        + "&kanja_id=" + encodeURIComponent(pObj.id)
+        + "&user_id=" + encodeURIComponent(userId)
+        + "&start_date=" + startDate
+        + "&end_date=" + endDate
+        + "&hakkou_date=" + startDate
+        + "&kijun_date=" + endDate
+        + "&range_date=180/7/1/1"
+        + "&disp_selectsection="
+        + "&disp_selectukind=1,2,3,91"
+        + "&disp_usection_code=0"
+        + "&disp_ukind_code=2122"
+        + "&order_kind_set_code=0220"
+        + "&order_kind_code_str=0220"
+        + "&no_log_flg=1&nyugai_kind=&min_date=&max_date=&disp_zoom=100"
+        + "&_t=" + new Date().getTime();
+
+    fetchSummaryHtmlViaIframe(url, 15000, function(bodyHtml, isErr) {
+        if (myToken !== summaryState.fetchToken) return;
+        if (!isErr && bodyHtml) {
+            try {
+                if (typeof SurgeryFetcher !== "undefined" && typeof SurgeryFetcher.parseSurgeryContent === "function") {
+                    var parsed = SurgeryFetcher.parseSurgeryContent(bodyHtml);
+                    if (parsed) {
+                        pObj.surgeryDate = parsed.date || "なし";
+                        pObj.surgeryProcedure = parsed.procedure || "なし";
+                    }
+                }
+            } catch(e) {}
+        }
+        callback();
+    });
 }
 
 // 患者オブジェクトの手術情報を表示用文字列に整形
@@ -3640,7 +3827,6 @@ function formatSummarySurgeryText(p) {
 // メイン処理：患者ID/氏名からサマリ情報を一括収集
 function fetchSummaryPatientData() {
     if (summaryState.isFetching) {
-        yrShowAlert("現在情報収集中です。少々お待ちください。", "info");
         return;
     }
     var queryEl = document.getElementById("ipt-summary-patient-search");
@@ -3664,6 +3850,10 @@ function fetchSummaryPatientData() {
         }
     }
 
+    summaryState.fetchToken = (summaryState.fetchToken || 0) + 1;
+    var myToken = summaryState.fetchToken;
+    cleanupAllSummaryIframes();
+
     summaryState.patientId = pId;
     summaryState.patientName = pObj.name || ("ID:" + pId);
     summaryState.wardName = found ? (found.ward + " / " + found.status) : "カルテ直接参照";
@@ -3672,6 +3862,9 @@ function fetchSummaryPatientData() {
     summaryState.shohoOrders = [];
     summaryState.chushaOrders = [];
     summaryState.inHospDrugRows = [];
+    summaryState.knownAutoDrugLines = {};
+    var lockChk = document.getElementById("chk-summary-lock-combined");
+    if (lockChk) lockChk.checked = false;
 
     // 入院期間（初期値）の算出
     var todayStr = getTodayYmdStr();
@@ -3705,37 +3898,33 @@ function fetchSummaryPatientData() {
     if (surgEl) surgEl.value = formatSummarySurgeryText(pObj);
 
     updateSummaryPatientBadge();
-    updateSummaryCombinedPreview();
+    updateSummaryCombinedPreview("init");
 
     var userId = (typeof currentSystemId !== "undefined" && currentSystemId) ? currentSystemId : "16622";
-    var btnFetch = document.getElementById("btn-summary-fetch");
-    if (btnFetch) {
-        btnFetch.disabled = true;
-        btnFetch.innerText = "⏳ 収集中...";
-    }
     summaryState.isFetching = true;
+    setSummaryLoadingOverlay(true, "ステップ 1/4: 手術記録を確認中...", 15);
+    setSummaryStatus("1/4 手術情報を確認中...", false);
 
-    // ステップ1: 手術情報が未取得の場合はSurgeryFetcherで取得
+    // ステップ1: 手術情報が未取得の場合はサマリ専用安全取得ヘルパーで取得
     function step1_surgery(next) {
+        if (myToken !== summaryState.fetchToken) return;
         if (pObj.surgeryDate && pObj.surgeryDate !== "-" && pObj.surgeryProcedure !== "タイムアウト") {
             if (surgEl) surgEl.value = formatSummarySurgeryText(pObj);
             next();
             return;
         }
-        if (typeof SurgeryFetcher !== "undefined" && typeof SurgeryFetcher.fetchSingle === "function") {
-            setSummaryStatus("1/4 手術情報を確認中...", false);
-            SurgeryFetcher.fetchSingle(pObj, userId, function() {
-                if (surgEl) surgEl.value = formatSummarySurgeryText(pObj);
-                updateSummaryCombinedPreview();
-                next();
-            });
-        } else {
+        fetchSummarySurgerySafe(pObj, userId, myToken, function() {
+            if (myToken !== summaryState.fetchToken) return;
+            if (surgEl) surgEl.value = formatSummarySurgeryText(pObj);
+            updateSummaryCombinedPreview("surgery");
             next();
-        }
+        });
     }
 
     // ステップ2: 有効病名の取得 (kanja_byomei_info_disp.php)
     function step2_byomei(next) {
+        if (myToken !== summaryState.fetchToken) return;
+        setSummaryLoadingOverlay(true, "ステップ 2/4: 有効病名を取得中...", 40);
         setSummaryStatus("2/4 有効病名を取得中...", false);
         var byomeiDate = (summaryState.admitEndDate || todayStr).replace(/\//g, "");
         var byomeiUrl = "http://10.5.171.42:8082/karte/kanja_profile/parts/kanja_byomei_info_disp.php"
@@ -3751,33 +3940,36 @@ function fetchSummaryPatientData() {
             + "&byomei_status_kind=0"
             + "&_t=" + new Date().getTime();
 
-        fetchSummaryHtmlViaIframe(byomeiUrl, 25000, function(bodyHtml, isErr) {
+        fetchSummaryHtmlViaIframe(byomeiUrl, 20000, function(bodyHtml, isErr) {
+            if (myToken !== summaryState.fetchToken) return;
             var list = [];
-            if (!isErr && bodyHtml) {
-                var trChunks = bodyHtml.split(/<tr\b[^>]*>/i);
-                for (var r = 1; r < trChunks.length; r++) {
-                    var cells = extractSummaryRowCellsFromTrHtml(trChunks[r]);
-                    if (cells.length >= 9) {
-                        var numTxt = cells[0];
-                        if (numTxt === "" || numTxt === "番号") continue;
-                        var byomeiName = cells[3];
-                        var utagaiTxt = cells[4];
-                        var tenkiTxt = cells[5];
-                        var startDateTxt = cells[7] || "";
-                        var endDateTxt = cells[8] || "";
-                        if (byomeiName !== "") {
-                            var isSuspected = (utagaiTxt === "○" || byomeiName.indexOf("の疑い") !== -1);
-                            list.push({
-                                name: byomeiName,
-                                suspected: isSuspected,
-                                tenki: tenkiTxt,
-                                startDate: startDateTxt,
-                                endDate: endDateTxt
-                            });
+            try {
+                if (!isErr && bodyHtml) {
+                    var trChunks = bodyHtml.split(/<tr\b[^>]*>/i);
+                    for (var r = 1; r < trChunks.length; r++) {
+                        var cells = extractSummaryRowCellsFromTrHtml(trChunks[r]);
+                        if (cells.length >= 9) {
+                            var numTxt = cells[0];
+                            if (numTxt === "" || numTxt === "番号") continue;
+                            var byomeiName = cells[3];
+                            var utagaiTxt = cells[4];
+                            var tenkiTxt = cells[5];
+                            var startDateTxt = cells[7] || "";
+                            var endDateTxt = cells[8] || "";
+                            if (byomeiName !== "") {
+                                var isSuspected = (utagaiTxt === "○" || byomeiName.indexOf("の疑い") !== -1);
+                                list.push({
+                                    name: byomeiName,
+                                    suspected: isSuspected,
+                                    tenki: tenkiTxt,
+                                    startDate: startDateTxt,
+                                    endDate: endDateTxt
+                                });
+                            }
                         }
                     }
                 }
-            }
+            } catch(e) {}
             summaryState.byomeiList = list;
             renderSummaryByomeiChips();
             next();
@@ -3786,11 +3978,13 @@ function fetchSummaryPatientData() {
 
     // ステップ3: 処方データ(0011: 持参薬検認・入院処方・退院処方すべて含む)の取得
     function step3_shoho(next) {
+        if (myToken !== summaryState.fetchToken) return;
+        setSummaryLoadingOverlay(true, "ステップ 3/4: 処方・持参薬・退院処方を取得中...", 68);
         setSummaryStatus("3/4 処方・持参薬・退院処方を取得中...", false);
-        var rDays = (!isNaN(hospDays) && hospDays > 0) ? Math.min(550, Math.max(hospDays + 21, 60)) : 120;
+        var rDays = (!isNaN(hospDays) && hospDays > 0) ? Math.min(550, Math.max(hospDays + 14, 21)) : 90;
         var fetchStart = addSummaryDaysStr(todayStr, -rDays);
         if (summaryState.admitStartDate) {
-            var candStart = addSummaryDaysStr(summaryState.admitStartDate, -14);
+            var candStart = addSummaryDaysStr(summaryState.admitStartDate, -10);
             if (candStart < fetchStart) fetchStart = candStart;
         }
         var fetchEnd = addSummaryDaysStr(todayStr, 14);
@@ -3813,30 +4007,35 @@ function fetchSummaryPatientData() {
             + "&no_log_flg=1&nyugai_kind=&min_date=&max_date=&disp_zoom=100"
             + "&_t=" + new Date().getTime();
 
-        fetchSummaryHtmlViaIframe(shohoUrl, 35000, function(bodyHtml, isErr) {
-            if (!isErr && bodyHtml) {
-                var parsedShoho = parseSummaryKarteOrders(bodyHtml, "0011");
-                summaryState.shohoOrders = parsedShoho.orders;
-                // カルテ本文に「YYYY年MM月DD日(曜) HH:MM入院」見出しがあれば正確な入院日として反映
-                if (parsedShoho.detectedAdmitDate && !summaryState.admitStartDate) {
-                    summaryState.admitStartDate = parsedShoho.detectedAdmitDate;
-                    if (startDateInput) startDateInput.value = parsedShoho.detectedAdmitDate;
-                } else if (parsedShoho.detectedAdmitDate && parsedShoho.hasExplicitAdmitHeader) {
-                    summaryState.admitStartDate = parsedShoho.detectedAdmitDate;
-                    if (startDateInput) startDateInput.value = parsedShoho.detectedAdmitDate;
+        fetchSummaryHtmlViaIframe(shohoUrl, 30000, function(bodyHtml, isErr) {
+            if (myToken !== summaryState.fetchToken) return;
+            try {
+                if (!isErr && bodyHtml) {
+                    var parsedShoho = parseSummaryKarteOrders(bodyHtml, "0011");
+                    summaryState.shohoOrders = parsedShoho.orders;
+                    // カルテ本文に「YYYY年MM月DD日(曜) HH:MM入院」見出しがあれば正確な入院日として反映
+                    if (parsedShoho.detectedAdmitDate && !summaryState.admitStartDate) {
+                        summaryState.admitStartDate = parsedShoho.detectedAdmitDate;
+                        if (startDateInput) startDateInput.value = parsedShoho.detectedAdmitDate;
+                    } else if (parsedShoho.detectedAdmitDate && parsedShoho.hasExplicitAdmitHeader) {
+                        summaryState.admitStartDate = parsedShoho.detectedAdmitDate;
+                        if (startDateInput) startDateInput.value = parsedShoho.detectedAdmitDate;
+                    }
                 }
-            }
+            } catch(e) {}
             next();
         });
     }
 
     // ステップ4: 注射データ(0031)の取得
     function step4_chusha(next) {
+        if (myToken !== summaryState.fetchToken) return;
+        setSummaryLoadingOverlay(true, "ステップ 4/4: 注射歴を取得中...", 90);
         setSummaryStatus("4/4 注射歴を取得中...", false);
-        var rDays = (!isNaN(hospDays) && hospDays > 0) ? Math.min(550, Math.max(hospDays + 21, 60)) : 120;
+        var rDays = (!isNaN(hospDays) && hospDays > 0) ? Math.min(550, Math.max(hospDays + 14, 21)) : 90;
         var fetchStart = addSummaryDaysStr(todayStr, -rDays);
         if (summaryState.admitStartDate) {
-            var candStart = addSummaryDaysStr(summaryState.admitStartDate, -14);
+            var candStart = addSummaryDaysStr(summaryState.admitStartDate, -10);
             if (candStart < fetchStart) fetchStart = candStart;
         }
         var fetchEnd = addSummaryDaysStr(todayStr, 14);
@@ -3859,15 +4058,18 @@ function fetchSummaryPatientData() {
             + "&no_log_flg=1&nyugai_kind=&min_date=&max_date=&disp_zoom=100"
             + "&_t=" + new Date().getTime();
 
-        fetchSummaryHtmlViaIframe(chushaUrl, 35000, function(bodyHtml, isErr) {
-            if (!isErr && bodyHtml) {
-                var parsedChusha = parseSummaryKarteOrders(bodyHtml, "0031");
-                summaryState.chushaOrders = parsedChusha.orders;
-                if (parsedChusha.detectedAdmitDate && !summaryState.admitStartDate) {
-                    summaryState.admitStartDate = parsedChusha.detectedAdmitDate;
-                    if (startDateInput) startDateInput.value = parsedChusha.detectedAdmitDate;
+        fetchSummaryHtmlViaIframe(chushaUrl, 30000, function(bodyHtml, isErr) {
+            if (myToken !== summaryState.fetchToken) return;
+            try {
+                if (!isErr && bodyHtml) {
+                    var parsedChusha = parseSummaryKarteOrders(bodyHtml, "0031");
+                    summaryState.chushaOrders = parsedChusha.orders;
+                    if (parsedChusha.detectedAdmitDate && !summaryState.admitStartDate) {
+                        summaryState.admitStartDate = parsedChusha.detectedAdmitDate;
+                        if (startDateInput) startDateInput.value = parsedChusha.detectedAdmitDate;
+                    }
                 }
-            }
+            } catch(e) {}
             next();
         });
     }
@@ -3876,14 +4078,16 @@ function fetchSummaryPatientData() {
         step2_byomei(function() {
             step3_shoho(function() {
                 step4_chusha(function() {
+                    if (myToken !== summaryState.fetchToken) return;
                     summaryState.isFetching = false;
-                    if (btnFetch) {
-                        btnFetch.disabled = false;
-                        btnFetch.innerText = "🔍 カルテから情報収集";
+                    setSummaryLoadingOverlay(false, "", 100);
+                    try {
+                        updateSummaryPatientBadge();
+                        processAndRenderSummaryMedications();
+                        setSummaryStatus("✔ 情報収集完了 (" + getTimeString() + ")", false);
+                    } catch(e) {
+                        setSummaryStatus("⚠ 情報収集完了（一部表示処理でエラー）", true);
                     }
-                    updateSummaryPatientBadge();
-                    processAndRenderSummaryMedications();
-                    setSummaryStatus("✔ 情報収集完了 (" + getTimeString() + ")", false);
                 });
             });
         });
@@ -3908,20 +4112,26 @@ function updateSummaryPatientBadge() {
 }
 
 function refetchSummarySurgery() {
+    if (summaryState.isFetching) return;
     if (!summaryState.patientId || !summaryState.patientObj) {
         yrShowAlert("先に患者IDを検索してください。", "error");
         return;
     }
     var userId = (typeof currentSystemId !== "undefined" && currentSystemId) ? currentSystemId : "16622";
+    summaryState.fetchToken = (summaryState.fetchToken || 0) + 1;
+    var myToken = summaryState.fetchToken;
+    summaryState.isFetching = true;
+    setSummaryLoadingOverlay(true, "手術記録を再取得中...", 50);
     setSummaryStatus("手術情報を再取得中...", false);
-    if (typeof SurgeryFetcher !== "undefined" && typeof SurgeryFetcher.fetchSingle === "function") {
-        SurgeryFetcher.fetchSingle(summaryState.patientObj, userId, function() {
-            var surgEl = document.getElementById("ipt-summary-surgery");
-            if (surgEl) surgEl.value = formatSummarySurgeryText(summaryState.patientObj);
-            updateSummaryCombinedPreview();
-            setSummaryStatus("✔ 手術情報を更新しました", false);
-        });
-    }
+    fetchSummarySurgerySafe(summaryState.patientObj, userId, myToken, function() {
+        if (myToken !== summaryState.fetchToken) return;
+        summaryState.isFetching = false;
+        setSummaryLoadingOverlay(false);
+        var surgEl = document.getElementById("ipt-summary-surgery");
+        if (surgEl) surgEl.value = formatSummarySurgeryText(summaryState.patientObj);
+        updateSummaryCombinedPreview("surgery");
+        setSummaryStatus("✔ 手術情報を更新しました", false);
+    });
 }
 
 // 有効病名チップの描画とクリックによる併存疾患への追加・解除
@@ -3999,6 +4209,7 @@ function getSummaryComorbidityArray() {
 }
 
 function toggleSummaryComorbidity(bName) {
+    if (summaryState.isFetching) return;
     if (!bName) return;
     var el = document.getElementById("ipt-summary-comorbidities");
     if (!el) return;
@@ -4017,7 +4228,7 @@ function toggleSummaryComorbidity(bName) {
     }
     el.value = arr.join("、");
     renderSummaryByomeiChips();
-    updateSummaryCombinedPreview();
+    updateSummaryCombinedPreview("comorbidities");
 }
 
 // =========================================================
@@ -4328,6 +4539,7 @@ function isSummaryDefaultExcludedDrug(drugName, category, durationDays, usageTex
 
 // 期間変更ボタン押下時の再集計
 function recalcSummaryByDateRange() {
+    if (summaryState.isFetching) return;
     var sEl = document.getElementById("ipt-summary-start-date");
     var eEl = document.getElementById("ipt-summary-end-date");
     if (sEl && trimSummaryStr(sEl.value)) {
@@ -4488,12 +4700,15 @@ function recalcSummaryInHospList() {
 
     for (var i = 0; i < allOrders.length; i++) {
         var ord = allOrders[i];
-        if (ord.category === "inhosp_rx" || ord.category === "chusha" || (includeJisanOrder && ord.category === "jisan_order")) {
+        // 入院処方(inhosp_rx)・退院処方(taiin)・注射(chusha)（およびオプションで持参薬医師指示）を対象とする
+        if (ord.category === "inhosp_rx" || ord.category === "taiin" || ord.category === "chusha" || (includeJisanOrder && ord.category === "jisan_order")) {
             var rps = ord.rps || [];
+            // 退院処方は退院予定日（終了日+7日まで）に開始日が設定されているケースも許容する
+            var allowEnd = (ord.category === "taiin" && endDate !== "9999/99/99") ? addSummaryDaysStr(endDate, 7) : endDate;
             for (var r = 0; r < rps.length; r++) {
                 var rp = rps[r];
                 // 入院期間と重なるRpのみ対象
-                if (rp.endDate < startDate || rp.startDate > endDate) continue;
+                if (rp.endDate < startDate || rp.startDate > allowEnd) continue;
 
                 var clampedStart = (startDate !== "0000/00/00" && rp.startDate < startDate) ? startDate : rp.startDate;
                 var clampedEnd = rp.endDate;
@@ -4509,11 +4724,18 @@ function recalcSummaryInHospList() {
                             category: subCat,
                             intervals: [],
                             maxDuration: 0,
+                            hasInHosp: false,
+                            hasTaiin: false,
                             usageSamples: []
                         };
                         drugKeysOrder.push(key);
                     }
                     if (subCat === "内服" && drugMap[key].category === "頓服") { drugMap[key].category = "内服"; }
+                    if (ord.category === "taiin") {
+                        drugMap[key].hasTaiin = true;
+                    } else {
+                        drugMap[key].hasInHosp = true;
+                    }
                     drugMap[key].intervals.push({
                         start: clampedStart,
                         end: clampedEnd
@@ -4575,6 +4797,19 @@ function recalcSummaryInHospList() {
         }
 
         var exInfo = isSummaryDefaultExcludedDrug(item.name, item.category, (firstStart === lastEnd ? 1 : 2), "");
+        var noteParts = [];
+        if (exInfo.excluded) {
+            noteParts.push("自動除外: " + exInfo.reason);
+        } else {
+            if (item.hasTaiin && item.hasInHosp) {
+                noteParts.push("退院処方含む");
+            } else if (item.hasTaiin) {
+                noteParts.push("退院処方");
+            }
+            if (merged.length > 1 && mergeAllSpan) {
+                noteParts.push("計" + merged.length + "期間を結合");
+            }
+        }
         rows.push({
             checked: !exInfo.excluded,
             category: item.category,
@@ -4582,7 +4817,7 @@ function recalcSummaryInHospList() {
             period: periodStr,
             firstStart: firstStart,
             autoExcluded: exInfo.excluded,
-            note: exInfo.excluded ? ("自動除外: " + exInfo.reason) : (merged.length > 1 && mergeAllSpan ? ("計" + merged.length + "期間を結合") : "")
+            note: noteParts.join(" / ")
         });
     }
 
@@ -4597,8 +4832,23 @@ function recalcSummaryInHospList() {
     });
 
     summaryState.inHospDrugRows = rows;
+    if (!summaryState.knownAutoDrugLines) summaryState.knownAutoDrugLines = {};
+    for (var rIdx = 0; rIdx < rows.length; rIdx++) {
+        var stdL = getSummaryDrugRowStdLine(rows[rIdx]);
+        rows[rIdx]._lastStdLine = stdL;
+        rows[rIdx]._prevStdLine = stdL;
+        if (stdL) summaryState.knownAutoDrugLines[stdL] = true;
+    }
     renderSummaryInHospTable();
-    updateSummaryCombinedPreview();
+    updateSummaryCombinedPreview("inhosp");
+}
+
+function getSummaryDrugRowStdLine(r) {
+    if (!r) return "";
+    var n = trimSummaryStr(r.name);
+    var p = trimSummaryStr(r.period);
+    if (!n && !p) return "";
+    return n + (p ? " " + p : "");
 }
 
 function renderSummaryInHospTable() {
@@ -4608,7 +4858,7 @@ function renderSummaryInHospTable() {
     var rows = summaryState.inHospDrugRows || [];
 
     if (rows.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:#999; padding:12px;">対象期間内の入院処方・注射データはありません（「➕ 行追加」で手動追加も可能です）</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:#999; padding:12px;">対象期間内の入院処方・退院処方・注射データはありません（「➕ 行追加」で手動追加も可能です）</td></tr>';
         if (badge) badge.innerHTML = "(0件)";
         return;
     }
@@ -4628,21 +4878,21 @@ function renderSummaryInHospTable() {
         else if (r.category === "外用") { catBg = "#e8f5e9"; catFg = "#2e7d32"; }
 
         html += '<tr id="sum-inhosp-tr-' + i + '" style="background:' + rowBg + '; color:' + rowColor + ';">';
-        html += '<td style="text-align:center; vertical-align:middle; cursor:pointer;" onclick="toggleSummaryInHospRow(' + i + ', event)">' +
-                '<input type="checkbox" id="sum-inhosp-chk-' + i + '" ' + (r.checked ? 'checked' : '') + ' onclick="onSummaryInHospCheckChange(' + i + ', this, event)" style="cursor:pointer; width:15px; height:15px;">' +
+        html += '<td style="text-align:center; vertical-align:middle; cursor:pointer; padding:2px;" onclick="toggleSummaryInHospRow(' + i + ', event)">' +
+                '<input type="checkbox" id="sum-inhosp-chk-' + i + '" ' + (r.checked ? 'checked' : '') + ' onclick="onSummaryInHospCheckChange(' + i + ', this, event)" style="cursor:pointer; width:14px; height:14px; margin:0;">' +
                 '</td>';
-        html += '<td style="text-align:center; vertical-align:middle; cursor:pointer;" onclick="toggleSummaryInHospRow(' + i + ', event)">' +
-                '<span style="background:' + catBg + '; color:' + catFg + '; font-size:11px; font-weight:bold; padding:2px 6px; border-radius:3px;">' + escapeHtml(r.category || "内服") + '</span>' +
+        html += '<td style="text-align:center; vertical-align:middle; cursor:pointer; padding:2px;" onclick="toggleSummaryInHospRow(' + i + ', event)">' +
+                '<span style="background:' + catBg + '; color:' + catFg + '; font-size:10px; font-weight:bold; padding:1px 5px; border-radius:3px;">' + escapeHtml(r.category || "内服") + '</span>' +
                 '</td>';
-        html += '<td style="vertical-align:middle; padding:4px 6px;">' +
-                '<input type="text" class="yr-form-control" style="width:100%; height:26px; font-size:12px; color:' + rowColor + '; font-weight:' + (r.checked ? 'bold' : 'normal') + ';" ' +
+        html += '<td style="vertical-align:middle; padding:2px 4px;">' +
+                '<input type="text" class="yr-form-control" style="width:100%; height:23px; padding:1px 5px; font-size:12px; color:' + rowColor + '; font-weight:' + (r.checked ? 'bold' : 'normal') + ';" ' +
                 'value="' + escapeHtml(r.name) + '" oninput="onSummaryInHospNameEdit(' + i + ', this.value)" onchange="onSummaryInHospNameEdit(' + i + ', this.value)">' +
                 '</td>';
-        html += '<td style="vertical-align:middle; padding:4px 6px;">' +
-                '<input type="text" class="yr-form-control" style="width:100%; height:26px; font-size:12px; color:' + rowColor + ';" ' +
+        html += '<td style="vertical-align:middle; padding:2px 4px;">' +
+                '<input type="text" class="yr-form-control" style="width:100%; height:23px; padding:1px 5px; font-size:12px; color:' + rowColor + ';" ' +
                 'value="' + escapeHtml(r.period) + '" placeholder="MM/DD～MM/DD" oninput="onSummaryInHospPeriodEdit(' + i + ', this.value)" onchange="onSummaryInHospPeriodEdit(' + i + ', this.value)">' +
                 '</td>';
-        html += '<td style="vertical-align:middle; font-size:11px; color:' + (r.autoExcluded ? '#d81b60' : '#666') + ';">' +
+        html += '<td style="vertical-align:middle; padding:2px 4px; font-size:10px; color:' + (r.autoExcluded ? '#d81b60' : '#666') + ';">' +
                 escapeHtml(r.note || "") +
                 '</td>';
         html += '</tr>';
@@ -4655,39 +4905,54 @@ function renderSummaryInHospTable() {
 }
 
 function toggleSummaryInHospRow(idx, evt) {
+    if (summaryState.isFetching) return;
     if (evt && evt.target && evt.target.tagName && evt.target.tagName.toLowerCase() === "input") return;
     var rows = summaryState.inHospDrugRows || [];
     if (!rows[idx]) return;
     rows[idx].checked = !rows[idx].checked;
     renderSummaryInHospTable();
-    updateSummaryCombinedPreview();
+    updateSummaryCombinedPreview("inhosp");
 }
 
 function onSummaryInHospCheckChange(idx, chkEl, evt) {
+    if (summaryState.isFetching) return;
     if (evt && evt.stopPropagation) evt.stopPropagation();
     else if (window.event) window.event.cancelBubble = true;
     var rows = summaryState.inHospDrugRows || [];
     if (!rows[idx]) return;
     rows[idx].checked = !!chkEl.checked;
     renderSummaryInHospTable();
-    updateSummaryCombinedPreview();
+    updateSummaryCombinedPreview("inhosp");
 }
 
 function onSummaryInHospNameEdit(idx, val) {
     var rows = summaryState.inHospDrugRows || [];
     if (!rows[idx]) return;
+    rows[idx]._prevStdLine = getSummaryDrugRowStdLine(rows[idx]);
     rows[idx].name = val;
-    updateSummaryCombinedPreview();
+    var newStd = getSummaryDrugRowStdLine(rows[idx]);
+    if (newStd) {
+        if (!summaryState.knownAutoDrugLines) summaryState.knownAutoDrugLines = {};
+        summaryState.knownAutoDrugLines[newStd] = true;
+    }
+    updateSummaryCombinedPreview("inhosp");
 }
 
 function onSummaryInHospPeriodEdit(idx, val) {
     var rows = summaryState.inHospDrugRows || [];
     if (!rows[idx]) return;
+    rows[idx]._prevStdLine = getSummaryDrugRowStdLine(rows[idx]);
     rows[idx].period = val;
-    updateSummaryCombinedPreview();
+    var newStd = getSummaryDrugRowStdLine(rows[idx]);
+    if (newStd) {
+        if (!summaryState.knownAutoDrugLines) summaryState.knownAutoDrugLines = {};
+        summaryState.knownAutoDrugLines[newStd] = true;
+    }
+    updateSummaryCombinedPreview("inhosp");
 }
 
 function setSummaryInHospSelection(mode) {
+    if (summaryState.isFetching) return;
     var rows = summaryState.inHospDrugRows || [];
     for (var i = 0; i < rows.length; i++) {
         if (mode === "all") {
@@ -4699,10 +4964,11 @@ function setSummaryInHospSelection(mode) {
         }
     }
     renderSummaryInHospTable();
-    updateSummaryCombinedPreview();
+    updateSummaryCombinedPreview("inhosp");
 }
 
 function addSummaryManualDrugRow() {
+    if (summaryState.isFetching) return;
     if (!summaryState.inHospDrugRows) summaryState.inHospDrugRows = [];
     summaryState.inHospDrugRows.push({
         checked: true,
@@ -4711,10 +4977,12 @@ function addSummaryManualDrugRow() {
         period: "",
         firstStart: "9999/99/99",
         autoExcluded: false,
-        note: "手動追加"
+        note: "手動追加",
+        _lastStdLine: "",
+        _prevStdLine: ""
     });
     renderSummaryInHospTable();
-    updateSummaryCombinedPreview();
+    updateSummaryCombinedPreview("inhosp");
 }
 
 // 入院中使用薬（選択分）の整形テキスト生成
@@ -4724,18 +4992,70 @@ function getSummarySelectedInHospText() {
     for (var i = 0; i < rows.length; i++) {
         var r = rows[i];
         if (!r.checked) continue;
-        var n = trimSummaryStr(r.name);
-        var p = trimSummaryStr(r.period);
-        if (!n && !p) continue;
-        lines.push(n + (p ? " " + p : ""));
+        var std = getSummaryDrugRowStdLine(r);
+        if (!std) continue;
+        lines.push(std);
     }
     return lines.join("\n");
 }
 
-// ⑤ <特記事項><入院中に使用された主なお薬> 用の一括整形テキストを更新
-function updateSummaryCombinedPreview() {
+// ⑤内の指定見出し行（【主病名】・【併存疾患】・【手術】）のみをピンポイント更新・挿入・削除するヘルパー
+function upsertOrRemoveSummaryHeaderLine(lines, tagPrefix, newValue, afterTagPrefixes) {
+    var existingIdx = -1;
+    for (var i = 0; i < lines.length; i++) {
+        if (lines[i].indexOf(tagPrefix) === 0) {
+            existingIdx = i;
+            break;
+        }
+    }
+    if (!newValue) {
+        if (existingIdx !== -1) {
+            lines.splice(existingIdx, 1);
+        }
+        return;
+    }
+    var newLine = tagPrefix + newValue;
+    if (existingIdx !== -1) {
+        lines[existingIdx] = newLine;
+        return;
+    }
+    // 挿入位置を決定（afterTagPrefixes の直後、なければ先頭）
+    var insertIdx = 0;
+    if (afterTagPrefixes && afterTagPrefixes.length > 0) {
+        for (var j = 0; j < lines.length; j++) {
+            for (var p = 0; p < afterTagPrefixes.length; p++) {
+                if (lines[j].indexOf(afterTagPrefixes[p]) === 0) {
+                    insertIdx = j + 1;
+                }
+            }
+        }
+    }
+    lines.splice(insertIdx, 0, newLine);
+}
+
+// ⑤を初期整形状態にリセットするボタン処理
+function resetSummaryCombinedPreview() {
+    if (summaryState.isFetching) return;
+    var lockChk = document.getElementById("chk-summary-lock-combined");
+    if (lockChk) lockChk.checked = false;
+    var rows = summaryState.inHospDrugRows || [];
+    for (var i = 0; i < rows.length; i++) {
+        rows[i]._inlineSuffix = "";
+    }
+    updateSummaryCombinedPreview("reset");
+    yrShowAlert("⑤の転記用テキストを初期整形状態に戻しました。", "info");
+}
+
+// ⑤ <特記事項><入院中に使用された主なお薬> 用の一括整形テキストを更新（手書き追記・編集保持対応）
+function updateSummaryCombinedPreview(source) {
     var previewEl = document.getElementById("txt-summary-combined-preview");
     if (!previewEl) return;
+
+    // 自動反映ロックがONの場合は、初期生成(init)と明示的リセット(reset)以外では書き換えない
+    var lockChk = document.getElementById("chk-summary-lock-combined");
+    if (lockChk && lockChk.checked && source !== "init" && source !== "reset") {
+        return;
+    }
 
     var mainDisEl = document.getElementById("ipt-summary-main-disease");
     var comorbEl = document.getElementById("ipt-summary-comorbidities");
@@ -4744,27 +5064,148 @@ function updateSummaryCombinedPreview() {
     var mainDis = mainDisEl ? trimSummaryStr(mainDisEl.value) : "";
     var comorb = comorbEl ? trimSummaryStr(comorbEl.value) : "";
     var surg = surgEl ? trimSummaryStr(surgEl.value) : "";
-    var inhospTxt = getSummarySelectedInHospText();
+    var validSurg = (surg && surg !== "なし") ? surg : "";
+    var rows = summaryState.inHospDrugRows || [];
 
-    var parts = [];
-    if (mainDis) {
-        parts.push("【主病名】" + mainDis);
-    }
-    if (comorb) {
-        parts.push("【併存疾患】" + comorb);
-    }
-    if (surg && surg !== "なし") {
-        parts.push("【手術】" + surg);
-    }
-    if (inhospTxt) {
-        parts.push("【入院中に使用した主な薬剤】\n" + inhospTxt);
+    var currentVal = previewEl.value || "";
+
+    // 初期状態・リセット時・または現在⑤が空欄の場合は全体を生成
+    if (source === "init" || source === "reset" || trimSummaryStr(currentVal) === "") {
+        var inhospTxt = getSummarySelectedInHospText();
+        var parts = [];
+        if (mainDis) parts.push("【主病名】" + mainDis);
+        if (comorb) parts.push("【併存疾患】" + comorb);
+        if (validSurg) parts.push("【手術】" + validSurg);
+        if (inhospTxt) parts.push("【入院中に使用した主な薬剤】\n" + inhospTxt);
+        previewEl.value = parts.join("\n");
+        if (!summaryState.knownAutoDrugLines) summaryState.knownAutoDrugLines = {};
+        for (var i0 = 0; i0 < rows.length; i0++) {
+            var s0 = getSummaryDrugRowStdLine(rows[i0]);
+            rows[i0]._lastStdLine = s0;
+            rows[i0]._prevStdLine = s0;
+            if (s0) summaryState.knownAutoDrugLines[s0] = true;
+        }
+        return;
     }
 
-    previewEl.value = parts.join("\n");
+    var lines = currentVal.replace(/\r\n/g, "\n").replace(/\r/g, "\n").split("\n");
+
+    // 1. ①の特定項目が編集された場合は、該当する見出し行のみをピンポイント更新し、他の手書き内容は一切消さない
+    if (source === "main_disease") {
+        upsertOrRemoveSummaryHeaderLine(lines, "【主病名】", mainDis, []);
+        previewEl.value = lines.join("\n");
+        return;
+    }
+    if (source === "comorbidities") {
+        upsertOrRemoveSummaryHeaderLine(lines, "【併存疾患】", comorb, ["【主病名】"]);
+        previewEl.value = lines.join("\n");
+        return;
+    }
+    if (source === "surgery") {
+        upsertOrRemoveSummaryHeaderLine(lines, "【手術】", validSurg, ["【主病名】", "【併存疾患】"]);
+        previewEl.value = lines.join("\n");
+        return;
+    }
+
+    // 2. ④（入院中に使用した薬剤一覧）が変更された場合（または引数なし呼び出し時）：
+    //    ⑤内の手書き特記事項・フリーコメント・各薬剤行末への手書き追記を保持したまま薬剤リスト部分のみを更新する
+    if (!source) {
+        upsertOrRemoveSummaryHeaderLine(lines, "【主病名】", mainDis, []);
+        upsertOrRemoveSummaryHeaderLine(lines, "【併存疾患】", comorb, ["【主病名】"]);
+        upsertOrRemoveSummaryHeaderLine(lines, "【手術】", validSurg, ["【主病名】", "【併存疾患】"]);
+    }
+
+    var drugHeader = "【入院中に使用した主な薬剤】";
+    var hdrIdx = -1;
+    for (var h = 0; h < lines.length; h++) {
+        if (lines[h].indexOf(drugHeader) === 0) {
+            hdrIdx = h;
+            break;
+        }
+    }
+
+    if (!summaryState.knownAutoDrugLines) summaryState.knownAutoDrugLines = {};
+
+    // 既存の【入院中に使用した主な薬剤】ブロックから、ユーザーが手書き追記したインラインコメントや自由記述行を抽出して保護する
+    var blockEndIdx = lines.length;
+    var customBlockLines = [];
+    if (hdrIdx !== -1) {
+        for (var b = hdrIdx + 1; b < lines.length; b++) {
+            // 別の【...】見出し行が下にあればそこまでを薬剤ブロックとする
+            if (/^【[^】]+】/.test(lines[b])) {
+                blockEndIdx = b;
+                break;
+            }
+        }
+        var existingDrugLines = lines.slice(hdrIdx + 1, blockEndIdx);
+        for (var e = 0; e < existingDrugLines.length; e++) {
+            var exLine = existingDrugLines[e];
+            var exTrim = trimSummaryStr(exLine);
+            if (!exTrim) continue;
+
+            var matchedRow = null;
+            var matchedBase = "";
+            for (var rIdx = 0; rIdx < rows.length; rIdx++) {
+                var rObj = rows[rIdx];
+                var candPrev = rObj._prevStdLine || rObj._lastStdLine || "";
+                var candCurr = getSummaryDrugRowStdLine(rObj);
+                if (candPrev && (exLine === candPrev || exLine.indexOf(candPrev) === 0)) {
+                    matchedRow = rObj;
+                    matchedBase = candPrev;
+                    break;
+                }
+                if (candCurr && (exLine === candCurr || exLine.indexOf(candCurr) === 0)) {
+                    matchedRow = rObj;
+                    matchedBase = candCurr;
+                    break;
+                }
+            }
+
+            if (matchedRow) {
+                var suffix = exLine.substring(matchedBase.length);
+                matchedRow._inlineSuffix = suffix;
+            } else if (!summaryState.knownAutoDrugLines[exTrim]) {
+                // 自動生成された薬剤行ではない行＝ユーザーが⑤に直接書き込んだコメント・メモ行として保持
+                customBlockLines.push(exLine);
+            }
+        }
+    }
+
+    // 現在選択されている薬剤行（＋保持された行末手書きコメント）＋ユーザー自由記述行を組み立てる
+    var newDrugLines = [];
+    for (var k = 0; k < rows.length; k++) {
+        var row = rows[k];
+        var stdLine = getSummaryDrugRowStdLine(row);
+        row._lastStdLine = stdLine;
+        row._prevStdLine = stdLine;
+        if (stdLine) {
+            summaryState.knownAutoDrugLines[stdLine] = true;
+        }
+        if (!row.checked || !stdLine) continue;
+        newDrugLines.push(stdLine + (row._inlineSuffix || ""));
+    }
+    for (var c = 0; c < customBlockLines.length; c++) {
+        newDrugLines.push(customBlockLines[c]);
+    }
+
+    if (hdrIdx !== -1) {
+        var beforeLines = lines.slice(0, hdrIdx);
+        var afterLines = lines.slice(blockEndIdx);
+        var middleLines = (newDrugLines.length > 0) ? [drugHeader].concat(newDrugLines) : [];
+        lines = beforeLines.concat(middleLines).concat(afterLines);
+    } else if (newDrugLines.length > 0) {
+        lines.push(drugHeader);
+        for (var nIdx = 0; nIdx < newDrugLines.length; nIdx++) {
+            lines.push(newDrugLines[nIdx]);
+        }
+    }
+
+    previewEl.value = lines.join("\n");
 }
 
 // 各項目および一括テキストのクリップボードコピー
 function copySummarySection(sectionType) {
+    if (summaryState.isFetching) return;
     var textToCopy = "";
     var label = "";
 
