@@ -488,6 +488,7 @@ function generateAbbreviation() {}
                     <li id="yr-tab-abbr-btn"><a class="yr-nav-link" onclick="yrSwitchTab('yr-tab-abbr', this)" style="background-color:#e8f5e9; border-color:#c8e6c9; color:#2e7d32;">処方略称</a></li>
                     <li id="yr-tab-med-adj-btn" style="display:none;"><a class="yr-nav-link" onclick="yrSwitchTab('yr-tab-med-adj', this)" style="background-color:#fce4ec; border-color:#f8bbd0; color:#c2185b;">薬剤調整加算</a></li>
                     <li id="yr-tab-med-adj-2026-btn"><a class="yr-nav-link" onclick="yrSwitchTab('yr-tab-med-adj-2026', this)" style="background-color:#fce4ec; border-color:#f8bbd0; color:#c2185b; font-weight:bold;">✨ 薬剤調整加算(26年改定版)</a></li>
+                    <li id="yr-tab-summary-btn"><a class="yr-nav-link" onclick="yrSwitchTab('yr-tab-summary', this)" style="background-color:#e0f7fa; border-color:#b2ebf2; color:#006064; font-weight:bold;">📄 サマリ自動生成</a></li>
                     <li><a class="yr-nav-link" onclick="yrSwitchTab('yr-tab-settings', this)">ツール設定</a></li>
                 </ul>
             </div>
@@ -860,6 +861,158 @@ function generateAbbreviation() {}
                             </thead>
                             <tbody id="med-adj-tbody-2026"></tbody>
                         </table>
+                    </div>
+                </div>
+            </div>
+            <!-- タブ⑦: サマリ自動生成 -->
+            <div id="yr-tab-summary" class="yr-tab-pane">
+                <div class="yr-card" style="margin-bottom: 12px; border-top: 3px solid #00838f;">
+                    <div class="yr-card-header" style="background-color:#e0f7fa; color:#006064; display:flex; justify-content:space-between; align-items:center;">
+                        <span>📄 退院時薬剤管理サマリー 情報自動収集・整形ツール</span>
+                        <span id="summary-fetch-status" style="font-size:12px; font-weight:bold; color:#00838f;"></span>
+                    </div>
+                    <div class="yr-card-body" style="padding:12px;">
+                        <!-- 患者検索・対象期間バー -->
+                        <div style="background:#f8f9fa; border:1px solid #dee2e6; border-radius:4px; padding:10px; margin-bottom:12px;">
+                            <div style="display:flex; flex-wrap:wrap; align-items:center; gap:8px;">
+                                <span style="font-size:13px; font-weight:bold; color:#006064;">🔍 患者ID / 氏名:</span>
+                                <input type="text" id="ipt-summary-patient-search" class="yr-form-control" style="width:180px; height:30px; font-size:13px; font-weight:bold;" placeholder="患者ID または 氏名..." onkeypress="if(event.keyCode===13) fetchSummaryPatientData()">
+                                <button id="btn-summary-fetch" class="yr-btn yr-btn-primary" style="background-color:#00838f; border-color:#00838f; font-weight:bold; padding:5px 14px; font-size:13px;" onclick="fetchSummaryPatientData()">🔍 カルテから情報収集</button>
+                                <button class="yr-btn yr-btn-outline-secondary" style="padding:5px 10px; font-size:12px;" onclick="clearSummaryTab()">クリア</button>
+
+                                <span style="margin-left:10px; font-size:12px; font-weight:bold; color:#555;">📅 集計期間(入院期間):</span>
+                                <input type="text" id="ipt-summary-start-date" class="yr-form-control" style="width:100px; height:28px; font-size:12px; text-align:center;" placeholder="YYYY/MM/DD">
+                                <span>～</span>
+                                <input type="text" id="ipt-summary-end-date" class="yr-form-control" style="width:100px; height:28px; font-size:12px; text-align:center;" placeholder="YYYY/MM/DD">
+                                <button class="yr-btn yr-btn-outline-secondary" style="padding:4px 10px; font-size:12px;" onclick="recalcSummaryByDateRange()" title="指定した集計期間で処方・注射データを再フィルタリングします">🔄 期間再反映</button>
+                            </div>
+                            <div id="summary-patient-info-badge" style="margin-top:8px; font-size:13px; color:#333;"></div>
+                        </div>
+
+                        <!-- 1. 主病名・有効病名(併存疾患)・手術情報 -->
+                        <div style="border:1px solid #b2ebf2; border-radius:4px; padding:10px; margin-bottom:12px; background:#fbffff;">
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; border-bottom:1px solid #e0f7fa; padding-bottom:5px;">
+                                <span style="font-size:13px; font-weight:bold; color:#006064;">① 主病名・併存疾患（有効病名）・手術情報</span>
+                                <div style="display:flex; gap:6px;">
+                                    <button class="yr-btn yr-btn-outline-secondary" style="font-size:11px; padding:2px 8px;" onclick="refetchSummarySurgery()">✂️ 手術のみ再取得</button>
+                                    <button class="yr-btn yr-btn-success" style="font-size:11px; padding:2px 10px;" onclick="copySummarySection('disease_surgery')">📋 病名・手術をコピー</button>
+                                </div>
+                            </div>
+
+                            <div style="display:flex; gap:10px; margin-bottom:8px; align-items:center;">
+                                <div style="width:45%; display:flex; align-items:center; gap:5px;">
+                                    <label style="font-size:12px; font-weight:bold; white-space:nowrap; width:65px;">主病名:</label>
+                                    <input type="text" id="ipt-summary-main-disease" class="yr-form-control" style="flex:1; font-size:12px;" placeholder="主病名" oninput="updateSummaryCombinedPreview()" onchange="updateSummaryCombinedPreview()">
+                                    <button class="yr-btn yr-btn-outline-secondary" style="font-size:11px; padding:2px 6px; white-space:nowrap;" onclick="copySummarySection('main_disease')">コピー</button>
+                                </div>
+                                <div style="width:55%; display:flex; align-items:center; gap:5px;">
+                                    <label style="font-size:12px; font-weight:bold; white-space:nowrap; width:85px;">手術日・術式:</label>
+                                    <input type="text" id="ipt-summary-surgery" class="yr-form-control" style="flex:1; font-size:12px;" placeholder="なし（手術がある場合は日付と術式）" oninput="updateSummaryCombinedPreview()" onchange="updateSummaryCombinedPreview()">
+                                    <button class="yr-btn yr-btn-outline-secondary" style="font-size:11px; padding:2px 6px; white-space:nowrap;" onclick="copySummarySection('surgery')">コピー</button>
+                                </div>
+                            </div>
+
+                            <div style="display:flex; align-items:center; gap:5px; margin-bottom:8px;">
+                                <label style="font-size:12px; font-weight:bold; white-space:nowrap; width:65px;">併存疾患:</label>
+                                <input type="text" id="ipt-summary-comorbidities" class="yr-form-control" style="flex:1; font-size:12px;" placeholder="下の有効病名をクリックして追加、または直接入力（カンマ・読点区切り）" oninput="updateSummaryCombinedPreview()" onchange="updateSummaryCombinedPreview()">
+                                <button class="yr-btn yr-btn-outline-secondary" style="font-size:11px; padding:2px 6px; white-space:nowrap;" onclick="document.getElementById('ipt-summary-comorbidities').value=''; renderSummaryByomeiChips(); updateSummaryCombinedPreview();">クリア</button>
+                                <button class="yr-btn yr-btn-outline-secondary" style="font-size:11px; padding:2px 6px; white-space:nowrap;" onclick="copySummarySection('comorbidities')">コピー</button>
+                            </div>
+
+                            <div style="background:#fff; border:1px dashed #80deea; border-radius:4px; padding:6px 8px;">
+                                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+                                    <span style="font-size:11px; font-weight:bold; color:#00838f;">💡 カルテ登録の有効病名一覧（クリックで「併存疾患」に追加／解除できます）</span>
+                                    <label style="font-size:11px; cursor:pointer; color:#555; margin:0;">
+                                        <input type="checkbox" id="chk-summary-exclude-suspected" checked onchange="renderSummaryByomeiChips()"> 疑い病名を非表示
+                                    </label>
+                                </div>
+                                <div id="summary-byomei-chips" style="display:flex; flex-wrap:wrap; gap:5px; min-height:24px; align-items:center;">
+                                    <span style="font-size:11px; color:#999;">（患者情報を収集すると有効病名が表示されます）</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 2. <退院処方> と <入院時持参薬> (サマリ用紙と同じ左右配置) -->
+                        <div style="display:flex; justify-content:space-between; gap:12px; margin-bottom:12px;">
+                            <!-- 左枠: <退院処方> -->
+                            <div style="width:49%; border:1px solid #dee2e6; border-radius:4px; padding:10px; background:#fff; box-sizing:border-box;">
+                                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                                    <div>
+                                        <span style="font-size:13px; font-weight:bold; color:#1565c0;">② ＜退院処方＞</span>
+                                        <span id="summary-discharge-rx-badge" style="font-size:11px; margin-left:6px; color:#666;"></span>
+                                    </div>
+                                    <button class="yr-btn yr-btn-success" style="font-size:11px; padding:3px 10px;" onclick="copySummarySection('discharge_rx')">📋 退院処方をコピー</button>
+                                </div>
+                                <textarea id="txt-summary-discharge-rx" class="yr-form-control" style="width:100%; height:170px; box-sizing:border-box; font-family:monospace; font-size:12px; white-space:pre; resize:vertical;" placeholder="退院処方（[退院]区分）が自動収集されます。未入力の場合は「なし」と表示されます。"></textarea>
+                            </div>
+
+                            <!-- 右枠: <入院時持参薬> -->
+                            <div style="width:49%; border:1px solid #dee2e6; border-radius:4px; padding:10px; background:#fff; box-sizing:border-box;">
+                                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                                    <div>
+                                        <span style="font-size:13px; font-weight:bold; color:#2e7d32;">③ ＜入院時持参薬＞</span>
+                                        <span id="summary-brought-in-badge" style="font-size:11px; margin-left:6px; color:#666;"></span>
+                                    </div>
+                                    <button class="yr-btn yr-btn-success" style="font-size:11px; padding:3px 10px;" onclick="copySummarySection('brought_in_rx')">📋 持参薬をコピー</button>
+                                </div>
+                                <textarea id="txt-summary-brought-in-rx" class="yr-form-control" style="width:100%; height:170px; box-sizing:border-box; font-family:monospace; font-size:12px; white-space:pre; resize:vertical;" placeholder="【持参薬】（検認）が優先して自動収集されます。複数回入力されている場合は全て結合され、区切りが表示されます。"></textarea>
+                            </div>
+                        </div>
+
+                        <!-- 3. 入院中に使用した薬剤一覧（選択＆期間編集） -->
+                        <div style="border:1px solid #dee2e6; border-radius:4px; padding:10px; margin-bottom:12px; background:#fff;">
+                            <div style="display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center; gap:8px; margin-bottom:8px;">
+                                <div>
+                                    <span style="font-size:13px; font-weight:bold; color:#4527a0;">④ 入院中に使用した薬剤一覧（処方・注射 ／ 開始日基準）</span>
+                                    <span id="summary-inhosp-count-badge" style="font-size:11px; margin-left:8px; color:#666;"></span>
+                                </div>
+                                <div style="display:flex; flex-wrap:wrap; align-items:center; gap:6px;">
+                                    <label style="font-size:11px; cursor:pointer; color:#333; margin:0;" title="同じ薬が複数回処方された場合、初回開始日～最終終了日の1期間(MM/DD～MM/DD)に繋げて表示します">
+                                        <input type="checkbox" id="chk-summary-merge-all-periods" checked onchange="recalcSummaryInHospList()"> 期間を初回～最終日に1本化
+                                    </label>
+                                    <label style="font-size:11px; cursor:pointer; color:#333; margin:0; margin-right:4px;" title="医師が指示した【持参薬】オーダーも入院中使用薬リストに含める場合はチェック">
+                                        <input type="checkbox" id="chk-summary-include-jisan-order" onchange="recalcSummaryInHospList()"> 持参薬指示分も含める
+                                    </label>
+                                    <button class="yr-btn yr-btn-outline-secondary" style="font-size:11px; padding:2px 7px;" onclick="setSummaryInHospSelection('all')">全選択</button>
+                                    <button class="yr-btn yr-btn-outline-secondary" style="font-size:11px; padding:2px 7px;" onclick="setSummaryInHospSelection('none')">全解除</button>
+                                    <button class="yr-btn yr-btn-outline-secondary" style="font-size:11px; padding:2px 7px;" onclick="setSummaryInHospSelection('default')" title="生食・維持輸液・単回検査薬などのチェックを外した初期状態に戻します">輸液・検査薬等を除外</button>
+                                    <button class="yr-btn yr-btn-outline-secondary" style="font-size:11px; padding:2px 7px;" onclick="addSummaryManualDrugRow()">➕ 行追加</button>
+                                    <button class="yr-btn yr-btn-success" style="font-size:11px; padding:3px 10px;" onclick="copySummarySection('inhosp')">📋 選択した使用薬のみコピー</button>
+                                </div>
+                            </div>
+
+                            <div style="max-height:260px; overflow-y:auto; border:1px solid #eee;">
+                                <table class="yr-table" style="font-size:12px; margin-bottom:0;">
+                                    <thead style="position:sticky; top:0; background:#f1f3f5; z-index:1;">
+                                        <tr>
+                                            <th style="width:45px; text-align:center;">選択</th>
+                                            <th style="width:65px; text-align:center;">区分</th>
+                                            <th style="width:45%;">薬品名 (直接編集可)</th>
+                                            <th style="width:25%;">使用期間 (直接編集可)</th>
+                                            <th style="width:20%;">備考 / 自動判定</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="tbody-summary-inhosp-drugs">
+                                        <tr><td colspan="5" style="text-align:center; color:#999; padding:12px;">患者IDを入力して「カルテから情報収集」をクリックしてください</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- 4. <特記事項> <入院中に使用された主なお薬> 一括整形テキスト -->
+                        <div style="border:2px solid #00838f; border-radius:4px; padding:10px; background:#f4fefe;">
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                                <div>
+                                    <span style="font-size:13px; font-weight:bold; color:#006064;">⑤ ＜特記事項＞＜入院中に使用された主なお薬＞ 転記用テキスト</span>
+                                    <span style="font-size:11px; color:#555; margin-left:8px;">（※主病名・併存疾患・手術・選択した入院中使用薬が自動反映されます）</span>
+                                </div>
+                                <div style="display:flex; gap:6px;">
+                                    <button class="yr-btn yr-btn-outline-secondary" style="font-size:11px; padding:3px 8px;" onclick="updateSummaryCombinedPreview(true)">🔄 自動整形に戻す</button>
+                                    <button class="yr-btn yr-btn-success" style="font-size:13px; font-weight:bold; padding:5px 16px; background-color:#00796b; border-color:#00796b;" onclick="copySummarySection('combined')">📋 ＜特記事項・入院中薬剤＞ を一括コピー</button>
+                                </div>
+                            </div>
+                            <textarea id="txt-summary-combined-preview" class="yr-form-control" style="width:100%; height:140px; box-sizing:border-box; font-family:monospace; font-size:12px; white-space:pre; resize:vertical;" placeholder="主病名・併存疾患・手術日と術式・選択した入院中使用薬剤（期間付き）がここに整形されます。"></textarea>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -2902,7 +3055,14 @@ function openKarteLink(type, kanjaId) {
             url = baseUrl + 'search/search_order.php?kana_name=&search_code=1&user_id=' + userId + '&kanja_id=' + kanjaId;
             break;
         case 'shohou_d':
-            url = baseUrl + 'karte.php?kanja_id=' + kanjaId + '&user_id=' + userId + '&order_search_flg=1&order_search_code=1&order_search_name=#top';
+            var pShohou = findPatientById(kanjaId);
+            var sHospDays = pShohou ? parseInt(pShohou.daysInHosp, 10) : 0;
+            var sRangeDays = (!isNaN(sHospDays) && sHospDays > 0) ? Math.min(550, Math.max(sHospDays + 14, 60)) : 90;
+            var sStart = new Date(today); sStart.setDate(today.getDate() - sRangeDays);
+            var sEnd = new Date(today); sEnd.setDate(today.getDate() + 7);
+            var sStartStr = sStart.getFullYear() + '/' + ('0'+(sStart.getMonth()+1)).slice(-2) + '/' + ('0'+sStart.getDate()).slice(-2);
+            var sEndStr = sEnd.getFullYear() + '/' + ('0'+(sEnd.getMonth()+1)).slice(-2) + '/' + ('0'+sEnd.getDate()).slice(-2);
+            url = baseUrl + 'karte.php?disp_flgs=0/0/2/0/0/0/1/0/0/1/0/0/0/0/0&kanja_id=' + kanjaId + '&user_id=' + userId + '&start_date=' + sStartStr + '&end_date=' + sEndStr + '&hakkou_date=' + sStartStr + '&kijun_date=' + todayStr + '&range_date=' + sRangeDays + '/7/1/1&disp_selectsection=&disp_selectukind=1,2,3,91&disp_usection_code=0&disp_ukind_code=2122&order_kind_set_code=0011&order_kind_code_str=0011&no_log_flg=1&nyugai_kind=&min_date=&max_date=&disp_zoom=100#bottom';
             break;
         case 'kentai_s':
             url = baseUrl + 'search/search_order.php?kana_name=&search_code=3&user_id=' + userId + '&kanja_id=' + kanjaId;
