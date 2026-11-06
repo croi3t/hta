@@ -3131,7 +3131,7 @@ function openKarteLink(type, kanjaId) {
             var pTarget = findPatientById(kanjaId);
             var hospDays = pTarget ? parseInt(pTarget.daysInHosp, 10) : 0;
             var rDays = (!isNaN(hospDays) && hospDays > 0) ? (hospDays + 3) : 20;
-            url = baseUrl + 'karte.php?kanja_id=' + kanjaId + '&user_id=' + userId + '&order_kind_code_str=0091,1091&kijun_date=' + todayStr + '&range_date=' + rDays + '/7/1/1&disp_selectsection=0000021&disp_selectukind=1,2,3&document_code=700360003,730360001&multi_kind=1#top';
+            url = baseUrl + 'karte.php?kanja_id=' + kanjaId + '&user_id=' + userId + '&order_kind_code_str=0091,1091&kijun_date=' + todayStr + '&range_date=' + rDays + '/7/1/1&disp_selectsection=0000021&disp_selectukind=1,2,3&document_code=700360003&multi_kind=1#top';
             break;
 
     }
