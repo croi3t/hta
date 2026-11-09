@@ -744,10 +744,11 @@ function generateAbbreviation() {}
                             <table class="yr-table" style="font-size:12px;">
                                 <thead>
                                     <tr>
-                                        <th style="width:5%;">判定</th>
-                                        <th style="width:40%;">入院前 (ベースライン)</th>
-                                        <th style="width:15%;">ステータス</th>
-                                        <th style="width:40%;">退院時</th>
+                                        <th style="width:4%;">判定</th>
+                                        <th style="width:28%;">入院前 (ベースライン)</th>
+                                        <th style="width:11%;">ステータス</th>
+                                        <th style="width:28%;">退院時</th>
+                                        <th style="width:29%;" title="処方変更に伴う病状推移、副作用の有無、中止・減量後の評価等を記載します">変更後の経過</th>
                                     </tr>
                                 </thead>
                                 <tbody id="med-adj-tbody"></tbody>
@@ -765,24 +766,69 @@ function generateAbbreviation() {}
                         <div onclick="var d=document.getElementById('med-adj-desc-2026'); d.style.display=(d.style.display==='none'?'block':'none');" style="padding:8px 12px; font-size:13px; font-weight:bold; color:#d81b60; cursor:pointer;" title="クリックで折りたたみ/展開">
                             📖 26年改定版の算定条件と要約 (ここをクリックして開閉)
                         </div>
-                        <div id="med-adj-desc-2026" style="display:none; padding:10px 15px; background:#fff; font-size:12px; color:#333; line-height:1.6; border-top:1px solid #f8bbd0;">
+                        <div id="med-adj-desc-2026" style="display:none; padding:12px 16px; background:#fff; font-size:12px; color:#333; line-height:1.65; border-top:1px solid #f8bbd0;">
+                            <div style="font-weight:bold; color:#c2185b; font-size:13px; margin-bottom:8px; border-bottom:2px solid #f8bbd0; padding-bottom:3px;">
+                                📋 薬剤総合評価調整加算 (160点) および 薬剤調整加算 (+150点 / 計310点) 算定要件詳細
+                            </div>
                             <ul style="margin:0; padding-left:20px;">
-                                <li style="margin-bottom:6px;"><b>【薬剤総合評価調整加算 (160点)】</b> 入院前に<b>4週間以上継続して6種類以上の内服薬</b>が処方されていた患者に対し、総合的に評価して<b>「処方内容を変更（中止・用量変更等）」を行った場合</b>に退院時に算定。 ※26年改定で100点→160点に引き上げ。</li>
-                                <li style="margin-bottom:6px;">
-                                    <b>【処方内容変更の定義】</b> 次のようなものが該当。
-                                    <div style="font-size:11px; background:#fff9fa; padding:4px 8px; border-radius:4px; margin-top:2px;">
-                                        ・内服薬の種類数の変更<br>
-                                        ・内服薬の削減又は追加<br>
-                                        ・内服薬の用量の変更<br>
-                                        ・作用機序が異なる同一効能効果の内服薬への変更
+                                <li style="margin-bottom:8px;">
+                                    <b>【１】薬剤総合評価調整加算 (160点) の趣旨と全算定要件 (ア～キ)</b><br>
+                                    複数の内服薬が処方されている患者（薬物有害事象の存在、服薬過誤、服薬アドヒアランス低下等のおそれのある患者）に対し、処方内容を総合評価した上で処方を変更し、療養上必要な指導及び施設間での文書情報連携を行う取組を評価。<b>次のア～キの指導等を全て実施している場合に退院時に算定可能。</b>
+                                    <div style="background:#fff9fa; border:1px solid #fce4ec; border-left:4px solid #c2185b; padding:6px 10px; margin:4px 0; border-radius:3px; font-size:11.5px;">
+                                        <b>ア. 入院時持参薬確認・慎重投与薬剤の確認:</b> ガイドライン等を踏まえ、特に慎重な投与を要する薬剤等を確認。<br>
+                                        <b>イ. 多職種連携による総合評価・処方変更・カルテ記載:</b> 医師・薬剤師・看護師等の多職種連携の下で総合評価を行い、適切な用量変更、副作用被疑薬の中止、代替薬への変更等を実施。評価内容や変更の要点を診療録等に記載。<br>
+                                        <b>ウ. 処方変更に伴う説明 ＆ ポリファーマシーへの一般的啓発:</b> 留意事項を多職種共有した上で患者へ処方変更の注意点を説明。併せて、<b>ポリファーマシーに関する一般的な注意の啓発を実施。</b><br>
+                                        <b>エ. 悪化・新規副作用の多職種確認・再評価:</b> 処方変更に伴う病状悪化や新たな副作用の有無を確認し必要に応じ再評価。<br>
+                                        <b>オ. 多職種連携機会の活用:</b> ポリファーマシー対策カンファレンスを実施するほか、日常的な評価・情報共有機会を活用して多職種連携で実施。<br>
+                                        <b>カ. ポリファーマシー対策手順書の作成・院内周知・活用:</b> ガイドライン等を参考に、<b>ポリファーマシー対策に関する手順書を作成し、保険医療機関内に周知し活用</b>すること。<br>
+                                        <b>キ. 薬剤管理サマリー等による文書情報連携:</b> 「薬剤管理サマリー」（日病薬）等の様式を参照して情報提供文書を作成し、転院・退院時に患者・家族へ交付するとともに、継続治療を行う保険医療機関・保険薬局・介護保険施設等のうち少なくとも1つに文書提供。
                                     </div>
                                 </li>
-                                <li style="margin-bottom:6px;"><b>【薬剤調整加算 (+150点)】</b> 上記の評価加算(160点)の要件を満たした上で、退院時の内服薬がベースラインから<b>「2種類以上減少」</b>し、その状態が<b>4週間以上継続</b>すると見込まれる場合に上乗せして算定。</li>
-                                <li style="margin-bottom:6px;"><b>【※短期間での再算定ルール】</b> 1年以内に本加算を算定したことがある患者の場合、<b>「前回算定時の種類数からさらに2種類以上減少」</b>している必要があります。</li>
-                                <li style="margin-bottom:6px;"><b>【連携要件】</b> ポリファーマシー対策に係るカンファレンスを実施するほか、日常的な評価・共有に加え、<b>「療養上必要な指導及び薬局等への情報連携」</b>が要件化されました。</li>
-                                <li><b>【ベースラインの確定】</b> 入院前の内服薬について、「入院前4週間以上」継続していない場合はベースラインに含まれません。リスト左側のチェックを外してください。</li>
+                                <li style="margin-bottom:8px;">
+                                    <b>【２】ポリファーマシーの定義と患者への啓発 (ウ・(8))</b><br>
+                                    ・<b>ポリファーマシーの定義:</b> 「単に服用する薬剤数が多いことではなく、それに関連して薬物有害事象のリスク増加、服薬過誤、服薬アドヒアランス低下等の問題につながる状態」をいう。<br>
+                                    ・<b>患者への啓発における参考資料:</b> 「高齢者が気を付けたい多すぎる薬と副作用」（日本老年医学会、日本老年薬学会）等を参考にして、患者・家族への注意喚起・啓発を行うこと。
+                                </li>
+                                <li style="margin-bottom:8px;">
+                                    <b>【３】ポリファーマシー対策手順書および参考ガイドライン (カ・(7))</b><br>
+                                    以下のガイドライン等を参考に院内手順書を作成し、院内周知・活用すること：<br>
+                                    ・「高齢者の医薬品適正使用の指針（総論編／各論編（療養環境別））」（厚生労働省）<br>
+                                    ・日本老年医学会「高齢者の安全な薬物療法ガイドライン」<br>
+                                    ・「病院における高齢者のポリファーマシー対策の始め方と進め方」（厚生労働省）<br>
+                                    ・「ポリファーマシー対策の進め方」（日本病院薬剤師会）
+                                </li>
+                                <li style="margin-bottom:8px;">
+                                    <b>【４】対象患者・ベースライン（調整前）の計算ルール ((2)～(5))</b><br>
+                                    ・<b>対象患者:</b> 入院前に内服を開始して<b>4週間以上経過した内服薬が6種類以上</b>処方されていた患者。<br>
+                                    ・<b>除外薬剤:</b> <b>屯服薬</b>は種類数から除外。また、<b>服用開始して4週間以内の薬剤</b>は調整前の内服薬の種類数から除外。<br>
+                                    ・<b>種類数の計算:</b> 錠剤、カプセル剤、散剤、顆粒剤及び液剤について、<b>1銘柄ごとに1種類</b>として計算（外用薬・注射薬は対象外）。<br>
+                                    ・<b>精神病棟の場合:</b> 入院時又は退院1年前のうち遅い時点で<b>抗精神病薬が4種類以上</b>内服されていた患者が対象。
+                                </li>
+                                <li style="margin-bottom:8px;">
+                                    <b>【５】処方内容変更の定義</b><br>
+                                    作用機序が同一である院内採用薬への単なる切替は該当しない。以下のような変更が必要：<br>
+                                    ・内服薬の種類数の変更（削減又は追加）<br>
+                                    ・内服薬の用量の変更<br>
+                                    ・作用機序が異なる同一効能効果の内服薬への変更<br>
+                                    ※追加のみの場合は、入院前の処方の総合評価に関連した追加であること。
+                                </li>
+                                <li style="margin-bottom:8px;">
+                                    <b>【６】薬剤調整加算 (+150点 / 計310点) の上乗せ要件 ((9)・(10))</b><br>
+                                    上記【１】の評価加算の要件を満たした上で、退院時に処方される内服薬が<b>「2種類以上減少」</b>し、その状態が<b>4週間以上継続すると見込まれる場合</b>（又は精神病棟等で抗精神病薬が2種類以上減少、もしくはクロルプロマジン換算で2,000mg以上内服から1,000mg以上減少した場合）に算定。
+                                </li>
+                                <li style="margin-bottom:8px;">
+                                    <b>【７】レセプト摘要欄の記載事項 ((11)・(12))</b><br>
+                                    ・内服薬が減少する前後の内服薬の種類数を診療報酬明細書の摘要欄に記載すること。<br>
+                                    ・他院処方を含めて合算して2種類以上減少した場合は、当該他の保険医療機関名及び各機関での調整前後種類数を記載すること。
+                                </li>
+                                <li>
+                                    <b>【８】1年以内の再算定ルール ((13))</b><br>
+                                    当該医療機関で薬剤調整加算又は薬剤総合評価調整管理料を1年以内に算定したことがある患者は、<b>「前回の算定時に減少した後の種類数から、さらに2種類以上減少」</b>している場合に限り新たに算定可能。
+                                </li>
                             </ul>
-                            <div style="margin-top:8px; font-size:11px; color:#e91e63;">※正確な最新条件および疑義解釈等については厚労省の診療報酬改定資料をご確認ください。</div>
+                            <div style="margin-top:10px; font-size:11px; color:#c2185b; background:#fff3cd; border:1px solid #ffeeba; padding:6px 10px; border-radius:4px;">
+                                ※正確な最新要件・疑義解釈および施設基準等の詳細は、厚生労働省の医科診療報酬点数表および最新の通知等をご確認ください。
+                            </div>
                         </div>
                     </div>
                     <div style="margin-bottom:15px; background:#fff; padding:10px; border:1px solid #f8bbd0; border-radius:4px;">
@@ -795,10 +841,11 @@ function generateAbbreviation() {}
                                 <input type="text" id="ipt-med-adj-prev-count-2026" class="yr-form-control" style="width:50px; height:24px; text-align:center; font-size:12px;" placeholder="数" onchange="calcMedAdj2026(true)">
                             </div>
                         </div>
-                        <div style="display:flex; align-items:center;">
-                            <span style="font-size:12px; font-weight:bold; color:#d81b60; margin-right:10px;">🔍 対象薬剤の開始日計算:</span>
-                            <input type="text" id="ipt-med-adj-patient-search-2026" class="yr-form-control" style="width:180px; height:28px; font-size:12px; margin-right:5px;" placeholder="IDまたは名前を入力..." onkeypress="if(event.keyCode===13) searchPatientForMedAdj2026()">
-                            <button class="yr-btn yr-btn-primary" style="font-size:11px; padding:3px 8px; margin-right:10px;" onclick="searchPatientForMedAdj2026()">検索</button>
+                        <div style="display:flex; align-items:center; flex-wrap:wrap; gap:8px;">
+                            <span style="font-size:12px; font-weight:bold; color:#d81b60;">🔍 対象患者:</span>
+                            <input type="text" id="ipt-med-adj-patient-search-2026" class="yr-form-control" style="width:160px; height:28px; font-size:12px; font-weight:bold;" placeholder="IDまたは名前を入力..." onkeypress="if(event.keyCode===13) fetchMedAdjOrders2026('both')">
+                            <button class="yr-btn yr-btn-outline-secondary" style="font-size:11px; padding:3px 8px;" onclick="searchPatientForMedAdj2026()">開始日計算</button>
+                            <button id="btn-med-adj-fetch-both-2026" class="yr-btn yr-btn-primary" style="background-color:#c2185b; border-color:#c2185b; font-weight:bold; font-size:11px; padding:3px 12px;" onclick="fetchMedAdjOrders2026('both')" title="電子カルテから持参薬と退院処方を一括で自動取得して比較・判定を行います">⚡ カルテから持参薬・退院処方を自動取得</button>
                             <div id="med-adj-patient-result-2026" style="font-size:12px; color:#333; flex-grow:1;"></div>
                         </div>
                     </div>
@@ -807,9 +854,12 @@ function generateAbbreviation() {}
                         <div style="width:42%;">
                             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:5px;">
                                 <span style="font-size:12px; font-weight:bold;">入 院 前 (持参薬)</span>
-                                <button class="yr-btn yr-btn-outline-secondary" style="font-size:11px; padding:2px 5px;" onclick="document.getElementById('med-adj-in-2026').value='';">クリア</button>
+                                <div style="display:flex; gap:4px;">
+                                    <button class="yr-btn yr-btn-outline-secondary" style="font-size:11px; padding:2px 7px; color:#c2185b; border-color:#f48fb1;" onclick="fetchMedAdjOrders2026('jisan')" title="カルテから持参薬のみ再取得します">📥 持参薬取得</button>
+                                    <button class="yr-btn yr-btn-outline-secondary" style="font-size:11px; padding:2px 5px;" onclick="document.getElementById('med-adj-in-2026').value='';">クリア</button>
+                                </div>
                             </div>
-                            <textarea id="med-adj-in-2026" class="yr-form-control" style="width:100%; height:150px; box-sizing:border-box; font-family:monospace; font-size:12px; white-space:pre; resize:vertical;" placeholder="電子カルテ等から処方を貼り付けてください。上の✨ボタンで自動整理されます。"></textarea>
+                            <textarea id="med-adj-in-2026" class="yr-form-control" style="width:100%; height:150px; box-sizing:border-box; font-family:monospace; font-size:12px; white-space:pre; resize:vertical;" placeholder="電子カルテ等から処方を貼り付けるか、上の「自動取得」ボタンを押してください。"></textarea>
                         </div>
                         <div style="width:14%; display:flex; flex-direction:column; justify-content:center; padding:0 10px; box-sizing:border-box;">
                             <button id="btn-med-adj-compare-2026" class="yr-btn yr-btn-primary" style="font-weight:bold; padding:8px 0; width:100%; margin-bottom:15px; font-size:13px;" onclick="calcMedAdj2026()">▶ 比較・判定 ▶<br><span style="font-size:10px; font-weight:normal;">(自動整理あり)</span></button>
@@ -818,9 +868,12 @@ function generateAbbreviation() {}
                         <div style="width:42%;">
                             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:5px;">
                                 <span style="font-size:12px; font-weight:bold;">退 院 時</span>
-                                <button class="yr-btn yr-btn-outline-secondary" style="font-size:11px; padding:2px 5px;" onclick="document.getElementById('med-adj-out-2026').value='';">クリア</button>
+                                <div style="display:flex; gap:4px;">
+                                    <button class="yr-btn yr-btn-outline-secondary" style="font-size:11px; padding:2px 7px; color:#c2185b; border-color:#f48fb1;" onclick="fetchMedAdjOrders2026('taiin')" title="カルテから退院処方のみ再取得します">📥 退院処方取得</button>
+                                    <button class="yr-btn yr-btn-outline-secondary" style="font-size:11px; padding:2px 5px;" onclick="document.getElementById('med-adj-out-2026').value='';">クリア</button>
+                                </div>
                             </div>
-                            <textarea id="med-adj-out-2026" class="yr-form-control" style="width:100%; height:150px; box-sizing:border-box; font-family:monospace; font-size:12px; white-space:pre; resize:vertical;" placeholder="電子カルテ等から退院時の処方を貼り付けてください。"></textarea>
+                            <textarea id="med-adj-out-2026" class="yr-form-control" style="width:100%; height:150px; box-sizing:border-box; font-family:monospace; font-size:12px; white-space:pre; resize:vertical;" placeholder="電子カルテ等から退院時の処方を貼り付けるか、上の「自動取得」ボタンを押してください。"></textarea>
                         </div>
                     </div>
                     
@@ -831,11 +884,23 @@ function generateAbbreviation() {}
                                 <button class="yr-btn yr-btn-success" onclick="copyMedAdjResult2026()">📝 カルテ貼付用テキストをコピー</button>
                             </div>
                             <div style="display:flex; flex-direction:column; padding:10px 12px; background:#fff; border:1px solid #eee; border-radius:4px;">
-                                <span style="font-size:12px; font-weight:bold; color:#666; border-bottom:1px solid #ddd; padding-bottom:4px;">[カルテ記載要件チェック]</span>
-                                <label style="font-size:12px; cursor:pointer; margin-bottom:8px;"><input type="checkbox" id="chk-med-adj-req1-2026"> 療養上必要な指導を実施</label>
-                                <label style="font-size:12px; cursor:pointer; margin-bottom:8px;"><input type="checkbox" id="chk-med-adj-req2-2026"> 多職種連携による評価・共有を実施</label>
-                                <label style="font-size:12px; cursor:pointer;"><input type="checkbox" id="chk-med-adj-req4-2026"> 退院先の薬局等へ文書による情報連携を実施 <span style="color:#c62828;font-weight:bold;">(※26年より必須)</span></label>
-                                <div id="req3-container-2026" style="display:none; background:#fff3cd; border:1px solid #ffecb5; border-left:4px solid #ffc107; padding:8px; border-radius:4px;">
+                                <span style="font-size:12px; font-weight:bold; color:#666; border-bottom:1px solid #ddd; padding-bottom:4px;">[カルテ記載・算定要件チェック (全て実施で算定可能)]</span>
+                                <label style="font-size:12px; cursor:pointer; margin-bottom:6px;">
+                                    <input type="checkbox" id="chk-med-adj-req1-2026" onchange="renderMedAdjResult2026()"> 療養上必要な指導を実施（処方変更に伴う注意点等の説明）
+                                </label>
+                                <label style="font-size:12px; cursor:pointer; margin-bottom:6px;">
+                                    <input type="checkbox" id="chk-med-adj-req-poly-2026" onchange="renderMedAdjResult2026()"> 患者へポリファーマシーに関する一般的注意の啓発を実施 <span style="color:#c2185b; font-weight:bold;">(※必須)</span>
+                                </label>
+                                <label style="font-size:12px; cursor:pointer; margin-bottom:6px;">
+                                    <input type="checkbox" id="chk-med-adj-req2-2026" onchange="renderMedAdjResult2026()"> 多職種連携による総合的評価・共有を実施（カンファレンス又は日常的評価機会の活用、カルテ記載）
+                                </label>
+                                <label style="font-size:12px; cursor:pointer; margin-bottom:6px;">
+                                    <input type="checkbox" id="chk-med-adj-req-manual-2026" onchange="renderMedAdjResult2026()"> ポリファーマシー対策手順書を作成・院内に周知し活用 <span style="color:#c2185b; font-weight:bold;">(※必須)</span>
+                                </label>
+                                <label style="font-size:12px; cursor:pointer;">
+                                    <input type="checkbox" id="chk-med-adj-req4-2026" onchange="renderMedAdjResult2026()"> 退院先の医療機関・薬局・介護施設等へ文書による情報連携を実施 <span style="color:#c62828; font-weight:bold;">(※必須)</span>
+                                </label>
+                                <div id="req3-container-2026" style="display:none; background:#fff3cd; border:1px solid #ffecb5; border-left:4px solid #ffc107; padding:8px; border-radius:4px; margin-top:6px;">
                                     <label style="font-size:12px; cursor:pointer; color:#856404; font-weight:bold; margin:0;">
                                         <input type="checkbox" id="chk-med-adj-req3-2026" onchange="calcMedAdj2026(true)">
                                         【追加のみの場合】追加された薬は、入院前の「当該処方」の総合的評価に関連する
@@ -853,10 +918,11 @@ function generateAbbreviation() {}
                         <table class="yr-table" style="font-size:12px;">
                             <thead>
                                 <tr>
-                                    <th style="width:5%;">判定</th>
-                                    <th style="width:40%;">入院前 (ベースライン)</th>
-                                    <th style="width:15%;">ステータス</th>
-                                    <th style="width:40%;">退院時</th>
+                                    <th style="width:4%;">判定</th>
+                                    <th style="width:28%;">入院前 (ベースライン)</th>
+                                    <th style="width:11%;">ステータス</th>
+                                    <th style="width:28%;">退院時</th>
+                                    <th style="width:29%;" title="処方変更に伴う病状推移、副作用の有無、中止・減量後の評価等を記載します">変更後の経過</th>
                                 </tr>
                             </thead>
                             <tbody id="med-adj-tbody-2026"></tbody>
