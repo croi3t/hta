@@ -73,16 +73,46 @@ var SurgeryFetcher = {
         var rangeDays = (!isNaN(days) && days > 0) ? (days + 3) : 20;
 
         // ★カルテLinkと完全に一致させた正規の手術予約・記録URL（確実に術式・病名を取得）
-        function buildUrl() {
-            return "http://10.5.171.42:8082/karte/karte.php?kanja_id=" + encodeURIComponent(p.id) + 
-                   "&user_id=" + encodeURIComponent(userId) + 
-                   "&order_kind_code_str=0091,1091" + 
-                   "&kijun_date=" + kijunDate + 
-                   "&range_date=" + rangeDays + "/7/1/1" + 
-                   "&disp_selectsection=0000021&disp_selectukind=1,2,3" + 
-                   "&document_code=700360003" + 
-                   "&multi_kind=1" + 
-                   "&_nocache=" + new Date().getTime() + "#top";
+        // isHeavy: trueなら従来の重い文書閲覧URL、falseなら処方(0011)と同等の超軽量オーダ照会URL
+        function buildUrl(isHeavy) {
+            if (isHeavy) {
+                // 重い文書コード付きフォールバックURL（確実に術式・病名を取得）
+                return "http://10.5.171.42:8082/karte/karte.php?kanja_id=" + encodeURIComponent(p.id) + 
+                       "&user_id=" + encodeURIComponent(userId) + 
+                       "&order_kind_code_str=0091,1091" + 
+                       "&kijun_date=" + kijunDate + 
+                       "&range_date=" + rangeDays + "/7/1/1" + 
+                       "&disp_selectsection=0000021&disp_selectukind=1,2,3" + 
+                       "&document_code=700360003" + 
+                       "&multi_kind=1" + 
+                       "&_nocache=" + new Date().getTime() + "#top";
+            }
+            
+            // ★処方(0011)・注射(0031)・再診(0081)と完全に同一の超軽量オーダ照会形式（重い外部JSがなく1秒足らずで返る）
+            var sDate = new Date(today.getTime());
+            sDate.setDate(sDate.getDate() - rangeDays);
+            var startDateStr = sDate.getFullYear() + "/" + ("0" + (sDate.getMonth() + 1)).slice(-2) + "/" + ("0" + sDate.getDate()).slice(-2);
+            var eDate = new Date(today.getTime());
+            eDate.setDate(eDate.getDate() + 30);
+            var endDateStr = eDate.getFullYear() + "/" + ("0" + (eDate.getMonth() + 1)).slice(-2) + "/" + ("0" + eDate.getDate()).slice(-2);
+
+            return "http://10.5.171.42:8082/karte/karte.php" +
+                   "?disp_flgs=0/0/2/0/0/0/1/0/0/1/0/0/0/0/0" +
+                   "&kanja_id=" + encodeURIComponent(p.id) +
+                   "&user_id=" + encodeURIComponent(userId) +
+                   "&start_date=" + startDateStr +
+                   "&end_date=" + endDateStr +
+                   "&hakkou_date=" + startDateStr +
+                   "&kijun_date=" + kijunDate +
+                   "&range_date=" + rangeDays + "/7/1/1" +
+                   "&disp_selectsection=" +
+                   "&disp_selectukind=1,2,3,91" +
+                   "&disp_usection_code=0" +
+                   "&disp_ukind_code=2122" +
+                   "&order_kind_set_code=0091" +
+                   "&order_kind_code_str=0091,1091" +
+                   "&no_log_flg=1&nyugai_kind=&min_date=&max_date=&disp_zoom=100" +
+                   "&_t=" + new Date().getTime();
         }
 
         var iframeId = "surgery-fetch-iframe-" + p.id;
@@ -266,6 +296,7 @@ var SurgeryFetcher = {
         // ★即時完了ポーリング: iframe.onload は待たず、HTMLテキストが届いた瞬間に0.2〜0.5秒で抽出！
         var checkCount = 0;
         var maxChecks = 25; // 80ms * 25 = 約2.0秒
+        var hasRetriedWithHeavy = false;
 
         function checkReady() {
             if (isDone) return;
@@ -290,19 +321,29 @@ var SurgeryFetcher = {
 
             // 1. キーワード検知時：即座に抽出完了（最速 0.1〜0.4秒）
             if (hasSurgeryKeywords) {
+                p._surgeryFetchMode = hasRetriedWithHeavy ? "heavy" : "light";
                 processContent(allText);
                 return;
             }
 
-            // 2. ドキュメントロード完了後、かつ一定回数(6回=約480ms)チェックしてもキーワードがない場合（手術なし確定）
+            // 2. ドキュメントロード完了後、キーワードがない場合の判定
             var isDocComplete = (docReadyState === "complete" || docReadyState === "interactive");
-            if (isDocComplete && checkCount >= 6 && allText.length > 50) {
-                processContent(allText);
-                return;
-            }
+            if ((isDocComplete && checkCount >= 6 && allText.length > 50) || checkCount >= maxChecks) {
+                // 安全策：
+                // 軽量形式で「手術予約」の文字はあるのに「術式：」等の本文見出しが未展開で、
+                // まだ重いURLを試していない場合のみ、1回だけdocument_code=700360003で自動再取得！
+                var hasOrderHeaderWithoutBody = (allText.indexOf("手術予約") !== -1 && !hasSurgeryKeywords);
+                if (hasOrderHeaderWithoutBody && !hasRetriedWithHeavy) {
+                    hasRetriedWithHeavy = true;
+                    checkCount = 0;
+                    try {
+                        iframe.src = buildUrl(true);
+                        return;
+                    } catch(e2) {}
+                }
 
-            // 3. 最大試行回数に達した場合（フォールバック）
-            if (checkCount >= maxChecks) {
+                // 「手術予約」オーダ自体がない（手術なし患者）、または再試行後も完了
+                p._surgeryFetchMode = hasRetriedWithHeavy ? "heavy" : "light";
                 processContent(allText);
                 return;
             }
@@ -316,10 +357,10 @@ var SurgeryFetcher = {
         };
 
         try {
-            iframe.src = buildUrl();
+            // ★最初は処方・注射・再診と全く同一の超軽量オーダ照会形式で最速取得（1秒足らず）
+            iframe.src = buildUrl(false);
         } catch(e) {
             clearTimeout(fallbackTimer);
             cleanupAndCallback();
         }
-    }
-};
+    }};
