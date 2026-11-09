@@ -1,4 +1,4 @@
-﻿// =========================================================
+// =========================================================
 // 5A病棟専用：手術情報スクレイピングモジュール (改訂版)
 // js/surgery_fetcher.js
 // =========================================================
@@ -72,46 +72,17 @@ var SurgeryFetcher = {
         var days = parseInt(p.daysInHosp, 10);
         var rangeDays = (!isNaN(days) && days > 0) ? (days + 3) : 20;
 
-        // ★カルテLinkと完全に一致させた正規の手術予約・記録URL
-        // ★処方(0011)・注射(0031)・再診(0081)と完全に同一の超軽量オーダ照会形式（1秒足らずで即完了）
-        function buildUrl(useHeavyDocCode) {
-            if (useHeavyDocCode) {
-                // 重い文書コード付きフォールバックURL
-                return "http://10.5.171.42:8082/karte/karte.php?kanja_id=" + encodeURIComponent(p.id) + 
-                       "&user_id=" + encodeURIComponent(userId) + 
-                       "&order_kind_code_str=0091,1091" + 
-                       "&kijun_date=" + kijunDate + 
-                       "&range_date=" + rangeDays + "/7/1/1" + 
-                       "&disp_selectsection=0000021&disp_selectukind=1,2,3" + 
-                       "&document_code=700360003" + 
-                       "&multi_kind=1" + 
-                       "&_nocache=" + new Date().getTime() + "#top";
-            }
-            
-            var sDate = new Date(today.getTime());
-            sDate.setDate(sDate.getDate() - rangeDays);
-            var startDateStr = sDate.getFullYear() + "/" + ("0" + (sDate.getMonth() + 1)).slice(-2) + "/" + ("0" + sDate.getDate()).slice(-2);
-            var eDate = new Date(today.getTime());
-            eDate.setDate(eDate.getDate() + 30);
-            var endDateStr = eDate.getFullYear() + "/" + ("0" + (eDate.getMonth() + 1)).slice(-2) + "/" + ("0" + eDate.getDate()).slice(-2);
-
-            return "http://10.5.171.42:8082/karte/karte.php" +
-                   "?disp_flgs=0/0/2/0/0/0/1/0/0/1/0/0/0/0/0" +
-                   "&kanja_id=" + encodeURIComponent(p.id) +
-                   "&user_id=" + encodeURIComponent(userId) +
-                   "&start_date=" + startDateStr +
-                   "&end_date=" + endDateStr +
-                   "&hakkou_date=" + startDateStr +
-                   "&kijun_date=" + kijunDate +
-                   "&range_date=" + rangeDays + "/7/1/1" +
-                   "&disp_selectsection=" +
-                   "&disp_selectukind=1,2,3,91" +
-                   "&disp_usection_code=0" +
-                   "&disp_ukind_code=2122" +
-                   "&order_kind_set_code=0091" +
-                   "&order_kind_code_str=0091,1091" +
-                   "&no_log_flg=1&nyugai_kind=&min_date=&max_date=&disp_zoom=100" +
-                   "&_t=" + new Date().getTime();
+        // ★カルテLinkと完全に一致させた正規の手術予約・記録URL（確実に術式・病名を取得）
+        function buildUrl() {
+            return "http://10.5.171.42:8082/karte/karte.php?kanja_id=" + encodeURIComponent(p.id) + 
+                   "&user_id=" + encodeURIComponent(userId) + 
+                   "&order_kind_code_str=0091,1091" + 
+                   "&kijun_date=" + kijunDate + 
+                   "&range_date=" + rangeDays + "/7/1/1" + 
+                   "&disp_selectsection=0000021&disp_selectukind=1,2,3" + 
+                   "&document_code=700360003" + 
+                   "&multi_kind=1" + 
+                   "&_nocache=" + new Date().getTime() + "#top";
         }
 
         var iframeId = "surgery-fetch-iframe-" + p.id;
@@ -161,10 +132,10 @@ var SurgeryFetcher = {
                 };
 
                 // 1. 各項目の抽出（「見出し」をキーにして、次の見出しまたは改行で止める）
-                var disease = extract(/病名：([\s\S]*?)術式：/);
+                var disease = extract(/(?:病名[：:]|診断名[：:])([\s\S]*?)(?=術式[：:]|\n[^\s　]+：|\n【|$)/);
                 
                 // ★術式は「術式：」の後ろから、「体位：」「麻酔法：」または「出血量：」が出現するまでとする
-                var procedure = extract(/術式：([\s\S]*?)(?=\n[^\s　]+：|\n【|体位：|麻酔法：|出血量：|$)/);
+                var procedure = extract(/術式[：:]([\s\S]*?)(?=\n[^\s　]+：|\n【|体位[：:]|麻酔法[：:]|出血量[：:]|$)/);
                 
                 // 2. 術式から不要な「加算」や「器材」を徹底排除
                 if (procedure) {
@@ -182,14 +153,14 @@ var SurgeryFetcher = {
                 }
 
                 // 3. 麻酔法の抽出（「麻酔法：」から次の見出しまで）
-                var anesthesia = extract(/麻酔法：([\s\S]*?)(?=\n[^\s　]+：|\n【|体位：|出血量：|$)/);
+                var anesthesia = extract(/麻酔法[：:]([\s\S]*?)(?=\n[^\s　]+：|\n【|体位[：:]|出血量[：:]|$)/);
                 
                 // 4. 体位などの余計な文字列が術式に残っていないか最終クリーンアップ
-                procedure = procedure.replace(/(体位：|麻酔法：|出血量：).*$/g, '').trim();
+                procedure = procedure.replace(/(体位[：:]|麻酔法[：:]|出血量[：:]).*$/g, '').trim();
 
                 // 日付の取得（より厳格に）
                 var surgDateStr = "";
-                var dateMatch = allText.match(/(?:手術開始時刻|手術日|実施日)[：\s]*(\d{4})[\/年](\d{1,2})[\/月](\d{1,2})/);
+                var dateMatch = allText.match(/(?:手術開始時刻|手術日|実施日)[：:\s]*(\d{4})[\/年](\d{1,2})[\/月](\d{1,2})/);
                 if (dateMatch) {
                     surgDateStr = dateMatch[1] + '/' + ('0'+dateMatch[2]).slice(-2) + '/' + ('0'+dateMatch[3]).slice(-2);
                 }
@@ -292,10 +263,9 @@ var SurgeryFetcher = {
             return text;
         }
 
-        // ★即時完了ポーリング: iframe.onload は待たず、HTMLテキストが届いた瞬間に0.2〜0.4秒で抽出！
+        // ★即時完了ポーリング: iframe.onload は待たず、HTMLテキストが届いた瞬間に0.2〜0.5秒で抽出！
         var checkCount = 0;
-        var maxChecks = 25; // 80ms * 25 = 約2秒
-        var hasRetriedWithDocCode = false;
+        var maxChecks = 25; // 80ms * 25 = 約2.0秒
 
         function checkReady() {
             if (isDone) return;
@@ -312,33 +282,27 @@ var SurgeryFetcher = {
                 }
             } catch(e) {}
 
-            var hasSurgeryKeywords = (allText.indexOf("術式：") !== -1 ||
-                                      allText.indexOf("病名：") !== -1 ||
+            var hasSurgeryKeywords = (allText.indexOf("術式：") !== -1 || allText.indexOf("術式:") !== -1 ||
+                                      allText.indexOf("病名：") !== -1 || allText.indexOf("病名:") !== -1 ||
                                       allText.indexOf("手術開始時刻") !== -1 ||
                                       allText.indexOf("手術日") !== -1 ||
                                       allText.indexOf("実施日") !== -1);
 
-            // 1. キーワード検知時：即座に抽出完了（0.1〜0.3秒）
+            // 1. キーワード検知時：即座に抽出完了（最速 0.1〜0.4秒）
             if (hasSurgeryKeywords) {
                 processContent(allText);
                 return;
             }
 
-            // 2. ドキュメントロード完了後、キーワードがない場合
+            // 2. ドキュメントロード完了後、かつ一定回数(6回=約480ms)チェックしてもキーワードがない場合（手術なし確定）
             var isDocComplete = (docReadyState === "complete" || docReadyState === "interactive");
-            if ((isDocComplete && checkCount >= 4) || checkCount >= maxChecks) {
-                // 安全策：もし「手術予約」のオーダ自体はあるのに本文見出しが未展開で、まだdocCodeを試していない場合のみ1回再試行
-                var hasOrderHeaderWithoutBody = (allText.indexOf("手術予約") !== -1 && !hasSurgeryKeywords);
-                if (hasOrderHeaderWithoutBody && !hasRetriedWithDocCode) {
-                    hasRetriedWithDocCode = true;
-                    checkCount = 0;
-                    try {
-                        iframe.src = buildUrl(true);
-                        return;
-                    } catch(e2) {}
-                }
+            if (isDocComplete && checkCount >= 6 && allText.length > 50) {
+                processContent(allText);
+                return;
+            }
 
-                // 手術なし、または解析へ
+            // 3. 最大試行回数に達した場合（フォールバック）
+            if (checkCount >= maxChecks) {
                 processContent(allText);
                 return;
             }
@@ -350,15 +314,6 @@ var SurgeryFetcher = {
         iframe.onload = function() {
             checkReady();
         };
-
-        try {
-            // 最初は処方・注射・再診と全く同一の超軽量オーダ照会形式で最速取得（1秒足らず）
-            iframe.src = buildUrl(false);
-        } catch(e) {
-            clearTimeout(fallbackTimer);
-            cleanupAndCallback();
-        }
-    }};
 
         try {
             iframe.src = buildUrl();
