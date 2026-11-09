@@ -65,7 +65,7 @@ var SurgeryFetcher = {
     fetchSingle: function(p, callback) {
         if (!p || !p.id) { callback(); return; }
         
-        var userId = currentSystemId || "16622";
+        var userId = (typeof currentSystemId !== "undefined" && currentSystemId) ? currentSystemId : "16622";
         var today = new Date();
         var kijunDate = today.getFullYear() + "/" + ("0" + (today.getMonth() + 1)).slice(-2) + "/" + ("0" + today.getDate()).slice(-2);
 
@@ -85,35 +85,31 @@ var SurgeryFetcher = {
                    "&_nocache=" + new Date().getTime() + "#top";
         }
 
-        var iframeId = "surgery-fetch-iframe-" + p.id;
-        var existing = document.getElementById(iframeId);
-        if (existing && existing.parentNode) existing.parentNode.removeChild(existing);
-
-        var iframe = document.createElement("iframe");
-        iframe.id = iframeId;
-        iframe.style.display = "none";
-        iframe.application = "yes"; 
-        document.body.appendChild(iframe);
-
         var isDone = false;
-        var pollTimer = null;
+        var fallbackTimer = null;
+        var currentIeApp = null;
+        var currentIframeId = null;
 
         var cleanupAndCallback = function() {
             if (isDone) return;
             isDone = true;
-            if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
             if (fallbackTimer) { clearTimeout(fallbackTimer); fallbackTimer = null; }
-            setTimeout(function() {
-                var ifr = document.getElementById(iframeId);
+            if (currentIeApp) {
+                try { currentIeApp.Quit(); } catch(eq) {}
+                currentIeApp = null;
+            }
+            if (currentIframeId) {
+                var ifr = document.getElementById(currentIframeId);
                 if (ifr && ifr.parentNode) {
                     try { ifr.onload = null; ifr.src = "about:blank"; } catch(e0) {}
                     ifr.parentNode.removeChild(ifr);
                 }
-            }, 300);
+                currentIframeId = null;
+            }
             callback(); 
         };
 
-        var fallbackTimer = setTimeout(function() {
+        fallbackTimer = setTimeout(function() {
             if (!isDone) { 
                 p.surgeryDate = "-";
                 p.surgeryProcedure = "タイムアウト";
@@ -133,15 +129,12 @@ var SurgeryFetcher = {
                 // 1. 各項目の抽出（「見出し」をキーにして、次の見出しまたは改行で止める）
                 var disease = extract(/病名：([\s\S]*?)術式：/);
                 
-                // ★修正: 術式は「術式：」の後ろから、「体位：」「麻酔法：」または「出血量：」が出現するまでとする
+                // ★術式は「術式：」の後ろから、「体位：」「麻酔法：」または「出血量：」が出現するまでとする
                 var procedure = extract(/術式：([\s\S]*?)(?=\n[^\s　]+：|\n【|体位：|麻酔法：|出血量：|$)/);
                 
                 // 2. 術式から不要な「加算」や「器材」を徹底排除
                 if (procedure) {
-                    // 複数行になったものを一時的にスペースで繋ぐ
                     procedure = procedure.replace(/[\r\n]+/g, ' ');
-
-                    // ★ピンポイント削除: 「加算」「器材」「器材キット」等の不要ワードを除去
                     var removeKeywords = [
                         /画像等手術支援加算.*?\(.*?\)/g,
                         /画像等手術支援加算/g,
@@ -167,33 +160,32 @@ var SurgeryFetcher = {
                     surgDateStr = dateMatch[1] + '/' + ('0'+dateMatch[2]).slice(-2) + '/' + ('0'+dateMatch[3]).slice(-2);
                 }
 
-                // ★追加: 在院日数から「今回の入院期間」を計算し、逸脱する過去の手術日を弾く
+                // 在院日数から「今回の入院期間」を計算し、逸脱する過去の手術日を弾く
                 var isValidDate = true;
                 if (surgDateStr) {
                     var sDate = new Date(surgDateStr);
                     sDate.setHours(0,0,0,0);
                     var aDate = new Date(today.getTime());
                     if (!isNaN(days) && days > 0) {
-                        aDate.setDate(today.getDate() - (days + 3)); // 余裕を3日持たせる
+                        aDate.setDate(today.getDate() - (days + 3));
                     } else {
                         aDate.setDate(today.getDate() - 30);
                     }
                     aDate.setHours(0,0,0,0);
                     var tDate = new Date(today.getTime());
-                    tDate.setDate(tDate.getDate() + 30); // 未来の予定も許可
+                    tDate.setDate(tDate.getDate() + 30);
 
                     if (sDate < aDate || sDate > tDate) {
                         isValidDate = false; 
                     }
                 }
-                if (!isValidDate) surgDateStr = ""; // 期間外なら空にする
+                if (!isValidDate) surgDateStr = "";
 
-                // ★修正: 共有いただいた術式リストに基づく厳密なリクシアナ適応判定
+                // リクシアナ適応判定
                 var lixianaRegex = /(人工関節置換術|人工関節再置換術|人工骨頭挿入術|骨折観血的手術|観血的整復固定術|人工関節全置換|TKA|THA|BHA)/i;
-                var hipKneeRegex = /(股|膝|大腿)/i; // 股関節・膝関節・大腿骨に関連するか
+                var hipKneeRegex = /(股|膝|大腿)/i;
                 
                 var isLixiana = false;
-                // 術式または病名に含まれ、かつ股・膝・大腿のキーワードがある場合
                 if ((procedure && lixianaRegex.test(procedure) && hipKneeRegex.test(procedure)) || 
                     (disease && lixianaRegex.test(disease) && hipKneeRegex.test(disease))) {
                     isLixiana = true;
@@ -235,7 +227,7 @@ var SurgeryFetcher = {
             cleanupAndCallback();
         }
 
-        // ★ダミーデータ処理
+        // ダミーデータ処理
         if (typeof USE_DUMMY_DATA !== 'undefined' && USE_DUMMY_DATA) {
             setTimeout(function() {
                 if (isDone) return;
@@ -245,85 +237,226 @@ var SurgeryFetcher = {
             return;
         }
 
-        // ★iframe内の全テキストを再帰的に収集
-        function collectText(winOrDoc) {
-            var text = "";
-            if (!winOrDoc) return "";
+        // Shift-JIS デコード用ヘルパー
+        function decodeShiftJIS(bin) {
+            if (!bin) return "";
             try {
-                var doc = winOrDoc.document || winOrDoc;
-                if (doc && doc.body && doc.body.innerText) {
-                    text += "\n" + doc.body.innerText;
-                }
-                var frames = doc.getElementsByTagName("frame");
-                for (var j = 0; j < frames.length; j++) {
-                    try { text += "\n" + collectText(frames[j].contentWindow); } catch(ef) {}
-                }
-                var iframes = doc.getElementsByTagName("iframe");
-                for (var k = 0; k < iframes.length; k++) {
-                    try { text += "\n" + collectText(iframes[k].contentWindow); } catch(eif) {}
-                }
-            } catch(e) {}
-            return text;
+                var stream = new ActiveXObject("ADODB.Stream");
+                stream.Type = 1; // adTypeBinary
+                stream.Open();
+                stream.Write(bin);
+                stream.Position = 0;
+                stream.Type = 2; // adTypeText
+                stream.Charset = "Shift_JIS";
+                var text = stream.ReadText();
+                stream.Close();
+                return text;
+            } catch (e) {
+                return "";
+            }
         }
 
-        // ★即時完了ポーリング: iframe.onload を待たずに 80ms ごとに DOM を直読！
-        // 外部スクリプトのダウンロード完了を待たず、HTMLが届いた瞬間に 0.2〜0.4秒で即座に解析完了
-        var checkCount = 0;
-        var maxChecks = 35; // 80ms * 35 = 最大2.8秒
+        // HTMLタグ除去・innerText相当変換ヘルパー
+        function htmlToPlainText(html) {
+            if (!html) return "";
+            var s = html.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, " ");
+            s = s.replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, " ");
+            s = s.replace(/<(?:br|\/p|\/div|\/tr|\/td|\/th|\/li|\/h[1-6])\b[^>]*>/gi, "\n");
+            s = s.replace(/<[^>]+>/g, " ");
+            s = s.replace(/&nbsp;/gi, " ");
+            s = s.replace(/&lt;/gi, "<");
+            s = s.replace(/&gt;/gi, ">");
+            s = s.replace(/&quot;/gi, '"');
+            s = s.replace(/&apos;/gi, "'");
+            s = s.replace(/&amp;/gi, "&");
+            return s.replace(/[ \t]+/g, " ").replace(/\n\s*\n/g, "\n");
+        }
 
-        function checkReady() {
-            if (isDone) return;
-            checkCount++;
-
-            var allText = "";
-            var docReadyState = "";
+        // -----------------------------------------------------------------
+        // ★第1優先：案B「MSXML2.XMLHTTP」直接通信（最速：0.1〜0.3秒）
+        // ブラウザエンジンや外部JSのダウンロードを完全排除し、HTMLを直接受信
+        // -----------------------------------------------------------------
+        function tryXmlHttp() {
             try {
-                if (iframe.contentWindow) {
-                    allText = collectText(iframe.contentWindow);
-                    if (iframe.contentWindow.document) {
-                        docReadyState = iframe.contentWindow.document.readyState || "";
+                var xhr = null;
+                try {
+                    xhr = new ActiveXObject("MSXML2.XMLHTTP");
+                } catch(ex1) {
+                    try { xhr = new ActiveXObject("Microsoft.XMLHTTP"); } catch(ex2) { xhr = new XMLHttpRequest(); }
+                }
+
+                if (!xhr) {
+                    fallbackToIEApp();
+                    return;
+                }
+
+                var xhrTimer = setTimeout(function() {
+                    try { xhr.abort(); } catch(ea) {}
+                    fallbackToIEApp();
+                }, 2500); // 2.5秒でタイムアウトしてIEAppへフォールバック
+
+                xhr.open("GET", buildUrl(), true);
+                xhr.onreadystatechange = function() {
+                    if (xhr.readyState === 4) {
+                        clearTimeout(xhrTimer);
+                        if (xhr.status === 200 || xhr.status === 0) {
+                            var rawHtml = "";
+                            try { rawHtml = decodeShiftJIS(xhr.responseBody); } catch(ed) {}
+                            if (!rawHtml) {
+                                try { rawHtml = xhr.responseText; } catch(et) {}
+                            }
+
+                            if (rawHtml && rawHtml.length > 50) {
+                                var plainText = htmlToPlainText(rawHtml);
+                                var hasKeywords = (plainText.indexOf("術式：") !== -1 ||
+                                                   plainText.indexOf("病名：") !== -1 ||
+                                                   plainText.indexOf("手術開始時刻") !== -1 ||
+                                                   plainText.indexOf("手術日") !== -1 ||
+                                                   plainText.indexOf("実施日") !== -1);
+
+                                // キーワード検知、またはカルテ画面が正常返却された場合
+                                if (hasKeywords || rawHtml.indexOf("karte") !== -1 || rawHtml.indexOf("手術") !== -1) {
+                                    // 内部フレームの存在チェック (frame/iframe)
+                                    var subFrameMatch = rawHtml.match(/<frame\b[^>]*src=["']([^"']+)["']/i);
+                                    if (!hasKeywords && subFrameMatch && subFrameMatch[1]) {
+                                        var subUrl = subFrameMatch[1];
+                                        if (subUrl.indexOf("http") !== 0) {
+                                            subUrl = "http://10.5.171.42:8082" + (subUrl.charAt(0) === '/' ? '' : '/karte/') + subUrl;
+                                        }
+                                        trySubFrameXmlHttp(subUrl, plainText);
+                                        return;
+                                    }
+
+                                    // XMLHTTP直接取得で大成功！
+                                    processContent(plainText);
+                                    return;
+                                }
+                            }
+                        }
+                        // ステータス異常やデータ不足時はIEAppへフォールバック
+                        fallbackToIEApp();
                     }
+                };
+                xhr.send(null);
+            } catch(eXHR) {
+                fallbackToIEApp();
+            }
+        }
+
+        // サブフレーム用XMLHTTP
+        function trySubFrameXmlHttp(subUrl, parentText) {
+            try {
+                var xhr2 = new ActiveXObject("MSXML2.XMLHTTP");
+                xhr2.open("GET", subUrl, true);
+                var subTimer = setTimeout(function() {
+                    try { xhr2.abort(); } catch(e) {}
+                    fallbackToIEApp();
+                }, 2000);
+                xhr2.onreadystatechange = function() {
+                    if (xhr2.readyState === 4) {
+                        clearTimeout(subTimer);
+                        if (xhr2.status === 200 || xhr2.status === 0) {
+                            var subHtml = "";
+                            try { subHtml = decodeShiftJIS(xhr2.responseBody); } catch(ed) {}
+                            if (!subHtml) { try { subHtml = xhr2.responseText; } catch(et) {} }
+                            var totalText = parentText + "\n" + htmlToPlainText(subHtml);
+                            processContent(totalText);
+                            return;
+                        }
+                        fallbackToIEApp();
+                    }
+                };
+                xhr2.send(null);
+            } catch(e) {
+                fallbackToIEApp();
+            }
+        }
+
+        // -----------------------------------------------------------------
+        // ★第2優先（フォールバック）：案A「InternetExplorer.Application」
+        // HTAと別プロセスで動作するためUIスレッドをブロックしない
+        // -----------------------------------------------------------------
+        function fallbackToIEApp() {
+            if (isDone) return;
+            try {
+                currentIeApp = new ActiveXObject("InternetExplorer.Application");
+                currentIeApp.Visible = false;
+                try { currentIeApp.Silent = true; } catch(es) {}
+
+                currentIeApp.Navigate(buildUrl());
+
+                var waitCount = 0;
+                var maxWait = 25; // 100ms * 25 = 2.5秒
+                var ieTimer = setInterval(function() {
+                    if (isDone) { clearInterval(ieTimer); return; }
+                    waitCount++;
+
+                    var ready = false;
+                    try {
+                        if (!currentIeApp.Busy && currentIeApp.readyState === 4) ready = true;
+                    } catch(eb) {}
+
+                    var text = "";
+                    try {
+                        if (currentIeApp.Document && currentIeApp.Document.body) {
+                            text = currentIeApp.Document.body.innerText || "";
+                        }
+                    } catch(et) {}
+
+                    var hasKw = (text.indexOf("術式：") !== -1 || text.indexOf("病名：") !== -1 || text.indexOf("手術日") !== -1);
+
+                    if (hasKw || (ready && waitCount >= 3) || waitCount >= maxWait) {
+                        clearInterval(ieTimer);
+                        try { currentIeApp.Quit(); } catch(eq) {}
+                        currentIeApp = null;
+                        processContent(text);
+                    }
+                }, 100);
+            } catch(eIE) {
+                // IE.Applicationが起動できない環境はiframeへ安全フォールバック
+                fallbackToIframe();
+            }
+        }
+
+        // -----------------------------------------------------------------
+        // ★第3優先（最終安全フォールバック）：従来のiframe
+        // -----------------------------------------------------------------
+        function fallbackToIframe() {
+            if (isDone) return;
+            currentIframeId = "surgery-fetch-iframe-" + p.id;
+            var existing = document.getElementById(currentIframeId);
+            if (existing && existing.parentNode) existing.parentNode.removeChild(existing);
+
+            var iframe = document.createElement("iframe");
+            iframe.id = currentIframeId;
+            iframe.style.display = "none";
+            iframe.application = "yes";
+            document.body.appendChild(iframe);
+
+            var checkCount = 0;
+            var maxChecks = 25;
+            var pollTimer = setInterval(function() {
+                if (isDone) { clearInterval(pollTimer); return; }
+                checkCount++;
+                var allText = "";
+                try {
+                    if (iframe.contentWindow && iframe.contentWindow.document && iframe.contentWindow.document.body) {
+                        allText = iframe.contentWindow.document.body.innerText || "";
+                    }
+                } catch(e) {}
+
+                var hasKw = (allText.indexOf("術式：") !== -1 || allText.indexOf("病名：") !== -1 || allText.indexOf("手術日") !== -1);
+                if (hasKw || checkCount >= maxChecks) {
+                    clearInterval(pollTimer);
+                    processContent(allText);
                 }
-            } catch(e) {}
+            }, 100);
 
-            var hasSurgeryKeywords = (allText.indexOf("術式：") !== -1 ||
-                                      allText.indexOf("病名：") !== -1 ||
-                                      allText.indexOf("手術開始時刻") !== -1 ||
-                                      allText.indexOf("手術日") !== -1 ||
-                                      allText.indexOf("実施日") !== -1);
-
-            // 1. 手術キーワードを検知次第、即座に完了（最速 0.1〜0.3秒）
-            if (hasSurgeryKeywords) {
-                processContent(allText);
-                return;
-            }
-
-            // 2. ドキュメントの基本ロードが完了し、4回以上(約320ms)チェックしてもキーワードがない場合（手術なしと確定）
-            if ((docReadyState === "complete" || docReadyState === "interactive") && checkCount >= 4) {
-                processContent(allText);
-                return;
-            }
-
-            // 3. 最大試行回数に達した場合（フォールバック）
-            if (checkCount >= maxChecks) {
-                processContent(allText);
-                return;
-            }
+            try { iframe.src = buildUrl(); } catch(e) { processContent(""); }
         }
 
-        // ★即時ポーリング開始（80msごと）
-        pollTimer = setInterval(checkReady, 80);
-
-        // onload 発火時にも即時チェック
-        iframe.onload = function() {
-            checkReady();
-        };
-
-        try {
-            iframe.src = buildUrl();
-        } catch(e) {
-            clearTimeout(fallbackTimer);
-            cleanupAndCallback();
-        }
+        // 実行開始：まずは最速の XMLHTTP を試みる！
+        tryXmlHttp();
     }
+
 };
