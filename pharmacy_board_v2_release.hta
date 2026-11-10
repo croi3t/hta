@@ -14408,7 +14408,8 @@ function fetchSummaryHtmlViaIframe(url, timeoutMs, callback) {
     }
 }
 
-// function fetchSummarySurgerySafe(pObj, userId, myToken, callback) {
+// サマリ専用の手術情報取得ヘルパー
+function fetchSummarySurgerySafe(pObj, userId, myToken, callback) {
     if (!pObj || !pObj.id) {
         if (callback) callback();
         return;

@@ -4436,6 +4436,7 @@ function fetchSummaryHtmlViaIframe(url, timeoutMs, callback) {
         finish("", true);
     }, timeoutMs || 25000);
 
+    // ★安全・確実なonload待機: 処方本文(<PRE>Rp...)や病名テーブルが完全にロードされた状態で取得
     iframe.onload = function() {
         setTimeout(function() {
             if (isDone) return;
@@ -4445,7 +4446,7 @@ function fetchSummaryHtmlViaIframe(url, timeoutMs, callback) {
             } catch(e) {
                 finish("", true);
             }
-        }, 350);
+        }, 250);
     };
 
     try {
@@ -4455,7 +4456,7 @@ function fetchSummaryHtmlViaIframe(url, timeoutMs, callback) {
     }
 }
 
-// サマリ専用の手術情報取得ヘルパー（SurgeryFetcher.fetchSingleを呼び出し、180日以上の過去手術も漏れなく取得）
+// サマリ専用の手術情報取得ヘルパー
 function fetchSummarySurgerySafe(pObj, userId, myToken, callback) {
     if (!pObj || !pObj.id) {
         if (callback) callback();
@@ -4521,15 +4522,26 @@ function parseSummarySaishinOrders(bodyHtml) {
 
         // 診療科の抽出（外来見出しの診療科名、または<PRE>医師行から）
         var dept = "";
-        var headerMatch = sec.match(/<B>[\s\S]*?外来[\s\u3000\xa0]*(?:\d{1,2}:\d{2}[\s\u3000\xa0]*)?([^\s<　\xa0]+)[\s\S]*?<\/B>/i);
+        var headerMatch = sec.match(/<B>[\s\S]*?外来[\s\u3000\xa0]*(?:\d{1,2}:\d{2}[\s\u3000\xa0]*)?([^\n<]+?)<\/B>/i);
         if (headerMatch) {
-            dept = trimSummaryStr(headerMatch[1]);
+            dept = headerMatch[1];
         }
         if (!dept) {
             var docMatch = sec.match(/\(([^)]+)\)\s*&lt;医師&gt;/i);
             if (docMatch) {
-                dept = trimSummaryStr(docMatch[1]);
+                dept = docMatch[1];
             }
+        }
+        if (dept) {
+            // HTML実体参照・タグ・余計なカッコや「(診察)」「】」等を除去して純粋な科名にする
+            dept = dept.replace(/&nbsp;/gi, " ")
+                       .replace(/<[^>]+>/g, " ")
+                       .replace(/[【】\[\]]/g, "")
+                       .replace(/[\(（]診察[\)）]/g, "")
+                       .replace(/診察/g, "")
+                       .replace(/[\(\)（）]/g, "")
+                       .replace(/[\s\u3000\xa0]+/g, " ")
+                       .trim();
         }
         if (!dept) {
             dept = "外来";
