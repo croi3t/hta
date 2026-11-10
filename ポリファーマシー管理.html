@@ -1,0 +1,886 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ポリファーマシー対策 薬剤マスタ管理ツール (一般名・商品名対応版)</title>
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Meiryo", sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f6f9;
+            color: #333;
+        }
+        header {
+            background: linear-gradient(135deg, #e65100, #f57c00);
+            color: #fff;
+            padding: 14px 24px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        header h1 {
+            margin: 0;
+            font-size: 19px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        header .desc {
+            font-size: 12px;
+            opacity: 0.95;
+            margin-top: 3px;
+        }
+        .header-actions {
+            display: flex;
+            gap: 8px;
+        }
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            padding: 7px 14px;
+            border-radius: 4px;
+            font-size: 13px;
+            font-weight: bold;
+            cursor: pointer;
+            border: none;
+            transition: opacity 0.2s;
+        }
+        .btn:hover { opacity: 0.9; }
+        .btn-white { background: #fff; color: #e65100; border: 1px solid #fff; }
+        .btn-primary { background: #0288d1; color: #fff; }
+        .btn-success { background: #2e7d32; color: #fff; }
+        .btn-secondary { background: #6c757d; color: #fff; }
+        .btn-danger { background: #d32f2f; color: #fff; }
+        .btn-sm { padding: 4px 8px; font-size: 11px; }
+
+        .container {
+            max-width: 1200px;
+            margin: 16px auto;
+            padding: 0 15px;
+        }
+
+        .alert-box {
+            background: #fff3e0;
+            border-left: 4px solid #ff9800;
+            padding: 10px 14px;
+            border-radius: 4px;
+            margin-bottom: 16px;
+            font-size: 12.5px;
+            line-height: 1.6;
+        }
+
+        .toolbar {
+            background: #fff;
+            padding: 12px 16px;
+            border-radius: 6px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+            margin-bottom: 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+        .search-box {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex: 1;
+            max-width: 450px;
+        }
+        .search-box input {
+            width: 100%;
+            padding: 7px 12px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 13px;
+        }
+
+        .stats-badge {
+            font-size: 12px;
+            background: #e0f2fe;
+            color: #0369a1;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-weight: bold;
+        }
+
+        /* カテゴリカード */
+        .category-card {
+            background: #fff;
+            border-radius: 6px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+            margin-bottom: 20px;
+            overflow: hidden;
+            border-left: 4px solid #e65100;
+        }
+        .category-header {
+            padding: 10px 16px;
+            background: #fafafa;
+            border-bottom: 1px solid #eee;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        .category-title {
+            font-size: 15px;
+            font-weight: bold;
+            color: #2c3e50;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .category-count {
+            font-size: 11px;
+            background: #ffecb3;
+            color: #b78103;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-weight: bold;
+        }
+        .risk-text {
+            font-size: 12px;
+            color: #d84315;
+            background: #fff5f2;
+            padding: 6px 12px;
+            border-radius: 4px;
+            margin: 8px 16px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .risk-text input {
+            flex: 1;
+            border: 1px solid #ffccbc;
+            background: #fff;
+            padding: 3px 6px;
+            font-size: 12px;
+            border-radius: 3px;
+        }
+
+        /* 2列テーブル */
+        .med-table-wrapper {
+            padding: 0 16px 8px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .med-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 12.5px;
+        }
+        .med-table th {
+            background: #f8f9fa;
+            color: #495057;
+            text-align: left;
+            padding: 6px 10px;
+            border-bottom: 2px solid #dee2e6;
+            font-size: 12px;
+            position: sticky;
+            top: 0;
+            z-index: 2;
+        }
+        .med-table td {
+            padding: 5px 10px;
+            border-bottom: 1px solid #eee;
+            vertical-align: middle;
+        }
+        .med-table tr:hover { background: #fffde7; }
+        .med-table tr.highlight {
+            background: #fff9c4 !important;
+            font-weight: bold;
+        }
+
+        .input-cell {
+            width: 100%;
+            border: 1px solid transparent;
+            background: transparent;
+            padding: 3px 6px;
+            font-size: 12.5px;
+            border-radius: 3px;
+        }
+        .input-cell:hover {
+            border-color: #ddd;
+            background: #fff;
+        }
+        .input-cell:focus {
+            border-color: #ff9800;
+            background: #fff;
+            outline: none;
+            box-shadow: 0 0 3px rgba(255, 152, 0, 0.4);
+        }
+
+        .add-row-form {
+            padding: 10px 16px 14px;
+            background: #fcfcfc;
+            border-top: 1px dashed #e0e0e0;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        .add-row-form input {
+            padding: 6px 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 12px;
+        }
+        .add-row-form input.generic-input { width: 180px; }
+        .add-row-form input.brand-input { flex: 1; min-width: 200px; }
+
+        /* モーダル */
+        .modal-overlay {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.5);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        .modal-overlay.active { display: flex; }
+        .modal-content {
+            background: #fff;
+            border-radius: 8px;
+            width: 90%;
+            max-width: 620px;
+            max-height: 85vh;
+            overflow-y: auto;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+            padding: 20px;
+        }
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 8px;
+            margin-bottom: 12px;
+        }
+        .modal-header h3 { margin: 0; color: #2c3e50; font-size: 16px; }
+        .modal-body textarea {
+            width: 100%;
+            height: 180px;
+            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 12px;
+            box-sizing: border-box;
+        }
+
+        #file-input { display: none; }
+    </style>
+</head>
+<body>
+
+<header>
+    <div>
+        <h1>💊 ポリファーマシー対策 薬剤マスタ管理ツール</h1>
+        <div class="desc">【一般名】と【商品名】の2列で一覧管理でき、社内PCのブラウザから誰でも追加・編集・保存できます。</div>
+    </div>
+    <div class="header-actions">
+        <button class="btn btn-white" onclick="document.getElementById('file-input').click();">📂 jsファイルを読込</button>
+        <input type="file" id="file-input" accept=".js" onchange="loadFromFile(event)">
+        <button class="btn btn-success" onclick="savePolypharmacyJs();">💾 jsファイルを出力・保存</button>
+        <button class="btn btn-secondary btn-sm" onclick="showExportModal();">📋 コード確認</button>
+    </div>
+</header>
+
+<div class="container">
+    <div class="alert-box">
+        <b>【使い方】</b><br>
+        ・各カテゴリ内で、<b>一般名（成分名）</b> と <b>代表的な商品名</b> が2列で一覧表示されます。<br>
+        ・新規追加は下の入力欄に「一般名」「商品名」を入れて「➕ 追加」またはEnterキーを押してください。<br>
+        ・表内の文字はクリックしてその場で直接打ち替え編集も可能です。不要な行は右の「🗑️」で削除できます。<br>
+        ・編集が完了したら右上の「<b>💾 jsファイルを出力・保存</b>」を押してください。HTA画面をリロード（F5）するだけで即時反映されます。
+    </div>
+
+    <div class="toolbar">
+        <div class="search-box">
+            <span style="font-size:16px;">🔍</span>
+            <input type="text" id="search-input" placeholder="一般名または商品名でリアルタイム検索 (例: デパス, エチゾラム)..." oninput="filterDrugs()">
+        </div>
+        <div style="display:flex; align-items:center; gap:10px;">
+            <div id="stats-total" class="stats-badge">総登録薬剤数: 0 件</div>
+            <button class="btn btn-primary btn-sm" onclick="showAddCategoryPrompt();">➕ 新規カテゴリ追加</button>
+        </div>
+    </div>
+
+    <div id="category-list"></div>
+</div>
+
+<!-- コード確認モーダル -->
+<div id="code-modal" class="modal-overlay">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>JSコード出力プレビュー</h3>
+            <button class="btn btn-sm btn-secondary" onclick="closeModal('code-modal');">✖ 閉じる</button>
+        </div>
+        <div class="modal-body">
+            <p style="font-size:12px; color:#666;">この内容が <code>js/polypharmacy_list.js</code> として出力されます。</p>
+            <textarea id="code-textarea" readonly></textarea>
+            <div style="margin-top:12px; display:flex; justify-content:flex-end; gap:8px;">
+                <button class="btn btn-primary" onclick="copyCode();">📋 クリップボードにコピー</button>
+                <button class="btn btn-success" onclick="downloadJsFile();">💾 ファイルをダウンロード</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 一括追加モーダル -->
+<div id="bulk-modal" class="modal-overlay">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 id="bulk-modal-title">薬品の一括追加</h3>
+            <button class="btn btn-sm btn-secondary" onclick="closeModal('bulk-modal');">✖ 閉じる</button>
+        </div>
+        <div class="modal-body">
+            <p style="font-size:12px; color:#666;">
+                1行に「一般名 [タブまたはカンマ] 商品名」の形式で貼り付けてください。<br>
+                （薬品名単体で貼り付けた場合は、一般名に設定されます）
+            </p>
+            <textarea id="bulk-textarea" placeholder="エチゾラム&#9;デパス&#10;トリアゾラム&#9;ハルシオン&#10;ロキソプロフェン&#9;ロキソニン"></textarea>
+            <div style="margin-top:12px; display:flex; justify-content:flex-end; gap:8px;">
+                <button class="btn btn-secondary" onclick="closeModal('bulk-modal');">キャンセル</button>
+                <button class="btn btn-primary" onclick="commitBulkAdd();">一括追加する</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// デフォルトのマスターデータ（一般名と商品名の2列）
+var defaultData = [
+  {
+    category: "ベンゾジアゼピン系・睡眠薬・抗不安薬",
+    risk: "転倒・骨折・せん妄・認知機能低下・過鎮静",
+    items: [
+      { generic: "エチゾラム", brand: "デパス" },
+      { generic: "トリアゾラム", brand: "ハルシオン" },
+      { generic: "ゾルピデム", brand: "マイスリー" },
+      { generic: "エスゾピクロン", brand: "ルネスタ" },
+      { generic: "ゾピクロン", brand: "アモバン" },
+      { generic: "ブロチゾラム", brand: "レンドルミン" },
+      { generic: "フルニトラゼパム", brand: "サイレース, ロヒプノール" },
+      { generic: "ニトラゼパム", brand: "ベンザリン, ネルボン" },
+      { generic: "エスタゾラム", brand: "ユーロジン" },
+      { generic: "リルマザホン", brand: "リスミー" },
+      { generic: "ロルメタゼパム", brand: "ロラメット, エバミール" },
+      { generic: "フルラゼパム", brand: "ダルメート" },
+      { generic: "クアゼパム", brand: "ドラール" },
+      { generic: "ハロキサゾラム", brand: "ソメリン" },
+      { generic: "アルプラゾラム", brand: "ソラナックス, コンスタン" },
+      { generic: "ロラゼパム", brand: "ワイパックス" },
+      { generic: "クロチアゼパム", brand: "リーゼ" },
+      { generic: "ジアゼパム", brand: "セルシン, ホリゾン" },
+      { generic: "クロナゼパム", brand: "リボトリール, ランドセン" },
+      { generic: "クロルジアゼポキシド", brand: "バランス, コントール" },
+      { generic: "オキサゾラム", brand: "セレナール" },
+      { generic: "ロフラゼプ酸エチル", brand: "メイラックス" },
+      { generic: "プラゼパム", brand: "セドレスト" },
+      { generic: "タンドスピロン", brand: "セディール" },
+      { generic: "クロバザム", brand: "マイスタン" }
+    ]
+  },
+  {
+    category: "抗コリン薬・第1世代抗ヒスタミン薬",
+    risk: "せん妄・認知機能低下・便秘・口渇・排尿障害・緑内障悪化",
+    items: [
+      { generic: "トリヘキシフェニジル", brand: "アーテン" },
+      { generic: "ビペリデン", brand: "アキネトン" },
+      { generic: "プロフェナミン", brand: "パーキン" },
+      { generic: "ピロヘプチン", brand: "トリモール" },
+      { generic: "メチキセン", brand: "トレミン" },
+      { generic: "ヒドロキシジン", brand: "アタラックス, アタラックスP" },
+      { generic: "ジフェンヒドラミン", brand: "レスタミン, トラベルミン, ドリエル" },
+      { generic: "クロルフェニラミン", brand: "ポララミン" },
+      { generic: "プロメタジン", brand: "ピレチア, ヒベルナ" },
+      { generic: "シプロヘプタジン", brand: "ペリアクチン" },
+      { generic: "クレマスチン", brand: "タベジール" },
+      { generic: "ホモクロルシクリジン", brand: "ホモクロミン" },
+      { generic: "ベタメタゾン・d-クロルフェニラミン", brand: "セレスタミン" },
+      { generic: "プロピベリン", brand: "バップフォー" },
+      { generic: "オキシブチニン", brand: "ポラキス, ネオキシテープ" },
+      { generic: "ソリフェナシン", brand: "ベシケア" },
+      { generic: "トルテロジン", brand: "デトルシトール" },
+      { generic: "イミダフェナシン", brand: "ウリトス, ステーブラ" },
+      { generic: "フェソテロジン", brand: "トビエース" },
+      { generic: "フラボキサート", brand: "ブラダロン" },
+      { generic: "ブチルスコポラミン", brand: "ブスコパン" },
+      { generic: "チキジウム", brand: "チアトン" },
+      { generic: "ピナベリウム", brand: "ジセテル" },
+      { generic: "オチロニウム", brand: "スパスモペビリン" }
+    ]
+  },
+  {
+    category: "NSAIDs (非ステロイド性抗炎症薬)",
+    risk: "消化性潰瘍・消化管出血・急性腎障害・心不全増悪・血圧上昇",
+    items: [
+      { generic: "ロキソプロフェン", brand: "ロキソニン" },
+      { generic: "ジクロフェナク", brand: "ボルタレン" },
+      { generic: "セレコキシブ", brand: "セレコックス" },
+      { generic: "メロキシカム", brand: "モービック" },
+      { generic: "インドメタシン", brand: "インダシン" },
+      { generic: "イブプロフェン", brand: "ブルフェン" },
+      { generic: "ナプロキセン", brand: "ナイキサン" },
+      { generic: "プラノプロフェン", brand: "ニフレック" },
+      { generic: "エトドラク", brand: "ハイペン, オステラック" },
+      { generic: "ピロキシカム", brand: "フェルデン, バキソ" },
+      { generic: "アンピロキシカム", brand: "フルカム" },
+      { generic: "スルリンダク", brand: "クリノリル" },
+      { generic: "ナブメトン", brand: "レラフェン" },
+      { generic: "フルルビプロフェン", brand: "フロベン" },
+      { generic: "ケトプロフェン", brand: "メナドール" },
+      { generic: "チアプロフェン酸", brand: "スルガム" },
+      { generic: "ロルノキシカム", brand: "ロルカム" },
+      { generic: "モフェゾラク", brand: "ジサネート" },
+      { generic: "アセメタシン", brand: "ランツジール" }
+    ]
+  },
+  {
+    category: "SU薬・グリニド系 (血糖降下薬)",
+    risk: "遷延性・重症低血糖・意識障害・転倒",
+    items: [
+      { generic: "グリメピリド", brand: "アマリール" },
+      { generic: "グリクラジド", brand: "グリミクロン" },
+      { generic: "グリベンクラミド", brand: "オイグルコン, ダオニール" },
+      { generic: "ナテグリニド", brand: "ファスティック, スターシス" },
+      { generic: "ミチグリニド", brand: "グルファスト" },
+      { generic: "レパグリニド", brand: "シュアポスト" }
+    ]
+  },
+  {
+    category: "ループ利尿薬・浸透圧利尿薬",
+    risk: "脱水・電解質異常(低K/低Na)・起立性低血圧・急性腎障害",
+    items: [
+      { generic: "フロセミド", brand: "ラシックス" },
+      { generic: "アゾセミド", brand: "ダイアート" },
+      { generic: "トラセミド", brand: "ルプラック" },
+      { generic: "ブメタニド", brand: "ルネトロン" },
+      { generic: "トルバプタン", brand: "サムスカ" }
+    ]
+  },
+  {
+    category: "胃酸抑制薬 (PPI・H2ブロッカー長期連用)",
+    risk: "肺炎(誤嚥性肺炎)・CD腸炎・骨折・低Mg血症・ビタミンB12低下",
+    items: [
+      { generic: "オメプラゾール", brand: "オメプラール, オメプラゾン" },
+      { generic: "ランソプラゾール", brand: "タケプロン" },
+      { generic: "エソメプラゾール", brand: "ネキシウム" },
+      { generic: "ラベプラゾール", brand: "パリエット" },
+      { generic: "ボノプラザン", brand: "タケキャブ" },
+      { generic: "ファモチジン", brand: "ガスター" },
+      { generic: "ラニチジン", brand: "ザンタック" },
+      { generic: "シメチジン", brand: "タガメット" },
+      { generic: "ロキサチジン", brand: "アルタット" },
+      { generic: "ニザチジン", brand: "アシノン" },
+      { generic: "ラフチジン", brand: "プロテカジン, ストガー" }
+    ]
+  },
+  {
+    category: "抗精神病薬",
+    risk: "錐体外路症状・過鎮静・転倒・嚥下障害・心血管イベント",
+    items: [
+      { generic: "クエチアピン", brand: "セロクエル" },
+      { generic: "リスペリドン", brand: "リスパダール" },
+      { generic: "オランザピン", brand: "ジプレキサ" },
+      { generic: "ハロペリドール", brand: "セレネース" },
+      { generic: "アリピプラゾール", brand: "エビリファイ" },
+      { generic: "ペロスピロン", brand: "ルーラン" },
+      { generic: "チアプリド", brand: "グラマリール" },
+      { generic: "スルピリド", brand: "ドグマチール, アビリット" },
+      { generic: "クロルプロマジン", brand: "コントミン, ウインタミン" },
+      { generic: "レボメプロマジン", brand: "ヒルナミン, レボトミン" },
+      { generic: "プロクロルペラジン", brand: "ノバミン" },
+      { generic: "ブロナンセリン", brand: "ロナセン" },
+      { generic: "アセナピン", brand: "シクレスト" },
+      { generic: "ブレクスピプラゾール", brand: "レキサルティ" },
+      { generic: "パリペリドン", brand: "インヴェガ" },
+      { generic: "クロザピン", brand: "クロザリル" }
+    ]
+  },
+  {
+    category: "三環系抗うつ薬",
+    risk: "強抗コリン作用・せん妄・起立性低血圧・不整脈",
+    items: [
+      { generic: "アミトリプチリン", brand: "トリプタノール" },
+      { generic: "イミプラミン", brand: "トフラニール" },
+      { generic: "クロミプラミン", brand: "アナフラニール" },
+      { generic: "ノルトリプチリン", brand: "ノリトレン" },
+      { generic: "アモキサピン", brand: "アモキサン" },
+      { generic: "ドスレピン", brand: "プロチアデン" },
+      { generic: "トリミプラミン", brand: "スルモンチール" }
+    ]
+  },
+  {
+    category: "強心配糖体・抗不整脈薬",
+    risk: "有効域狭小・ジギタリス中毒・徐脈・催不整脈・相互作用",
+    items: [
+      { generic: "ジゴキシン", brand: "ジゴシン" },
+      { generic: "ジギトキシン", brand: "ジギトキシン" },
+      { generic: "メチルジゴキシン", brand: "ラニラピッド" },
+      { generic: "ジソピラミド", brand: "リスモダン" },
+      { generic: "プロカインアミド", brand: "アミサリン" },
+      { generic: "アミオダロン", brand: "アンカロン" }
+    ]
+  },
+  {
+    category: "α1遮断薬 (降圧薬・排尿障害改善薬)",
+    risk: "起立性低血圧・めまい・ふらつき・転倒",
+    items: [
+      { generic: "ドキサゾシン", brand: "カルデナリン" },
+      { generic: "プラゾシン", brand: "ミニプレス" },
+      { generic: "テラゾシン", brand: "ハイトラシン, バソメット" },
+      { generic: "タムスロシン", brand: "ハルナール" },
+      { generic: "シロドシン", brand: "ユリーフ" },
+      { generic: "ウラピジル", brand: "エブランチル" }
+    ]
+  },
+  {
+    category: "刺激性緩下薬 (長期連用)",
+    risk: "耐性・大腸運動低下(メラノーシス)・電解質異常",
+    items: [
+      { generic: "センノシド", brand: "プルゼニド" },
+      { generic: "ピコスルファートナトリウム", brand: "ラキソベロン" },
+      { generic: "ダイオウ (大黄)", brand: "大黄甘草湯, 麻子仁丸等" },
+      { generic: "センナ", brand: "アローゼン等" }
+    ]
+  }
+];
+
+var currentData = JSON.parse(JSON.stringify(defaultData));
+var activeBulkCategoryIndex = -1;
+
+window.onload = function() {
+    tryLoadViaActiveX();
+    renderCategories();
+};
+
+function tryLoadViaActiveX() {
+    try {
+        var fso = new ActiveXObject("Scripting.FileSystemObject");
+        var paths = ["js/polypharmacy_list.js", "polypharmacy_list.js", "../js/polypharmacy_list.js"];
+        for (var i = 0; i < paths.length; i++) {
+            if (fso.FileExists(paths[i])) {
+                var stream = new ActiveXObject("ADODB.Stream");
+                stream.Type = 2; // adTypeText
+                stream.Charset = "utf-8";
+                stream.Open();
+                stream.LoadFromFile(paths[i]);
+                var content = stream.ReadText(-1);
+                stream.Close();
+                parseJsContent(content);
+                break;
+            }
+        }
+    } catch (e) {}
+}
+
+function parseJsContent(jsText) {
+    try {
+        var match = jsText.match(/var\s+POLYPHARMACY_DATA\s*=\s*(\[[\s\S]*?\]);/);
+        if (match) {
+            var parsed = (new Function("return " + match[1]))();
+            if (parsed && parsed.length > 0) {
+                // 旧形式(drugs: [...])をitems: [{generic, brand}]に自動変換
+                for (var c = 0; c < parsed.length; c++) {
+                    if (!parsed[c].items && parsed[c].drugs) {
+                        parsed[c].items = [];
+                        for (var d = 0; d < parsed[c].drugs.length; d++) {
+                            parsed[c].items.push({ generic: parsed[c].drugs[d], brand: "" });
+                        }
+                        delete parsed[c].drugs;
+                    }
+                }
+                currentData = parsed;
+                renderCategories();
+                return true;
+            }
+        }
+    } catch(e) {
+        alert("ファイルの解析に失敗しました: " + e.message);
+    }
+    return false;
+}
+
+function renderCategories() {
+    var container = document.getElementById("category-list");
+    var totalDrugs = 0;
+    var html = "";
+
+    for (var c = 0; c < currentData.length; c++) {
+        var cat = currentData[c];
+        var items = cat.items || [];
+        totalDrugs += items.length;
+
+        html += '<div class="category-card" id="cat-card-' + c + '">';
+        html += '<div class="category-header">';
+        html += '<div class="category-title">';
+        html += '<span>📂 ' + escapeHtml(cat.category) + '</span>';
+        html += '<span class="category-count" id="cat-count-' + c + '">' + items.length + ' 薬剤</span>';
+        html += '</div>';
+        html += '<div style="display:flex; gap:6px;">';
+        html += '<button class="btn btn-secondary btn-sm" onclick="showBulkModal(' + c + ')">📋 一括追加</button>';
+        html += '<button class="btn btn-danger btn-sm" onclick="deleteCategory(' + c + ')" title="カテゴリを削除">🗑️</button>';
+        html += '</div>';
+        html += '</div>';
+
+        html += '<div class="risk-text">';
+        html += '<b>⚠️ 注意リスク:</b> ';
+        html += '<input type="text" value="' + escapeHtml(cat.risk || '') + '" onchange="updateRisk(' + c + ', this.value)" placeholder="注意点・副作用リスクを入力...">';
+        html += '</div>';
+
+        html += '<div class="med-table-wrapper">';
+        html += '<table class="med-table">';
+        html += '<thead><tr>';
+        html += '<th style="width:35%;">一般名 (成分名)</th>';
+        html += '<th style="width:55%;">代表的商品名 (先発・後発)</th>';
+        html += '<th style="width:10%; text-align:center;">操作</th>';
+        html += '</tr></thead>';
+        html += '<tbody id="cat-tbody-' + c + '">';
+
+        if (items.length > 0) {
+            for (var d = 0; d < items.length; d++) {
+                var it = items[d];
+                var gName = it.generic || '';
+                var bName = it.brand || '';
+                html += '<tr class="drug-row" data-search="' + escapeHtml((gName + ' ' + bName).toLowerCase()) + '">';
+                html += '<td><input type="text" class="input-cell" value="' + escapeHtml(gName) + '" onchange="editItem(' + c + ',' + d + ',\'generic\',this.value)" placeholder="一般名..."></td>';
+                html += '<td><input type="text" class="input-cell" value="' + escapeHtml(bName) + '" onchange="editItem(' + c + ',' + d + ',\'brand\',this.value)" placeholder="商品名 (カンマ区切り可)..."></td>';
+                html += '<td style="text-align:center;"><button class="btn btn-sm btn-danger" style="padding:2px 6px;" onclick="deleteDrug(' + c + ',' + d + ')" title="削除">🗑️</button></td>';
+                html += '</tr>';
+            }
+        } else {
+            html += '<tr><td colspan="3" style="text-align:center; color:#999; padding:12px;">登録薬剤がありません。下の欄から追加してください。</td></tr>';
+        }
+
+        html += '</tbody></table>';
+        html += '</div>';
+
+        html += '<div class="add-row-form">';
+        html += '<input type="text" id="ipt-gen-' + c + '" class="generic-input" placeholder="一般名 (例: エチゾラム)" onkeypress="if(event.keyCode===13) document.getElementById(\'ipt-brd-' + c + '\').focus()">';
+        html += '<input type="text" id="ipt-brd-' + c + '" class="brand-input" placeholder="代表的商品名 (例: デパス)" onkeypress="if(event.keyCode===13) addDrug(' + c + ')">';
+        html += '<button class="btn btn-primary btn-sm" onclick="addDrug(' + c + ')">➕ 追加</button>';
+        html += '</div>';
+
+        html += '</div>';
+    }
+
+    container.innerHTML = html;
+    document.getElementById("stats-total").innerText = "総登録薬剤数: " + totalDrugs + " 件 (" + currentData.length + " カテゴリ)";
+}
+
+function addDrug(catIdx) {
+    var gIpt = document.getElementById("ipt-gen-" + catIdx);
+    var bIpt = document.getElementById("ipt-brd-" + catIdx);
+    if (!gIpt || !bIpt) return;
+    var gVal = gIpt.value.trim();
+    var bVal = bIpt.value.trim();
+    if (!gVal && !bVal) return;
+
+    if (!currentData[catIdx].items) currentData[catIdx].items = [];
+    currentData[catIdx].items.push({ generic: gVal || bVal, brand: bVal });
+
+    gIpt.value = "";
+    bIpt.value = "";
+    renderCategories();
+    var nextG = document.getElementById("ipt-gen-" + catIdx);
+    if (nextG) nextG.focus();
+}
+
+function editItem(catIdx, itemIdx, field, val) {
+    if (currentData[catIdx] && currentData[catIdx].items && currentData[catIdx].items[itemIdx]) {
+        currentData[catIdx].items[itemIdx][field] = val.trim();
+    }
+}
+
+function deleteDrug(catIdx, itemIdx) {
+    if (!currentData[catIdx] || !currentData[catIdx].items) return;
+    currentData[catIdx].items.splice(itemIdx, 1);
+    renderCategories();
+}
+
+function updateRisk(catIdx, newRisk) {
+    if (currentData[catIdx]) currentData[catIdx].risk = newRisk;
+}
+
+function deleteCategory(catIdx) {
+    var cat = currentData[catIdx];
+    var count = cat.items ? cat.items.length : 0;
+    if (confirm("カテゴリ「" + cat.category + "」を削除しますか？\n（含まれる " + count + " 件の薬剤も削除されます）")) {
+        currentData.splice(catIdx, 1);
+        renderCategories();
+    }
+}
+
+function showAddCategoryPrompt() {
+    var name = prompt("新しいカテゴリ名を入力してください:\n(例: 抗凝固薬・抗血小板薬)");
+    if (!name || !name.trim()) return;
+    var risk = prompt("このカテゴリの主な注意リスクを入力してください:", "出血リスク・相互作用");
+    currentData.push({ category: name.trim(), risk: risk || "", items: [] });
+    renderCategories();
+    window.scrollTo(0, document.body.scrollHeight);
+}
+
+function filterDrugs() {
+    var query = document.getElementById("search-input").value.trim().toLowerCase();
+    var rows = document.querySelectorAll(".drug-row");
+    for (var i = 0; i < rows.length; i++) {
+        var str = rows[i].getAttribute("data-search") || "";
+        if (query && str.indexOf(query) !== -1) {
+            rows[i].classList.add("highlight");
+        } else {
+            rows[i].classList.remove("highlight");
+        }
+    }
+}
+
+function showBulkModal(catIdx) {
+    activeBulkCategoryIndex = catIdx;
+    var cat = currentData[catIdx];
+    document.getElementById("bulk-modal-title").innerText = "「" + cat.category + "」への一括追加";
+    document.getElementById("bulk-textarea").value = "";
+    document.getElementById("bulk-modal").classList.add("active");
+}
+
+function commitBulkAdd() {
+    if (activeBulkCategoryIndex < 0 || !currentData[activeBulkCategoryIndex]) return;
+    var text = document.getElementById("bulk-textarea").value;
+    var lines = text.split(/[\r\n]+/);
+    var added = 0;
+    var cat = currentData[activeBulkCategoryIndex];
+    if (!cat.items) cat.items = [];
+
+    for (var i = 0; i < lines.length; i++) {
+        var l = lines[i].trim();
+        if (!l) continue;
+        var parts = l.split(/[\t,、]+/);
+        var g = parts[0] ? parts[0].trim() : '';
+        var b = parts.slice(1).join(', ').trim();
+        if (g || b) {
+            cat.items.push({ generic: g || b, brand: b });
+            added++;
+        }
+    }
+
+    closeModal("bulk-modal");
+    renderCategories();
+    alert(added + " 件の薬剤を追加しました。");
+}
+
+function closeModal(modalId) {
+    document.getElementById(modalId).classList.remove("active");
+}
+
+function generateJsContent() {
+    var dateStr = (new Date()).toLocaleDateString("ja-JP");
+    var js = "// ==============================================================================\n";
+    js += "// ポリファーマシー対策 高齢者注意薬剤リスト (POLYPHARMACY_DATA)\n";
+    js += "// 生成日: " + dateStr + " (ポリファーマシー管理ツールより出力)\n";
+    js += "// ==============================================================================\n\n";
+    js += "var POLYPHARMACY_DATA = [\n";
+
+    for (var c = 0; c < currentData.length; c++) {
+        var cat = currentData[c];
+        js += "  {\n";
+        js += "    category: " + JSON.stringify(cat.category) + ",\n";
+        js += "    risk: " + JSON.stringify(cat.risk || "") + ",\n";
+        js += "    items: [\n";
+        var items = cat.items || [];
+        for (var d = 0; d < items.length; d++) {
+            var it = items[d];
+            js += "      { generic: " + JSON.stringify(it.generic || "") + ", brand: " + JSON.stringify(it.brand || "") + " }" + (d < items.length - 1 ? "," : "") + "\n";
+        }
+        js += "    ]\n";
+        js += "  }" + (c < currentData.length - 1 ? "," : "") + "\n";
+    }
+
+    js += "];\n";
+    return js;
+}
+
+function savePolypharmacyJs() {
+    var jsContent = generateJsContent();
+    var savedDirectly = false;
+
+    try {
+        var fso = new ActiveXObject("Scripting.FileSystemObject");
+        var targetPaths = ["js/polypharmacy_list.js", "polypharmacy_list.js"];
+        for (var i = 0; i < targetPaths.length; i++) {
+            var stream = new ActiveXObject("ADODB.Stream");
+            stream.Type = 2; // adTypeText
+            stream.Charset = "utf-8";
+            stream.Open();
+            stream.WriteText(jsContent);
+            stream.SaveToFile(targetPaths[i], 2);
+            stream.Close();
+        }
+        savedDirectly = true;
+    } catch(e) {
+        savedDirectly = false;
+    }
+
+    if (savedDirectly) {
+        alert("✅ 「js/polypharmacy_list.js」へ直接保存が完了しました！\n\nHTA画面をリロード（F5）するだけで最新リストが即時反映されます。\n（Pythonの実行は一切不要です）");
+    } else {
+        downloadJsFile();
+        alert("💾 「polypharmacy_list.js」のダウンロードを開始しました。\n\nダウンロードしたファイルを、HTAと同じフォルダの「js」フォルダ内に上書き保存してください。\n配置後、HTAをリロード（F5）するだけで即時反映されます！");
+    }
+}
+
+function downloadJsFile() {
+    var jsContent = generateJsContent();
+    var blob = new Blob([jsContent], { type: "application/javascript;charset=utf-8" });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement("a");
+    a.href = url;
+    a.download = "polypharmacy_list.js";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+}
+
+function showExportModal() {
+    document.getElementById("code-textarea").value = generateJsContent();
+    document.getElementById("code-modal").classList.add("active");
+}
+
+function copyCode() {
+    var ta = document.getElementById("code-textarea");
+    ta.select();
+    document.execCommand("copy");
+    alert("コードをクリップボードにコピーしました！");
+}
+
+function loadFromFile(event) {
+    var file = event.target.files[0];
+    if (!file) return;
+    var reader = new FileReader();
+    reader.onload = function(e) {
+        if (parseJsContent(e.target.result)) {
+            alert("「" + file.name + "」から正常に読み込みました！");
+        }
+    };
+    reader.readAsText(file, "utf-8");
+}
+
+function escapeHtml(str) {
+    if (!str) return '';
+    return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+</script>
+
+</body>
+</html>
