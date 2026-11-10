@@ -5943,10 +5943,16 @@ function renderSummaryInHospTable() {
                 '<input type="text" class="yr-form-control" draggable="false" onmousedown="if(event.stopPropagation)event.stopPropagation();else event.cancelBubble=true;" style="width:100%; height:23px; padding:1px 5px; font-size:12px; color:' + rowColor + '; font-weight:' + (r.checked ? 'bold' : 'normal') + ';" ' +
                 'value="' + escapeHtml(r.name) + '" oninput="onSummaryInHospNameEdit(' + i + ', this.value)" onchange="onSummaryInHospNameEdit(' + i + ', this.value)">' +
                 '</td>';
-        // 5. 使用期間（直接編集可）
+        // 5. 使用期間（直接編集可・外用薬は期間不要のためプレースホルダーなし）
+        var periodPlaceholder = "MM/DD～MM/DD";
+        if (r.category === "外用" || r.isGaiyo) {
+            periodPlaceholder = "";
+        } else if (r.category === "頓用" || r.category === "頓服" || r.isTonyo) {
+            periodPlaceholder = "頓用";
+        }
         html += '<td style="vertical-align:middle; padding:2px 4px;">' +
                 '<input type="text" class="yr-form-control" draggable="false" onmousedown="if(event.stopPropagation)event.stopPropagation();else event.cancelBubble=true;" style="width:100%; height:23px; padding:1px 5px; font-size:12px; color:' + rowColor + ';" ' +
-                'value="' + escapeHtml(r.period) + '" placeholder="MM/DD～MM/DD / 頓用 (外用は不要)" oninput="onSummaryInHospPeriodEdit(' + i + ', this.value)" onchange="onSummaryInHospPeriodEdit(' + i + ', this.value)">' +
+                'value="' + escapeHtml(r.period) + '" placeholder="' + periodPlaceholder + '" oninput="onSummaryInHospPeriodEdit(' + i + ', this.value)" onchange="onSummaryInHospPeriodEdit(' + i + ', this.value)">' +
                 '</td>';
         // 6. 備考
         html += '<td style="vertical-align:middle; padding:2px 4px; font-size:10px; color:' + (r.autoExcluded ? '#d81b60' : '#666') + ';">' +
