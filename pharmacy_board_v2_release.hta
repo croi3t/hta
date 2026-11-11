@@ -14552,6 +14552,9 @@ function parseSummarySaishinOrders(bodyHtml) {
                 if (bText.indexOf("再診予約") !== -1 || bText.indexOf("予約") !== -1 || /外来|科/.test(bText)) {
                     var cleanedB = bText.replace(/【?再診予約】?/g, "")
                                        .replace(/【?予約】?/g, "")
+                                       .replace(/【?(?:入院中?|退院後|他科受診|対診)】?/g, "")
+                                       .replace(/[\(（](?:入院中?|退院後|他科受診|対診)[\)）]/g, "")
+                                       .replace(/(?:入院中?|退院後|他科受診|対診)/g, "")
                                        .replace(/\d{4}[\/\-年]\d{1,2}[\/\-月]\d{1,2}日?/g, "")
                                        .replace(/[\(（][日月火水木金土][\)）]/g, "")
                                        .replace(/\d{1,2}:\d{2}(?::\d{2})?/g, "")
@@ -14581,7 +14584,7 @@ function parseSummarySaishinOrders(bodyHtml) {
                 dept = docMatch[1];
             }
         }
-        // サニタイズ処理: 日時・時刻・余計な文言を確実に除去
+        // サニタイズ処理: 日時・時刻・余計な文言（入院中、退院後等）を確実に除去
         if (dept) {
             dept = dept.replace(/&nbsp;/gi, " ")
                        .replace(/<[^>]+>/g, " ")
@@ -14593,8 +14596,16 @@ function parseSummarySaishinOrders(bodyHtml) {
                        .replace(/診察/g, "")
                        .replace(/再診予約/g, "")
                        .replace(/予約/g, "")
+                       .replace(/入院中?/g, "")
+                       .replace(/退院後/g, "")
+                       .replace(/他科受診/g, "")
+                       .replace(/対診/g, "")
                        .replace(/[\s\u3000\xa0]+/g, " ")
                        .trim();
+            // 「眼科 外来」や「外来 眼科」のように科名と外来が分離している場合の整理（「妊婦外来」等の一語は維持）
+            if (dept.length > 2 && /科/.test(dept)) {
+                dept = dept.replace(/^外来[\s　]+/, "").replace(/[\s　]+外来$/, "").trim();
+            }
         }
         if (!dept) {
             dept = "外来";
