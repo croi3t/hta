@@ -952,6 +952,7 @@ function generateAbbreviation() {}
                     <li id="yr-tab-med-adj-btn" style="display:none;"><a class="yr-nav-link" onclick="yrSwitchTab('yr-tab-med-adj', this)" style="background-color:#fce4ec; border-color:#f8bbd0; color:#c2185b;">薬剤調整加算</a></li>
                     <li id="yr-tab-med-adj-2026-btn"><a class="yr-nav-link" onclick="yrSwitchTab('yr-tab-med-adj-2026', this)" style="background-color:#fce4ec; border-color:#f8bbd0; color:#c2185b; font-weight:bold;">✨ 薬剤調整加算(26年改定版)</a></li>
                     <li id="yr-tab-summary-btn"><a class="yr-nav-link" onclick="yrSwitchTab('yr-tab-summary', this)" style="background-color:#e0f7fa; border-color:#b2ebf2; color:#006064; font-weight:bold;">📄 サマリ自動生成</a></li>
+                    <li id="yr-tab-ward-summary-btn"><a class="yr-nav-link" onclick="yrSwitchTab('yr-tab-ward-summary', this)" style="background-color:#e8f5e9; border-color:#c8e6c9; color:#1b5e20; font-weight:bold;">📊 病棟サマリ</a></li>
                     <li><a class="yr-nav-link" onclick="yrSwitchTab('yr-tab-settings', this)">ツール設定</a></li>
                 </ul>
             </div>
@@ -1599,6 +1600,79 @@ function generateAbbreviation() {}
                         </div>
                         <textarea id="txt-summary-combined-preview" class="yr-form-control" style="width:100%; height:260px; min-height:260px; box-sizing:border-box; font-family:monospace; font-size:12px; line-height:1.45; white-space:pre; overflow-y:hidden; overflow-x:auto; resize:vertical;" oninput="autoResizeSummaryTextareas()" onchange="autoResizeSummaryTextareas()" placeholder="主病名・併存疾患・手術日と術式・次回受診・選択した入院中使用薬剤（期間付き）がここに整形されます。直接追記したコメントや特記事項も保持されます。"></textarea>
                     </div>
+                </div>
+            </div>
+            <!-- タブ⑧: 病棟サマリ (特定患者の処方変更・持参薬残日数・退院ワード検証) -->
+            <div id="yr-tab-ward-summary" class="yr-tab-pane">
+                <!-- 操作バー -->
+                <div style="background:#f1f8e9; border:1px solid #c5e1a5; border-radius:4px; padding:10px 14px; margin-bottom:12px;">
+                    <div style="display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center; gap:8px;">
+                        <div style="display:flex; align-items:center; gap:8px;">
+                            <span style="font-size:13px; font-weight:bold; color:#2e7d32;">👤 患者選択:</span>
+                            <select id="sel-ward-summary-patient-dropdown" class="yr-form-control" style="width:240px; font-size:12px; height:28px;" onchange="onWardSummaryPatientDropdownChange(this.value)">
+                                <option value="">-- 患者一覧から選択 --</option>
+                            </select>
+                            <input type="text" id="ipt-ward-summary-patient-search" class="yr-form-control" style="width:110px; font-size:12px; height:28px;" placeholder="患者ID直接入力" onkeypress="if(event.keyCode===13) fetchWardSummaryData()">
+                            <button id="btn-ward-summary-fetch" class="yr-btn" style="background:#2e7d32; color:#fff; font-size:12px; font-weight:bold; padding:4px 14px;" onclick="fetchWardSummaryData()">⚡ データ取得・分析</button>
+                        </div>
+                        <div id="ward-summary-status-badge" style="font-size:12px; font-weight:bold; color:#555;">
+                            待機中
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ⚠️ 注意書きバナー -->
+                <div style="background:#fff3e0; border-left:4px solid #ff9800; border-radius:3px; padding:8px 12px; margin-bottom:12px; font-size:11px; color:#e65100; line-height:1.4;">
+                    <b>⚠️ ご注意:</b> 電子カルテ『新薬歴』画面からの直接の中止・再開指示はオーダ情報に即時反映されない場合があります。最終的な変更・確定情報は必ずカルテ本画面でも併せてご確認ください。
+                </div>
+
+                <!-- 4大分析カード (2x2 グリッドレイアウト) -->
+                <div style="display:flex; flex-wrap:wrap; gap:12px; margin-bottom:15px;">
+                    
+                    <!-- パネル1: 🔄 処方・注射変更検知 (直近7日間) -->
+                    <div style="flex:1 1 48%; min-width:320px; background:#fff; border:1px solid #cfd8dc; border-radius:6px; box-shadow:0 1px 3px rgba(0,0,0,0.05); padding:10px 12px; box-sizing:border-box;">
+                        <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:2px solid #1976d2; padding-bottom:4px; margin-bottom:8px;">
+                            <span style="font-size:13px; font-weight:bold; color:#0d47a1;">🔄 処方・注射の変更検知 <span style="font-size:11px; font-weight:normal; color:#666;">(直近7日間の変化)</span></span>
+                            <span id="badge-ward-summary-changes" style="font-size:10px; background:#e3f2fd; color:#1565c0; padding:1px 6px; border-radius:10px; font-weight:bold;">未取得</span>
+                        </div>
+                        <div id="content-ward-summary-changes" style="min-height:140px; max-height:260px; overflow-y:auto; font-size:12px;">
+                            <div style="color:#999; text-align:center; padding:30px 0;">患者を選択して「データ取得・分析」を実行してください</div>
+                        </div>
+                    </div>
+
+                    <!-- パネル2: 💊 持参薬の残日数・終了予定日 -->
+                    <div style="flex:1 1 48%; min-width:320px; background:#fff; border:1px solid #cfd8dc; border-radius:6px; box-shadow:0 1px 3px rgba(0,0,0,0.05); padding:10px 12px; box-sizing:border-box;">
+                        <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:2px solid #2e7d32; padding-bottom:4px; margin-bottom:8px;">
+                            <span style="font-size:13px; font-weight:bold; color:#1b5e20;">💊 持参薬の残日数・終了予定 <span style="font-size:11px; font-weight:normal; color:#666;">(医師再開指示分)</span></span>
+                            <span id="badge-ward-summary-jisan" style="font-size:10px; background:#e8f5e9; color:#2e7d32; padding:1px 6px; border-radius:10px; font-weight:bold;">未取得</span>
+                        </div>
+                        <div id="content-ward-summary-jisan" style="min-height:140px; max-height:260px; overflow-y:auto; font-size:12px;">
+                            <div style="color:#999; text-align:center; padding:30px 0;">患者を選択して「データ取得・分析」を実行してください</div>
+                        </div>
+                    </div>
+
+                    <!-- パネル3: ⏳ 定期処方の更新・切れアラート -->
+                    <div style="flex:1 1 48%; min-width:320px; background:#fff; border:1px solid #cfd8dc; border-radius:6px; box-shadow:0 1px 3px rgba(0,0,0,0.05); padding:10px 12px; box-sizing:border-box;">
+                        <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:2px solid #f57c00; padding-bottom:4px; margin-bottom:8px;">
+                            <span style="font-size:13px; font-weight:bold; color:#e65100;">⏳ 定期処方の更新・切れアラート</span>
+                            <span id="badge-ward-summary-teiki" style="font-size:10px; background:#fff3e0; color:#ef6c00; padding:1px 6px; border-radius:10px; font-weight:bold;">未取得</span>
+                        </div>
+                        <div id="content-ward-summary-teiki" style="min-height:140px; max-height:260px; overflow-y:auto; font-size:12px;">
+                            <div style="color:#999; text-align:center; padding:30px 0;">患者を選択して「データ取得・分析」を実行してください</div>
+                        </div>
+                    </div>
+
+                    <!-- パネル4: 🏠 直近カルテ記事・退院キーワード抽出 -->
+                    <div style="flex:1 1 48%; min-width:320px; background:#fff; border:1px solid #cfd8dc; border-radius:6px; box-shadow:0 1px 3px rgba(0,0,0,0.05); padding:10px 12px; box-sizing:border-box;">
+                        <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:2px solid #7b1fa2; padding-bottom:4px; margin-bottom:8px;">
+                            <span style="font-size:13px; font-weight:bold; color:#4a148c;">🏠 直近カルテ記事・退院ワード抽出 <span style="font-size:11px; font-weight:normal; color:#666;">(昨日〜本日)</span></span>
+                            <span id="badge-ward-summary-discharge" style="font-size:10px; background:#f3e5f5; color:#6a1b9a; padding:1px 6px; border-radius:10px; font-weight:bold;">未取得</span>
+                        </div>
+                        <div id="content-ward-summary-discharge" style="min-height:140px; max-height:260px; overflow-y:auto; font-size:12px;">
+                            <div style="color:#999; text-align:center; padding:30px 0;">患者を選択して「データ取得・分析」を実行してください</div>
+                        </div>
+                    </div>
+
                 </div>
             </div>
             </div> <!-- /yr-scroll-area -->
@@ -10336,6 +10410,19 @@ function updateMyDisplayNameMain() {
             var medAdjIpt = document.getElementById('ipt-med-adj-patient-search-2026');
             var curMedAdjVal = medAdjIpt ? medAdjIpt.value.trim() : '';
             populateSelect(medAdjSel, curMedAdjVal);
+            var wardSummarySel = document.getElementById('sel-ward-summary-patient-dropdown');
+            var wardSummaryIpt = document.getElementById('ipt-ward-summary-patient-search');
+            var curWardSummaryVal = wardSummaryIpt ? wardSummaryIpt.value.trim() : '';
+            populateSelect(wardSummarySel, curWardSummaryVal);
+        }
+        function onWardSummaryPatientDropdownChange(val) {
+            var ipt = document.getElementById('ipt-ward-summary-patient-search');
+            if (ipt) {
+                ipt.value = val || '';
+            }
+            if (val && typeof fetchWardSummaryData === 'function') {
+                fetchWardSummaryData();
+            }
         }
         function onSummaryPatientDropdownChange(val) {
             var ipt = document.getElementById('ipt-summary-patient-search');
@@ -16300,6 +16387,357 @@ function copySummarySection(sectionType) {
     } catch(e) {
         yrShowAlert("コピーに失敗しました。", "error");
     }
+}
+
+// =========================================================
+// 病棟サマリ (単体患者の処方変更・持参薬残日数・定期切れ・退院ワード検証)
+// =========================================================
+var wardSummaryState = {
+    isFetching: false,
+    fetchToken: 0,
+    patient: null,
+    shohoOrders: [],
+    chushaOrders: [],
+    karteNotes: []
+};
+
+function fetchWardSummaryData() {
+    if (wardSummaryState.isFetching) {
+        yrShowAlert("現在データ収集中です。完了までお待ちください。", "info");
+        return;
+    }
+    var ipt = document.getElementById("ipt-ward-summary-patient-search");
+    var pId = ipt ? ipt.value.trim() : "";
+    if (!pId) {
+        yrShowAlert("患者IDを入力または選択してください。", "error");
+        return;
+    }
+    var paddedId = pId;
+    if (/^\d+$/.test(pId) && pId.length < 7) {
+        paddedId = ("0000000" + pId).slice(-7);
+        if (ipt) ipt.value = paddedId;
+    }
+    var pObj = (typeof findPatientById === "function") ? findPatientById(paddedId) : null;
+    if (!pObj && typeof findPatientById === "function") {
+        pObj = findPatientById(pId);
+    }
+    wardSummaryState.patient = pObj;
+
+    var userId = (typeof currentSystemId !== "undefined" && currentSystemId) ? currentSystemId : "pharmacy";
+    var myToken = new Date().getTime();
+    wardSummaryState.fetchToken = myToken;
+    wardSummaryState.isFetching = true;
+
+    var badge = document.getElementById("ward-summary-status-badge");
+    if (badge) badge.innerHTML = '<span style="color:#0288d1;">⏳ データ収集中...</span>';
+    var btn = document.getElementById("btn-ward-summary-fetch");
+    if (btn) btn.disabled = true;
+
+    var today = new Date();
+    var todayStr = ("000" + today.getFullYear()).slice(-4) + "/" + ("0" + (today.getMonth() + 1)).slice(-2) + "/" + ("0" + today.getDate()).slice(-2);
+    
+    // 入院開始日の算出（持参薬を拾うために入院初期から検索）
+    var hospDays = (pObj && pObj.daysInHosp) ? parseInt(pObj.daysInHosp, 10) : 0;
+    var rDays = (!isNaN(hospDays) && hospDays > 0) ? Math.min(550, Math.max(hospDays + 14, 60)) : 90;
+    var fetchStart = addSummaryDaysStr(todayStr, -rDays);
+    var fetchEnd = addSummaryDaysStr(todayStr, 14);
+    var yesterdayStr = addSummaryDaysStr(todayStr, -1);
+
+    var shohoUrl = "http://10.5.171.42:8082/karte/karte.php"
+        + "?disp_flgs=0/0/2/0/0/0/1/0/0/1/0/0/0/0/0"
+        + "&kanja_id=" + encodeURIComponent(paddedId)
+        + "&user_id=" + encodeURIComponent(userId)
+        + "&start_date=" + encodeURIComponent(fetchStart)
+        + "&end_date=" + encodeURIComponent(fetchEnd)
+        + "&hakkou_date=" + encodeURIComponent(fetchStart)
+        + "&kijun_date=" + encodeURIComponent(todayStr)
+        + "&range_date=" + encodeURIComponent(rDays + "/7/1/1")
+        + "&disp_selectsection=&disp_selectukind=1,2,3,91&order_kind_set_code=0011&order_kind_code_str=0011&no_log_flg=1&disp_zoom=100"
+        + "&_t=" + new Date().getTime();
+
+    var chushaUrl = "http://10.5.171.42:8082/karte/karte.php"
+        + "?disp_flgs=0/0/2/0/0/0/1/0/0/1/0/0/0/0/0"
+        + "&kanja_id=" + encodeURIComponent(paddedId)
+        + "&user_id=" + encodeURIComponent(userId)
+        + "&start_date=" + encodeURIComponent(addSummaryDaysStr(todayStr, -14))
+        + "&end_date=" + encodeURIComponent(fetchEnd)
+        + "&hakkou_date=" + encodeURIComponent(addSummaryDaysStr(todayStr, -14))
+        + "&kijun_date=" + encodeURIComponent(todayStr)
+        + "&range_date=21/7/1/1&disp_selectsection=&disp_selectukind=1,2,3,91&order_kind_set_code=031&order_kind_code_str=0031&no_log_flg=1&disp_zoom=100"
+        + "&_t=" + new Date().getTime();
+
+    var notesUrl = "http://10.5.171.42:8082/karte/karte.php"
+        + "?disp_flgs=1/0/0/0/0/0/1/0/0/1/0/0/0/0/0"
+        + "&kanja_id=" + encodeURIComponent(paddedId)
+        + "&user_id=" + encodeURIComponent(userId)
+        + "&start_date=" + encodeURIComponent(yesterdayStr)
+        + "&end_date=" + encodeURIComponent(todayStr)
+        + "&kijun_date=" + encodeURIComponent(todayStr)
+        + "&range_date=3/7/1/1&no_log_flg=1&disp_zoom=100"
+        + "&_t=" + new Date().getTime();
+
+    // 逐次フェッチ実行 (処方 -> 注射 -> カルテ記事)
+    fetchSummaryHtmlViaIframe(shohoUrl, 30000, function(bodyShoho, errShoho) {
+        if (myToken !== wardSummaryState.fetchToken) return;
+        var parsedShoho = (!errShoho && bodyShoho) ? parseSummaryKarteOrders(bodyShoho, "0011") : { orders: [] };
+        wardSummaryState.shohoOrders = parsedShoho.orders || [];
+
+        fetchSummaryHtmlViaIframe(chushaUrl, 30000, function(bodyChusha, errChusha) {
+            if (myToken !== wardSummaryState.fetchToken) return;
+            var parsedChusha = (!errChusha && bodyChusha) ? parseSummaryKarteOrders(bodyChusha, "0031") : { orders: [] };
+            wardSummaryState.chushaOrders = parsedChusha.orders || [];
+
+            fetchSummaryHtmlViaIframe(notesUrl, 30000, function(bodyNotes, errNotes) {
+                if (myToken !== wardSummaryState.fetchToken) return;
+                wardSummaryState.karteNotes = (!errNotes && bodyNotes) ? parseWardSummaryNotes(bodyNotes) : [];
+
+                wardSummaryState.isFetching = false;
+                if (btn) btn.disabled = false;
+                if (badge) badge.innerHTML = '<span style="color:#2e7d32;">✔ 取得完了 (' + (pObj ? escapeHtml(pObj.name) : paddedId) + ')</span>';
+
+                renderWardSummaryPanels(todayStr);
+            });
+        });
+    });
+}
+
+function parseWardSummaryNotes(bodyHtml) {
+    if (!bodyHtml) return [];
+    var results = [];
+    var preChunks = bodyHtml.split(/<pre\b[^>]*>/i);
+    for (var i = 1; i < preChunks.length; i++) {
+        var chunk = preChunks[i].split(/<\/pre>/i)[0];
+        var cleanTxt = stripSummaryHtmlTags(chunk).replace(/&nbsp;/gi, " ").trim();
+        if (cleanTxt) {
+            results.push(cleanTxt);
+        }
+    }
+    return results;
+}
+
+function renderWardSummaryPanels(todayStr) {
+    var shoho = wardSummaryState.shohoOrders || [];
+    var chusha = wardSummaryState.chushaOrders || [];
+    var notes = wardSummaryState.karteNotes || [];
+    var d7Ago = addSummaryDaysStr(todayStr, -7);
+    var todayDateObj = new Date(todayStr.replace(/\//g, "-"));
+
+    // ==========================================
+    // パネル1: 処方・注射変更検知
+    // ==========================================
+    var newDrugs = [];
+    var seenDrugs = {};
+    for (var i = 0; i < shoho.length; i++) {
+        var ord = shoho[i];
+        for (var r = 0; r < ord.rps.length; r++) {
+            var rp = ord.rps[r];
+            var dNames = rp.drugs.join(", ");
+            var sDate = rp.startDate || ord.orderDate;
+            if (sDate >= d7Ago && sDate <= todayStr) {
+                var dKey = dNames + "_" + sDate;
+                if (!seenDrugs[dKey]) {
+                    seenDrugs[dKey] = true;
+                    newDrugs.push({
+                        name: dNames,
+                        inst: rp.usageText,
+                        date: sDate,
+                        kind: (ord.category === "jisan_order" ? "持参薬再開" : (ord.category === "taiin" ? "退院処方" : "処方"))
+                    });
+                }
+            }
+        }
+    }
+    for (var ci = 0; ci < chusha.length; ci++) {
+        var cOrd = chusha[ci];
+        for (var cr = 0; cr < cOrd.rps.length; cr++) {
+            var cRp = cOrd.rps[cr];
+            var cNames = cRp.drugs.join(", ");
+            var csDate = cRp.startDate || cOrd.orderDate;
+            if (csDate >= d7Ago && csDate <= todayStr) {
+                var cKey = cNames + "_" + csDate;
+                if (!seenDrugs[cKey]) {
+                    seenDrugs[cKey] = true;
+                    newDrugs.push({
+                        name: cNames,
+                        inst: cRp.usageText || "注射",
+                        date: csDate,
+                        kind: "注射"
+                    });
+                }
+            }
+        }
+    }
+
+    var p1Html = "";
+    if (newDrugs.length === 0) {
+        p1Html = '<div style="color:#666; padding:20px 0; text-align:center;">✔ 直近7日間に開始・変更された薬剤はありません。</div>';
+    } else {
+        p1Html += '<div style="margin-bottom:6px; font-weight:bold; color:#2e7d32; font-size:11px;">🟢 直近7日間に開始・変更された薬剤 (' + newDrugs.length + '件):</div>';
+        for (var n = 0; n < newDrugs.length; n++) {
+            var item = newDrugs[n];
+            var kindBadge = item.kind === "注射" ? '<span style="background:#fce4ec; color:#c2185b; font-size:9px; padding:1px 4px; border-radius:2px; margin-right:4px;">注射</span>' : '<span style="background:#e8f5e9; color:#2e7d32; font-size:9px; padding:1px 4px; border-radius:2px; margin-right:4px;">' + escapeHtml(item.kind) + '</span>';
+            p1Html += '<div style="padding:4px 6px; margin-bottom:4px; background:#f9fbe7; border-left:3px solid #8bc34a; font-size:11px;">' +
+                kindBadge + '<b>' + escapeHtml(item.name) + '</b> <span style="color:#555;">(' + escapeHtml(item.inst) + ')</span>' +
+                '<span style="float:right; color:#888;">' + escapeHtml(item.date) + '〜</span>' +
+                '</div>';
+        }
+    }
+    var p1El = document.getElementById("content-ward-summary-changes");
+    if (p1El) p1El.innerHTML = p1Html;
+    var b1El = document.getElementById("badge-ward-summary-changes");
+    if (b1El) b1El.innerText = newDrugs.length + "件検知";
+
+    // ==========================================
+    // パネル2: 持参薬の残日数・終了予定 (医師再開指示分)
+    // ==========================================
+    var jisanList = [];
+    var seenJisan = {};
+    for (var j = 0; j < shoho.length; j++) {
+        var jOrd = shoho[j];
+        // ★重要: ユーザー指示に基づき【持参薬】（検認）ではなく医師再開指示の「jisan_order」のみ対象
+        if (jOrd.category === "jisan_order") {
+            for (var jr = 0; jr < jOrd.rps.length; jr++) {
+                var jRp = jOrd.rps[jr];
+                var jName = jRp.drugs.join(", ");
+                var jStart = jRp.startDate || jOrd.orderDate;
+                var jDays = jRp.duration || 1;
+                var jEnd = jRp.endDate || addSummaryDaysStr(jStart, jDays - 1);
+                var jKey = jName + "_" + jStart;
+                if (!seenJisan[jKey]) {
+                    seenJisan[jKey] = true;
+                    var endDateObj = new Date(jEnd.replace(/\//g, "-"));
+                    var diffDays = Math.round((endDateObj - todayDateObj) / (1000 * 60 * 60 * 24));
+                    jisanList.push({
+                        name: jName,
+                        inst: jRp.usageText,
+                        days: jDays,
+                        startDate: jStart,
+                        endDate: jEnd,
+                        remDays: diffDays
+                    });
+                }
+            }
+        }
+    }
+
+    var p2Html = "";
+    if (jisanList.length === 0) {
+        p2Html = '<div style="color:#666; padding:20px 0; text-align:center;">医師指示による持参薬再開オーダは見つかりませんでした。</div>';
+    } else {
+        for (var jl = 0; jl < jisanList.length; jl++) {
+            var ji = jisanList[jl];
+            var remBadge = "";
+            var rowBg = "#fff";
+            var borderCol = "#ddd";
+            if (ji.remDays < 0) {
+                remBadge = '<span style="background:#ffebee; color:#c62828; font-weight:bold; padding:1px 5px; border-radius:3px;">終了済 (' + Math.abs(ji.remDays) + '日超過)</span>';
+                rowBg = "#fafafa";
+                borderCol = "#ef9a9a";
+            } else if (ji.remDays <= 3) {
+                remBadge = '<span style="background:#fff3e0; color:#e65100; font-weight:bold; padding:1px 5px; border-radius:3px;">⚠️ 残り ' + ji.remDays + ' 日</span>';
+                rowBg = "#fff8e1";
+                borderCol = "#ffb74d";
+            } else {
+                remBadge = '<span style="background:#e8f5e9; color:#2e7d32; font-weight:bold; padding:1px 5px; border-radius:3px;">残り ' + ji.remDays + ' 日</span>';
+                rowBg = "#f1f8e9";
+                borderCol = "#aed581";
+            }
+            p2Html += '<div style="padding:4px 6px; margin-bottom:4px; background:' + rowBg + '; border:1px solid ' + borderCol + '; border-radius:3px; font-size:11px;">' +
+                '<div style="display:flex; justify-content:space-between; align-items:center;">' +
+                '<b>' + escapeHtml(ji.name) + '</b>' + remBadge +
+                '</div>' +
+                '<div style="color:#666; font-size:10px; margin-top:2px;">' +
+                escapeHtml(ji.inst) + ' (' + ji.days + '日分) │ 開始: ' + ji.startDate + ' 〜 終了予定: <b>' + ji.endDate + '</b>' +
+                '</div>' +
+                '</div>';
+        }
+    }
+    var p2El = document.getElementById("content-ward-summary-jisan");
+    if (p2El) p2El.innerHTML = p2Html;
+    var b2El = document.getElementById("badge-ward-summary-jisan");
+    if (b2El) b2El.innerText = jisanList.length + "剤";
+
+    // ==========================================
+    // パネル3: 定期処方の更新・切れアラート
+    // ==========================================
+    var teikiAlerts = [];
+    var seenTeiki = {};
+    for (var t = 0; t < shoho.length; t++) {
+        var tOrd = shoho[t];
+        if (tOrd.category === "inhosp_rx") {
+            for (var tr = 0; tr < tOrd.rps.length; tr++) {
+                var tRp = tOrd.rps[tr];
+                if (tRp.isTonyo || tRp.isGaiyo) continue;
+                var tEnd = tRp.endDate;
+                if (!tEnd) continue;
+                var tEndDateObj = new Date(tEnd.replace(/\//g, "-"));
+                var tDiff = Math.round((tEndDateObj - todayDateObj) / (1000 * 60 * 60 * 24));
+                var tNames = tRp.drugs.join(", ");
+                var tKey = tNames + "_" + tEnd;
+                if (tDiff <= 3 && !seenTeiki[tKey]) {
+                    seenTeiki[tKey] = true;
+                    teikiAlerts.push({
+                        name: tNames,
+                        inst: tRp.usageText,
+                        endDate: tEnd,
+                        diff: tDiff
+                    });
+                }
+            }
+        }
+    }
+
+    var p3Html = "";
+    if (teikiAlerts.length === 0) {
+        p3Html = '<div style="color:#2e7d32; padding:20px 0; text-align:center;">✔ 直近3日以内に切れる定期処方はありません（余裕あり）。</div>';
+    } else {
+        for (var ta = 0; ta < teikiAlerts.length; ta++) {
+            var itemA = teikiAlerts[ta];
+            var tBadge = itemA.diff < 0 ? '<span style="color:#c62828; font-weight:bold;">本日切れ／終了済</span>' : '<span style="color:#e65100; font-weight:bold;">残り ' + itemA.diff + ' 日</span>';
+            p3Html += '<div style="padding:4px 6px; margin-bottom:4px; background:#fff3e0; border-left:3px solid #ff9800; font-size:11px;">' +
+                '<div style="display:flex; justify-content:space-between;">' +
+                '<b>' + escapeHtml(itemA.name) + '</b>' + tBadge +
+                '</div>' +
+                '<div style="color:#666; font-size:10px;">終了予定日: ' + itemA.endDate + ' (' + escapeHtml(itemA.inst) + ')</div>' +
+                '</div>';
+        }
+    }
+    var p3El = document.getElementById("content-ward-summary-teiki");
+    if (p3El) p3El.innerHTML = p3Html;
+    var b3El = document.getElementById("badge-ward-summary-teiki");
+    if (b3El) b3El.innerText = teikiAlerts.length + "件";
+
+    // ==========================================
+    // パネル4: 直近カルテ記事・退院キーワード抽出
+    // ==========================================
+    var dischargeMatches = [];
+    var dischargeRegex = /(?:退院|退院予定|退院調整|退院支援|転院|退院日)[^\n。]*[。]?/g;
+    for (var ni = 0; ni < notes.length; ni++) {
+        var noteTxt = notes[ni];
+        var match;
+        while ((match = dischargeRegex.exec(noteTxt)) !== null) {
+            var sentence = match[0].trim();
+            if (sentence.length >= 3 && dischargeMatches.indexOf(sentence) === -1) {
+                dischargeMatches.push(sentence);
+            }
+        }
+    }
+
+    var p4Html = "";
+    if (dischargeMatches.length === 0) {
+        p4Html = '<div style="color:#666; padding:20px 0; text-align:center;">昨日〜今日のカルテ記事に退院・転院に関するキーワードは見つかりませんでした。</div>';
+    } else {
+        p4Html += '<div style="margin-bottom:6px; font-weight:bold; color:#6a1b9a; font-size:11px;">🏠 退院・転院関連の記述 (' + dischargeMatches.length + '件ヒット):</div>';
+        for (var dm = 0; dm < dischargeMatches.length; dm++) {
+            p4Html += '<div style="padding:4px 8px; margin-bottom:5px; background:#f3e5f5; border-left:3px solid #ab47bc; border-radius:2px; font-size:11px; line-height:1.4;">' +
+                escapeHtml(dischargeMatches[dm]) +
+                '</div>';
+        }
+    }
+    var p4El = document.getElementById("content-ward-summary-discharge");
+    if (p4El) p4El.innerHTML = p4Html;
+    var b4El = document.getElementById("badge-ward-summary-discharge");
+    if (b4El) b4El.innerText = dischargeMatches.length + "件ヒット";
 }
 
 </script>
