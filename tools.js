@@ -170,7 +170,7 @@
                     shell.Run("polypharmacy_editor.html");
                 }
             } catch(e) {
-                alert("編集ツールを開けませんでした: " + e.message + "\nHTAと同じフォルダにある「polypharmacy_editor.html」をダブルクリックして開いてください。");
+                alert("編集ツールを開けませんでした: " + e.message + "\r\nHTAと同じフォルダにある「polypharmacy_editor.html」をダブルクリックして開いてください。");
             }
         }
         function reloadPolypharmacyMaster() {
@@ -393,6 +393,19 @@
             var medAdjIpt = document.getElementById('ipt-med-adj-patient-search-2026');
             var curMedAdjVal = medAdjIpt ? medAdjIpt.value.trim() : '';
             populateSelect(medAdjSel, curMedAdjVal);
+            var wardSummarySel = document.getElementById('sel-ward-summary-patient-dropdown');
+            var wardSummaryIpt = document.getElementById('ipt-ward-summary-patient-search');
+            var curWardSummaryVal = wardSummaryIpt ? wardSummaryIpt.value.trim() : '';
+            populateSelect(wardSummarySel, curWardSummaryVal);
+        }
+        function onWardSummaryPatientDropdownChange(val) {
+            var ipt = document.getElementById('ipt-ward-summary-patient-search');
+            if (ipt) {
+                ipt.value = val || '';
+            }
+            if (val && typeof fetchWardSummaryData === 'function') {
+                fetchWardSummaryData();
+            }
         }
         function onSummaryPatientDropdownChange(val) {
             var ipt = document.getElementById('ipt-summary-patient-search');
@@ -589,7 +602,7 @@
                 return;
             }
 
-            var lines = text.split('\n');
+            var lines = text.split('\r\n');
             var drugNames = [];
             var seen = {};
 
@@ -957,7 +970,7 @@
             if (!rawInput) return "";
             var text = formatText(rawInput);
 
-            text = text.replace(/([^\r\n])([ \t]*)(Rp\d+)/g, '$1\n$3');
+            text = text.replace(/([^\r\n])([ \t]*)(Rp\d+)/g, '$1\r\n$3');
 
             var useAddNumber = false;
             if (typeof overrideAddNumber === "boolean") {
@@ -971,10 +984,10 @@
             } else {
                 text = text.replace(/^[ \t]*.*Rp\d+.*?$[\r\n]*/gm, '');
             }
-            text = text.replace(/^[ \t]*.*(?:院外|院内)[\s\(].*\d{4}\/\d{2}\/\d{2}.*?$[\r\n]*/gm, '\n◆外来\n');
-            text = text.replace(/^[ \t]*.*\[?(?:定期|臨時|緊急|実施済|退院)\]?.*\d{4}\/\d{2}\/\d{2}.*?$[\r\n]*/gm, '\n◇入院\n');
-            text = text.replace(/^[ \t]*.*【持参薬】.*検認.*?(?:\r?\n[^\r\n]*?)?\d{4}\/\d{2}\/\d{2}[^\r\n]*[\r\n]*/gm, '\n▼持参薬検認\n');
-            text = text.replace(/^[ \t]*.*【持参薬】(?!.*検認).*?(?:\r?\n[^\r\n]*?)?\d{4}\/\d{2}\/\d{2}[^\r\n]*[\r\n]*/gm, '\n■持参薬\n');
+            text = text.replace(/^[ \t]*.*(?:院外|院内)[\s\(].*\d{4}\/\d{2}\/\d{2}.*?$[\r\n]*/gm, '\r\n◆外来\r\n');
+            text = text.replace(/^[ \t]*.*\[?(?:定期|臨時|緊急|実施済|退院)\]?.*\d{4}\/\d{2}\/\d{2}.*?$[\r\n]*/gm, '\r\n◇入院\r\n');
+            text = text.replace(/^[ \t]*.*【持参薬】.*検認.*?(?:\r?\r\n[^\r\n]*?)?\d{4}\/\d{2}\/\d{2}[^\r\n]*[\r\n]*/gm, '\r\n▼持参薬検認\r\n');
+            text = text.replace(/^[ \t]*.*【持参薬】(?!.*検認).*?(?:\r?\r\n[^\r\n]*?)?\d{4}\/\d{2}\/\d{2}[^\r\n]*[\r\n]*/gm, '\r\n■持参薬\r\n');
             text = text.replace(/^[ \t]*.*院内[\(].*?$[\r\n]*/gm, '');
             text = text.replace(/^[ \t]*.*院内採用.*?$[\r\n]*/gm, '');
             text = text.replace(/^[ \t]*.*薬効名称.*?$[\r\n]*/gm, '');
@@ -984,10 +997,10 @@
             text = text.replace(/^[ \t]*.*No\.\d+.*?$[\r\n]*/gm, '');
             text = text.replace(/^[ \t]*.*院外専用薬.*?$[\r\n]*/gm, '');
             text = text.replace(/^[ \t]*\d{4}\/\d{2}\/\d{2}[ \t]*(?:朝|昼|夕|眠前)?.*?$[\r\n]*/gm, '');
-            text = text.replace(/(\n▼持参薬検認\s*)+/g, '\n▼持参薬検認\n');
-            text = text.replace(/(\n■持参薬\s*)+/g, '\n■持参薬\n');
-            text = text.replace(/(\n◆外来\s*)+/g, '\n◆外来\n');
-            text = text.replace(/(\n◇入院\s*)+/g, '\n◇入院\n');
+            text = text.replace(/(\r\n▼持参薬検認\s*)+/g, '\r\n▼持参薬検認\r\n');
+            text = text.replace(/(\r\n■持参薬\s*)+/g, '\r\n■持参薬\r\n');
+            text = text.replace(/(\r\n◆外来\s*)+/g, '\r\n◆外来\r\n');
+            text = text.replace(/(\r\n◇入院\s*)+/g, '\r\n◇入院\r\n');
             text = text.replace(/「.*?」/g, '');
             text = text.replace(/【.*?】/g, '');
             text = text.replace(/[ \t　]+[\d]+日分/g, '');
@@ -999,10 +1012,10 @@
                 '注射後', '開始日', '用法変更', '\\[院外\\]', '血糖[:：]',
                 '薬剤師による服用状況確認は未実施です'
             ];
-            var removeRegex = new RegExp('^[ \\t]*.*(' + removeKeywords.join('|') + ').*?$[\\r\\n]*', 'gm');
+            var removeRegex = new RegExp('^[ \\t]*.*(' + removeKeywords.join('|') + ').*?$[\\r\\r\n]*', 'gm');
             text = text.replace(removeRegex, '');
 
-            var textLines = text.split('\n');
+            var textLines = text.split('\r\n');
             var detectingClinic = false;
             for (var k = 0; k < textLines.length; k++) {
                 if (textLines[k].indexOf('▼持参薬検認') !== -1 || textLines[k].indexOf('■持参薬') !== -1) {
@@ -1017,15 +1030,15 @@
                     }
                 }
             }
-            text = textLines.join('\n');
+            text = textLines.join('\r\n');
 
-            var lines = text.split('\n');
+            var lines = text.split('\r\n');
             for (var i = 0; i < lines.length; i++) {
                 if (lines[i].trim() !== "" && !lines[i].startsWith("◆") && !lines[i].startsWith("◇") && !lines[i].startsWith("▼") && !lines[i].startsWith("■")) {
                     lines[i] = cleanDrugName(lines[i]);
                 }
             }
-            text = lines.join('\n');
+            text = lines.join('\r\n');
 
             text = text.replace(/\(朝・夕\)/g, '朝夕').replace(/\(朝夕\)/g, '朝夕');
             text = text.replace(/\(朝・昼\)/g, '朝昼').replace(/\(昼・夕\)/g, '昼夕');
@@ -1034,32 +1047,32 @@
             text = text.replace(/\[.*?\]/g, '');
             text = text.replace(/\]/g, '');
             text = text.replace(/^ +/gm, '');
-            text = text.replace(/\[\$T\]\r?\n?/g, 'T ');
-            text = text.replace(/\[\$C\]\r?\n?/g, 'C ');
-            text = text.replace(/\[\$ｷｯﾄ\]\r?\n?/g, 'ﾄ ');
-            text = text.replace(/\[\$本\]\r?\n?/g, '本 ');
-            text = text.replace(/\[\$枚\]\r?\n?/g, '枚 ');
-            text = text.replace(/\[\$袋\]\r?\n?/g, '袋 ');
-            text = text.replace(/\[\$包\]\r?\n?/g, '包 ');
-            text = text.replace(/\[\$器\]\r?\n?/g, '器 ');
-            text = text.replace(/\[\$位\]\r?\n?/g, '位 ');
-            text = text.replace(/\[\$箱\]\r?\n?/g, '箱 ');
-            text = text.replace(/\[\$缶\]\r?\n?/g, '缶 ');
-            text = text.replace(/\[\$g\]\r?\n?/g, 'g ');
-            text = text.replace(/\[\$l\]\r?\n?/g, 'l ');
-            text = text.replace(/\[\$V\]\r?\n?/g, 'V ');
+            text = text.replace(/\[\$T\]\r?\r\n?/g, 'T ');
+            text = text.replace(/\[\$C\]\r?\r\n?/g, 'C ');
+            text = text.replace(/\[\$ｷｯﾄ\]\r?\r\n?/g, 'ﾄ ');
+            text = text.replace(/\[\$本\]\r?\r\n?/g, '本 ');
+            text = text.replace(/\[\$枚\]\r?\r\n?/g, '枚 ');
+            text = text.replace(/\[\$袋\]\r?\r\n?/g, '袋 ');
+            text = text.replace(/\[\$包\]\r?\r\n?/g, '包 ');
+            text = text.replace(/\[\$器\]\r?\r\n?/g, '器 ');
+            text = text.replace(/\[\$位\]\r?\r\n?/g, '位 ');
+            text = text.replace(/\[\$箱\]\r?\r\n?/g, '箱 ');
+            text = text.replace(/\[\$缶\]\r?\r\n?/g, '缶 ');
+            text = text.replace(/\[\$g\]\r?\r\n?/g, 'g ');
+            text = text.replace(/\[\$l\]\r?\r\n?/g, 'l ');
+            text = text.replace(/\[\$V\]\r?\r\n?/g, 'V ');
             text = text.replace(/ﾅﾄﾘｳﾑ/g, 'Na');
             var mergeEl = document.getElementById('set-merge');
             if (mergeEl && mergeEl.checked) {
                 var usageStarts = '（持参薬用法）|\\(持参薬用法\\)|分\\d|1日|１日|就寝前|眠前|頓服|毎食|朝夕|朝昼|昼夕|痛い|発熱|週\\d';
                 var removeUnits = "個|枚|本|袋|瓶|筒|ﾁｭｰﾌﾞ|チューブ|ｷｯﾄ|キット|V|Ｖ";
-                var removeRegex = new RegExp('^(?![ \\t　]*(?:' + usageStarts + '))([ \\t　]*.*?)((?:\\d+(?:\\.\\d+)?)(?:' + removeUnits + '))\\s*[\\r\\n]+[ \\t　]*', 'gim');
+                var removeRegex = new RegExp('^(?![ \\t　]*(?:' + usageStarts + '))([ \\t　]*.*?)((?:\\d+(?:\\.\\d+)?)(?:' + removeUnits + '))\\s*[\\r\\r\n]+[ \\t　]*', 'gim');
                 text = text.replace(removeRegex, "$1 ");
                 var mergeUnits = "錠|ｶﾌﾟｾﾙ|カプセル|包|ml|mL|mg|g|滴|T|C|Ｔ|Ｃ|回|日分";
-                var mergeRegex = new RegExp('^(?![ \\t　]*(?:' + usageStarts + '))([ \\t　]*.*?)((?:\\d+(?:\\.\\d+)?)(?:' + mergeUnits + '))\\s*[\\r\\n]+[ \\t　]*', 'gim');
+                var mergeRegex = new RegExp('^(?![ \\t　]*(?:' + usageStarts + '))([ \\t　]*.*?)((?:\\d+(?:\\.\\d+)?)(?:' + mergeUnits + '))\\s*[\\r\\r\n]+[ \\t　]*', 'gim');
                 text = text.replace(mergeRegex, "$1$2 ");
             }
-            return text.replace(/\n\s*\n/g, '\n').trim();
+            return text.replace(/\r\n\s*\r\n/g, '\r\n').trim();
         }
         // ==========================================
         // タブ③: テキスト整理 処理本体
@@ -1087,7 +1100,7 @@
             var panel = document.getElementById('macro-tokuyaku-panel');
             var cache = getTokuyakuCache();
             if (panel && cache) {
-                var tkLines = text.split('\n');
+                var tkLines = text.split('\r\n');
                 var found = [];
                 for (var li = 0; li < tkLines.length; li++) {
                     var tkLine = tkLines[li].replace(/^\d+\)\s*/, '').replace(/^[\s　]+/, '');
@@ -1161,7 +1174,7 @@
         // ==========================================
         function processBloodTestText(text) {
             if (!text) return "";
-            var lines = text.split('\n');
+            var lines = text.split('\r\n');
             var records = [];
             var currentDateStr = "";
             var currentDateObj = null;
@@ -1243,7 +1256,7 @@
                 }
             }
 
-            return outputLines.join("\n");
+            return outputLines.join("\r\n");
         }
         function yrRunBloodMacro() {
             lastMacroType = 'blood';
@@ -1262,7 +1275,7 @@
         function yrCopyMacroResult() {
             var text = document.getElementById('macroOutput').value;
             if (!text) return;
-            text = text.replace(/\r?\n/g, '\r\n'); // Windows向けの改行コード（\r\n）強制置換
+            text = text.replace(/\r?\r\n/g, '\r\n'); // Windows向けの改行コード（\r\n）強制置換
             try {
                 window.clipboardData.setData("Text", text);
                 yrShowAlert("整理されたテキストをコピーしました！");
@@ -1367,7 +1380,7 @@
             var targetCat = allCheckboxes[0].getAttribute("data-cat");
             for(var c=1; c<allCheckboxes.length; c++) {
                 if(allCheckboxes[c].getAttribute("data-cat") !== targetCat) {
-                    yrShowAlert("異なるカテゴリにまたがって統合することはできません。\n1つの表の中で選択してください。", "error");
+                    yrShowAlert("異なるカテゴリにまたがって統合することはできません。\r\n1つの表の中で選択してください。", "error");
                     return;
                 }
             }
@@ -1409,10 +1422,10 @@
 
             // ② 違う薬品名同士の場合は改行して結合（D&D方式と同じ単純連結）
             } else {
-                if (!confirm("異なる名称の薬品が含まれています。\nこのままテキストを改行して結合しますか？")) {
+                if (!confirm("異なる名称の薬品が含まれています。\r\nこのままテキストを改行して結合しますか？")) {
                     return;
                 }
-                var sep = (targetCat === 1) ? "\n" : "\n";
+                var sep = (targetCat === 1) ? "\r\n" : "\r\n";
                 var combinedStr = "";
                 for(var k=0; k<selectedItems.length; k++){
                     if(k>0) combinedStr += sep;
@@ -1530,7 +1543,7 @@
                 yrShowAlert(totalCount + "つの行を「" + newInst + "」に統合しました！", "info");
             } else {
                 // 異なる薬品名の場合は単純結合（改行）
-                var sep = (cat === 1) ? "\n" : (cat === 2 ? "\n" : "\n");
+                var sep = (cat === 1) ? "\r\n" : (cat === 2 ? "\r\n" : "\r\n");
                 var combinedStr = targetItem.fullText + sep + sourceItem.fullText;
 
                 // ベース行（ドロップ先）を更新
@@ -1554,7 +1567,7 @@
                 }
 
                 // 表形式のコピー時に列区切り(タブ)が消えて取得されるHTA特有の現象の検知
-                var lines = text.split('\n');
+                var lines = text.split('\r\n');
                 if (text.indexOf('\t') === -1 && lines.length > 2) {
                     yrShowAlert("クリップボード直接取得では列の区切りが失われてしまいます。<br>お手数ですが、タブ②の入力欄へ直接 貼り付け(Ctrl+V) して[薬歴作成]を実行してください。", "warning");
                     document.getElementById('rawInput').value = text;
@@ -1583,7 +1596,7 @@
             globalResults = { 1: [], 2: [], 3: [] };
             currentSorts = { 1: 'default', 2: 'default', 3: 'default' };
             uniqueIdCounter = 0;
-            var lines = rawData.split('\n');
+            var lines = rawData.split('\r\n');
             var maxDay = 0;
             for(var idxLine=0; idxLine<lines.length; idxLine++) { var line = lines[idxLine];
                 var cols = line.split('\t');
@@ -2102,7 +2115,7 @@ function renderTable() {
         function updateText(cat, id, newText) {
             var item = null; for(var kz=0;kz<globalResults[cat].length;kz++){if(globalResults[cat][kz].id===id) item=globalResults[cat][kz];}
             if (item) {
-                item.fullText = newText.replace(/\r?\n/g, "");
+                item.fullText = newText.replace(/\r?\r\n/g, "");
             }
         }
         function handleEnter(e, el) {
@@ -2283,15 +2296,15 @@ function yrFormatTextCore(text, keepIndentation) {
         s = s.trim();
     } else {
         // インデント保持の場合: 各行の末尾のみトリム
-        var lines = s.split(/\r\n|\r|\n/);
+        var lines = s.split(/\r\n|\r|\r\n/);
         for(var i=0; i<lines.length; i++) {
             lines[i] = lines[i].replace(/\s+$/, "");
         }
-        s = lines.join("\n").replace(/^\s+/, ""); // 先頭の空改行などは消すがインデントは守る
+        s = lines.join("\r\n").replace(/^\s+/, ""); // 先頭の空改行などは消すがインデントは守る
     }
 
     // 改行コードの統一（CRLF）
-    return s.replace(/\n/g, "\r\n");
+    return s.replace(/\r\n/g, "\r\n");
 }
 // ---------- 薬剤調整加算ツール ロジック ----------
 var medAdjState = { input: [], output: [] };
@@ -2307,7 +2320,7 @@ function parseMedText(text) {
     var allExcludeKeywords = baseExcludeKeywords.concat(customKeywords);
     // インデントを保持して整形
     var cleanedText = yrFormatTextCore(text, true);
-    var lines = cleanedText.split('\n');
+    var lines = cleanedText.split('\r\n');
     var drugs = [];
 
     var lastBaseLevel = -1;
@@ -2603,7 +2616,7 @@ function fetchMedAdjOrders2026(targetType) {
                     var jTxt = formatOrderWithMacro(targetJisanList[j].rawPreText);
                     if (jTxt) jBlocks.push(jTxt);
                 }
-                if (inBox) inBox.value = jBlocks.join("\n\n");
+                if (inBox) inBox.value = jBlocks.join("\r\n\r\n");
             }
         }
         // B. 退院処方のセット
@@ -2619,7 +2632,7 @@ function fetchMedAdjOrders2026(targetType) {
                     var tTxt = formatOrderWithMacro(taiinOrders[t].rawPreText);
                     if (tTxt) tBlocks.push(tTxt);
                 }
-                if (outBox) outBox.value = tBlocks.join("\n\n");
+                if (outBox) outBox.value = tBlocks.join("\r\n\r\n");
             }
         }
         // 28日前の開始日計算表示を実行
@@ -2956,42 +2969,42 @@ function copyMedAdjResult() {
     var inD = medAdjState.input;
     var outD = medAdjState.output;
     var baseCount = 0; var outCount = 0;
-    var txt = "【退院時薬剤調整加算 判定】\n";
+    var txt = "【退院時薬剤調整加算 判定】\r\n";
 
     var changes = [];
     for(var i=0; i<inD.length; i++) {
         if(!inD[i].isExcluded && inD[i].checked) baseCount++;
-        var note = (inD[i].progress && inD[i].progress.trim()) ? ("\n  【変更後の経過】 " + inD[i].progress.trim()) : "";
+        var note = (inD[i].progress && inD[i].progress.trim()) ? ("\r\n  【変更後の経過】 " + inD[i].progress.trim()) : "";
         if(!inD[i].isExcluded && inD[i].status === "中止") changes.push("[中止] " + inD[i].raw + note);
         if(!inD[i].isExcluded && inD[i].status === "変更前") changes.push("[用量変更/切替] " + inD[i].raw + " -> " + outD[inD[i].outRef].raw + note);
         if(!inD[i].isExcluded && inD[i].status === "継続" && note) changes.push("[継続] " + inD[i].raw + note);
     }
     for(var j=0; j<outD.length; j++) {
         if(!outD[j].isExcluded) outCount++;
-        var note = (outD[j].progress && outD[j].progress.trim()) ? ("\n  【変更後の経過】 " + outD[j].progress.trim()) : "";
+        var note = (outD[j].progress && outD[j].progress.trim()) ? ("\r\n  【変更後の経過】 " + outD[j].progress.trim()) : "";
         if(!outD[j].isExcluded && outD[j].status === "追加") changes.push("[追加] " + outD[j].raw + note);
     }
 
     var diff = baseCount - outCount;
-    txt += "ベースライン: " + baseCount + "種類 → 退院時: " + outCount + "種類 (" + (diff>=0?"-":"+") + Math.abs(diff) + "種類)\n";
+    txt += "ベースライン: " + baseCount + "種類 → 退院時: " + outCount + "種類 (" + (diff>=0?"-":"+") + Math.abs(diff) + "種類)\r\n";
 
     var hasAnyChange = changes.length > 0;
 
     if (baseCount >= 6) {
         if (diff >= 2) {
-            txt += "判定: 【250点】算定要件を満たす (評価100点 + 加算150点)\n";
+            txt += "判定: 【250点】算定要件を満たす (評価100点 + 加算150点)\r\n";
         } else if (hasAnyChange) {
-            txt += "判定: 【100点】算定要件を満たす (評価100点のみ)\n";
+            txt += "判定: 【100点】算定要件を満たす (評価100点のみ)\r\n";
         } else {
-            txt += "判定: 算定条件未達 (変更なし)\n";
+            txt += "判定: 算定条件未達 (変更なし)\r\n";
         }
     } else {
-        txt += "判定: 算定条件未達 (ベース6種類未満)\n";
+        txt += "判定: 算定条件未達 (ベース6種類未満)\r\n";
     }
 
-    txt += "------------------------\n";
+    txt += "------------------------\r\n";
     if (changes.length > 0) {
-        txt += changes.join("\n");
+        txt += changes.join("\r\n");
     } else {
         txt += "変更・追加・中止された内服薬なし";
     }
@@ -3267,7 +3280,7 @@ function fetchMedAdjOrders2026(targetType) {
                     var jTxt = formatOrderWithMacro(targetJisanList[j].rawPreText);
                     if (jTxt) jBlocks.push(jTxt);
                 }
-                if (inBox) inBox.value = jBlocks.join("\n\n");
+                if (inBox) inBox.value = jBlocks.join("\r\n\r\n");
             }
         }
         // B. 退院処方のセット
@@ -3283,7 +3296,7 @@ function fetchMedAdjOrders2026(targetType) {
                     var tTxt = formatOrderWithMacro(taiinOrders[t].rawPreText);
                     if (tTxt) tBlocks.push(tTxt);
                 }
-                if (outBox) outBox.value = tBlocks.join("\n\n");
+                if (outBox) outBox.value = tBlocks.join("\r\n\r\n");
             }
         }
         // 28日前の開始日計算表示を実行
@@ -3659,14 +3672,14 @@ function copyMedAdjResult2026() {
     var baseCount = 0; var outCount = 0;
     for(var i=0; i<inD.length; i++) if(!inD[i].isExcluded && inD[i].checked) baseCount++;
     for(var j=0; j<outD.length; j++) if(!outD[j].isExcluded) outCount++;
-    var txt = "【退院時薬剤調整加算(26年改定版) 判定】\n";
-    txt += "・ベースライン(4w継続): " + baseCount + " 種類\n";
-    txt += "・退院時処方: " + outCount + " 種類\n";
-    txt += "------------------------\n";
+    var txt = "【退院時薬剤調整加算(26年改定版) 判定】\r\n";
+    txt += "・ベースライン(4w継続): " + baseCount + " 種類\r\n";
+    txt += "・退院時処方: " + outCount + " 種類\r\n";
+    txt += "------------------------\r\n";
     var changes = [];
     for(var i=0; i<inD.length; i++) {
         if(inD[i].isExcluded) continue;
-        var note = (inD[i].progress && inD[i].progress.trim()) ? ("\n  【変更後の経過】 " + inD[i].progress.trim()) : "";
+        var note = (inD[i].progress && inD[i].progress.trim()) ? ("\r\n  【変更後の経過】 " + inD[i].progress.trim()) : "";
         if(inD[i].status === "用量変更") changes.push("・" + inD[i].raw + " → 用量変更" + note);
         else if(inD[i].status === "中止") changes.push("・" + inD[i].raw + " → 中止" + note);
         else if(inD[i].status === "院内採用等へ変更") changes.push("・" + inD[i].raw + " → 院内採用薬等へ変更" + note);
@@ -3674,18 +3687,18 @@ function copyMedAdjResult2026() {
     }
     for(var j=0; j<outD.length; j++) {
         if(outD[j].isExcluded) continue;
-        var note = (outD[j].progress && outD[j].progress.trim()) ? ("\n  【変更後の経過】 " + outD[j].progress.trim()) : "";
+        var note = (outD[j].progress && outD[j].progress.trim()) ? ("\r\n  【変更後の経過】 " + outD[j].progress.trim()) : "";
         if(outD[j].status === "追加") changes.push("・" + outD[j].raw + " (追加)" + note);
     }
-    if (changes.length > 0) txt += changes.join("\n") + "\n";
-    else txt += "変更・追加・中止された内服薬なし\n";
+    if (changes.length > 0) txt += changes.join("\r\n") + "\r\n";
+    else txt += "変更・追加・中止された内服薬なし\r\n";
 
-    txt += "\n[実施要件]\n";
-    txt += "・療養上必要な指導: " + (req1 ? "実施済" : "未実施") + "\n";
-    txt += "・ポリファーマシーへの啓発: " + (reqPoly ? "実施済" : "未実施") + "\n";
-    txt += "・多職種連携/評価共有: " + (req2 ? "実施済" : "未実施") + "\n";
-    txt += "・ポリファーマシー対策手順書: " + (reqManual ? "周知・活用済" : "未確認") + "\n";
-    txt += "・施設間文書情報連携: " + (req4 ? "実施済" : "未実施") + "\n";
+    txt += "\r\n[実施要件]\r\n";
+    txt += "・療養上必要な指導: " + (req1 ? "実施済" : "未実施") + "\r\n";
+    txt += "・ポリファーマシーへの啓発: " + (reqPoly ? "実施済" : "未実施") + "\r\n";
+    txt += "・多職種連携/評価共有: " + (req2 ? "実施済" : "未実施") + "\r\n";
+    txt += "・ポリファーマシー対策手順書: " + (reqManual ? "周知・活用済" : "未確認") + "\r\n";
+    txt += "・施設間文書情報連携: " + (req4 ? "実施済" : "未実施") + "\r\n";
 
     var diff = baseCount - outCount;
     var isOneYearRule = document.getElementById("chk-med-adj-1year-2026").checked;
@@ -3699,20 +3712,20 @@ function copyMedAdjResult2026() {
 
     var hasAnyChange = hasBaselineChange || (hasAddition && isAddValid);
     var allReqs = req1 && reqPoly && req2 && reqManual && req4;
-    txt += "\n[判定結果]\n";
+    txt += "\r\n[判定結果]\r\n";
     if (baseCount >= 6 && hasAnyChange && allReqs) {
         var meet150 = isOneYearRule ? (prevCount - outCount >= 2) : (diff >= 2);
-        if (meet150) txt += "✨ 退院時薬剤調整加算(310点) 算定見込み\n(総合評価調整加算160点 + 調整加算150点)\n";
-        else txt += "✨ 薬剤総合評価調整加算(160点) 算定見込み\n";
+        if (meet150) txt += "✨ 退院時薬剤調整加算(310点) 算定見込み\r\n(総合評価調整加算160点 + 調整加算150点)\r\n";
+        else txt += "✨ 薬剤総合評価調整加算(160点) 算定見込み\r\n";
     } else {
-        txt += "加算算定要件を満たしません\n";
-        if (baseCount < 6) txt += "※入院前の継続薬剤6種類以上が必要です\n";
-        if (!hasAnyChange) txt += "※処方内容の変更（中止・用量変更・他剤切替等）が必要です\n";
-        if (!req1) txt += "※療養上必要な指導の実施が必要です\n";
-        if (!reqPoly) txt += "※患者へのポリファーマシー啓発の実施が必要です\n";
-        if (!req2) txt += "※多職種連携による評価・共有が必要です\n";
-        if (!reqManual) txt += "※ポリファーマシー対策手順書の周知・活用が必要です\n";
-        if (!req4) txt += "※退院先施設・薬局等への文書による情報連携が必要です\n";
+        txt += "加算算定要件を満たしません\r\n";
+        if (baseCount < 6) txt += "※入院前の継続薬剤6種類以上が必要です\r\n";
+        if (!hasAnyChange) txt += "※処方内容の変更（中止・用量変更・他剤切替等）が必要です\r\n";
+        if (!req1) txt += "※療養上必要な指導の実施が必要です\r\n";
+        if (!reqPoly) txt += "※患者へのポリファーマシー啓発の実施が必要です\r\n";
+        if (!req2) txt += "※多職種連携による評価・共有が必要です\r\n";
+        if (!reqManual) txt += "※ポリファーマシー対策手順書の周知・活用が必要です\r\n";
+        if (!req4) txt += "※退院先施設・薬局等への文書による情報連携が必要です\r\n";
     }
     try {
         window.clipboardData.setData('Text', txt);
@@ -4134,7 +4147,7 @@ var summaryState = {
 function calcSummaryTextareaTargetHeight(el, minH) {
     if (!el) return minH || 200;
     var val = el.value || "";
-    var lineCount = val ? val.replace(/\r\n/g, "\n").replace(/\r/g, "\n").split("\n").length : 1;
+    var lineCount = val ? val.replace(/\r\n/g, "\r\n").replace(/\r/g, "\r\n").split("\r\n").length : 1;
     var byLines = lineCount * 19 + 24;
     return Math.max(minH || 200, byLines);
 }
@@ -4232,7 +4245,7 @@ function getTodayYmdStr() {
 function stripSummaryHtmlTags(htmlStr) {
     if (!htmlStr) return "";
     return String(htmlStr)
-        .replace(/<br\s*\/?>/gi, "\n")
+        .replace(/<br\s*\/?>/gi, "\r\n")
         .replace(/<[^>]+>/g, "")
         .replace(/&nbsp;/gi, " ")
         .replace(/&lt;/gi, "<")
@@ -4467,7 +4480,7 @@ function fetchSummaryHtmlViaIframe(url, timeoutMs, callback) {
         var text = "";
         try {
             if (win.document && win.document.body) {
-                text += (win.document.body.innerHTML || win.document.body.innerText || "") + "\n";
+                text += (win.document.body.innerHTML || win.document.body.innerText || "") + "\r\n";
             }
         } catch(e) {}
         try {
@@ -5119,7 +5132,7 @@ function renderSummaryByomeiChips() {
 function getSummaryComorbidityArray() {
     var el = document.getElementById("ipt-summary-comorbidities");
     if (!el || !trimSummaryStr(el.value)) return [];
-    var parts = el.value.split(/[、,，\n]+/);
+    var parts = el.value.split(/[、,，\r\n]+/);
     var res = [];
     for (var i = 0; i < parts.length; i++) {
         var t = trimSummaryStr(parts[i]);
@@ -5227,7 +5240,7 @@ function parseSummaryKarteOrders(bodyHtml, orderKind) {
         while ((fm = fontRe.exec(prevHtml)) !== null) {
             var fTxt = trimSummaryStr(stripSummaryHtmlTags(fm[1]));
             if (fTxt.indexOf("初回発行") !== -1 || fTxt.indexOf("により更新") !== -1) {
-                var linesF = fTxt.split(/\r?\n/);
+                var linesF = fTxt.split(/\r?\r\n/);
                 issueStamp = trimSummaryStr(linesF[linesF.length - 1]);
             }
         }
@@ -5240,7 +5253,7 @@ function parseSummaryKarteOrders(bodyHtml, orderKind) {
         if (lastHeaderTxt.indexOf("[中止]") !== -1 || lastHeaderTxt.indexOf("×") !== -1) {
             continue;
         }
-        var preLines = preTxt.split(/\r?\n/);
+        var preLines = preTxt.split(/\r?\r\n/);
         var orderDate = lastHeaderDate || currentSectionDate;
         var orderTimeSlot = "";
         var orderCancelled = false;
@@ -5259,7 +5272,7 @@ function parseSummaryKarteOrders(bodyHtml, orderKind) {
             }
         }
         if (orderCancelled || !orderDate) continue;
-        var preHeaderJoined = preHeaderLines.join("\n");
+        var preHeaderJoined = preHeaderLines.join("\r\n");
         // オーダー区分の判定
         var category = "inhosp_rx";
         if (orderKind === "0031") {
@@ -5452,7 +5465,7 @@ function formatOrderWithMacro(rawPreText, addRpNum) {
     var formatted = (typeof processMacroText === "function") ? processMacroText(rawPreText, useRpNum) : rawPreText;
     // 先頭の「◇入院」「▼持参薬検認」「■持参薬」「◆外来」単独行を除去してスッキリさせる
     formatted = formatted.replace(/^(?:[\s\r\n]*)(?:◇入院|▼持参薬検認|■持参薬|◆外来)\s*[\r\n]+/g, "");
-    formatted = formatted.replace(/\n(?:◇入院|▼持参薬検認|■持参薬|◆外来)\s*\n/g, "\n");
+    formatted = formatted.replace(/\r\n(?:◇入院|▼持参薬検認|■持参薬|◆外来)\s*\r\n/g, "\r\n");
     // Rp番号付与時に「1) 　薬品名」のように残る番号直後の余分な空白を1つに詰める
     formatted = formatted.replace(/^(\d+\))[ \t\u3000]+/gm, "$1 ");
     return trimSummaryStr(formatted);
@@ -5509,9 +5522,9 @@ function reRenderSummaryBroughtInRx() {
             if (!kFormatted) continue;
             var stampInfo = kOrd.issueStamp ? (" / " + kOrd.issueStamp) : "";
             var headerLine = "▼" + jisanTypeLabel + " (" + (k + 1) + "/" + targetJisanList.length + "件目: " + kOrd.orderDate + (kOrd.orderTimeSlot ? " " + kOrd.orderTimeSlot : "") + stampInfo + ")";
-            combinedBlocks.push(headerLine + "\n" + kFormatted);
+            combinedBlocks.push(headerLine + "\r\n" + kFormatted);
         }
-        if (broughtInEl) broughtInEl.value = combinedBlocks.join("\n\n");
+        if (broughtInEl) broughtInEl.value = combinedBlocks.join("\r\n\r\n");
         if (broughtInBadge) {
             broughtInBadge.innerHTML = '<span style="background:#fff3cd; color:#b71c1c; border:1px solid #ffecb5; padding:1px 6px; border-radius:3px; font-weight:bold;">⚠️ ' +
                 escapeHtml(jisanTypeLabel) + ' が複数回（' + targetJisanList.length + '件）入力されているため全て結合しました</span>';
@@ -5551,13 +5564,13 @@ function processAndRenderSummaryMedications() {
             var tFormatted = formatOrderWithMacro(taiinOrders[t].rawPreText);
             if (tFormatted) {
                 if (taiinOrders.length > 1) {
-                    taiinBlocks.push("▼[退院処方 " + (t + 1) + " (" + taiinOrders[t].orderDate + ")]\n" + tFormatted);
+                    taiinBlocks.push("▼[退院処方 " + (t + 1) + " (" + taiinOrders[t].orderDate + ")]\r\n" + tFormatted);
                 } else {
                     taiinBlocks.push(tFormatted);
                 }
             }
         }
-        if (dischargeEl) dischargeEl.value = taiinBlocks.length > 0 ? taiinBlocks.join("\n\n") : "なし";
+        if (dischargeEl) dischargeEl.value = taiinBlocks.length > 0 ? taiinBlocks.join("\r\n\r\n") : "なし";
         if (dischargeBadge) {
             dischargeBadge.innerHTML = '<span style="color:#1565c0; font-weight:bold;">✔ [退院]処方 ' + taiinOrders.length + '件取得</span>';
         }
@@ -6096,7 +6109,7 @@ function getSummarySelectedInHospText() {
         if (!std) continue;
         lines.push(std);
     }
-    return lines.join("\n");
+    return lines.join("\r\n");
 }
 // ⑤内の指定見出し行（【主病名】・【併存疾患】・【手術】）のみをピンポイント更新・挿入・削除するヘルパー
 function upsertOrRemoveSummaryHeaderLine(lines, tagPrefix, newValue, afterTagPrefixes) {
@@ -6171,8 +6184,8 @@ function updateSummaryCombinedPreview(source) {
         if (comorb) parts.push("【併存疾患】" + comorb);
         if (validSurg) parts.push("【手術】" + validSurg);
         if (saishinVal) parts.push("【次回受診】" + saishinVal);
-        if (inhospTxt) parts.push("【入院中に使用した主な薬剤】\n" + inhospTxt);
-        previewEl.value = parts.join("\n");
+        if (inhospTxt) parts.push("【入院中に使用した主な薬剤】\r\n" + inhospTxt);
+        previewEl.value = parts.join("\r\n");
         if (!summaryState.knownAutoDrugLines) summaryState.knownAutoDrugLines = {};
         for (var i0 = 0; i0 < rows.length; i0++) {
             var s0 = getSummaryDrugRowStdLine(rows[i0]);
@@ -6183,29 +6196,29 @@ function updateSummaryCombinedPreview(source) {
         autoResizeSummaryTextareas();
         return;
     }
-    var lines = currentVal.replace(/\r\n/g, "\n").replace(/\r/g, "\n").split("\n");
+    var lines = currentVal.replace(/\r\n/g, "\r\n").replace(/\r/g, "\r\n").split("\r\n");
     // 1. ①の特定項目が編集された場合は、該当する見出し行のみをピンポイント更新し、他の手書き内容は一切消さない
     if (source === "main_disease") {
         upsertOrRemoveSummaryHeaderLine(lines, "【主病名】", mainDis, []);
-        previewEl.value = lines.join("\n");
+        previewEl.value = lines.join("\r\n");
         autoResizeSummaryTextareas();
         return;
     }
     if (source === "comorbidities") {
         upsertOrRemoveSummaryHeaderLine(lines, "【併存疾患】", comorb, ["【主病名】"]);
-        previewEl.value = lines.join("\n");
+        previewEl.value = lines.join("\r\n");
         autoResizeSummaryTextareas();
         return;
     }
     if (source === "surgery") {
         upsertOrRemoveSummaryHeaderLine(lines, "【手術】", validSurg, ["【主病名】", "【併存疾患】"]);
-        previewEl.value = lines.join("\n");
+        previewEl.value = lines.join("\r\n");
         autoResizeSummaryTextareas();
         return;
     }
     if (source === "saishin") {
         upsertOrRemoveSummaryHeaderLine(lines, "【次回受診】", saishinVal, ["【主病名】", "【併存疾患】", "【手術】"]);
-        previewEl.value = lines.join("\n");
+        previewEl.value = lines.join("\r\n");
         autoResizeSummaryTextareas();
         return;
     }
@@ -6295,7 +6308,7 @@ function updateSummaryCombinedPreview(source) {
             lines.push(newDrugLines[nIdx]);
         }
     }
-    previewEl.value = lines.join("\n");
+    previewEl.value = lines.join("\r\n");
     autoResizeSummaryTextareas();
 }
 // 各項目および一括テキストのクリップボードコピー
@@ -6329,7 +6342,7 @@ function copySummarySection(sectionType) {
         if (cVal) dsLines.push("【併存疾患】" + cVal);
         if (sVal && sVal !== "なし") dsLines.push("【手術】" + sVal);
         if (saiVal) dsLines.push("【次回受診】" + saiVal);
-        textToCopy = dsLines.join("\n");
+        textToCopy = dsLines.join("\r\n");
         label = "病名・手術・受診情報";
     } else if (sectionType === "discharge_rx") {
         var dEl = document.getElementById("txt-summary-discharge-rx");
@@ -6356,5 +6369,512 @@ function copySummarySection(sectionType) {
         yrShowAlert("「" + label + "」をクリップボードにコピーしました！", "info");
     } catch(e) {
         yrShowAlert("コピーに失敗しました。", "error");
+    }
+}
+
+
+// =========================================================
+// 病棟サマリ (単体患者の処方変更・持参薬残日数・定期切れ・退院ワード検証)
+// =========================================================
+var wardSummaryState = {
+    isFetching: false,
+    fetchToken: 0,
+    patient: null,
+    shohoOrders: [],
+    chushaOrders: [],
+    karteNotes: [],
+    jisanAdjustments: {}
+};
+
+function adjustWardSummaryJisan(adjKey, delta) {
+    if (!wardSummaryState.jisanAdjustments) wardSummaryState.jisanAdjustments = {};
+    var cur = wardSummaryState.jisanAdjustments[adjKey] || 0;
+    wardSummaryState.jisanAdjustments[adjKey] = cur + delta;
+    renderWardSummaryPanels();
+}
+
+function onWardSummaryJisanDirectChange(adjKey, newVal, baseDiff) {
+    var num = parseInt(newVal, 10);
+    if (isNaN(num)) num = baseDiff;
+    if (!wardSummaryState.jisanAdjustments) wardSummaryState.jisanAdjustments = {};
+    wardSummaryState.jisanAdjustments[adjKey] = num - baseDiff;
+    renderWardSummaryPanels();
+}
+
+function resetWardSummaryJisanAdj() {
+    wardSummaryState.jisanAdjustments = {};
+    renderWardSummaryPanels();
+}
+
+function fetchWardSummaryData() {
+    if (wardSummaryState.isFetching) {
+        yrShowAlert("現在データ収集中です。完了までお待ちください。", "info");
+        return;
+    }
+    var ipt = document.getElementById("ipt-ward-summary-patient-search");
+    var pId = ipt ? ipt.value.trim() : "";
+    if (!pId) {
+        yrShowAlert("患者IDを入力または選択してください。", "error");
+        return;
+    }
+    var paddedId = pId;
+    if (/^\d+$/.test(pId) && pId.length < 7) {
+        paddedId = ("0000000" + pId).slice(-7);
+        if (ipt) ipt.value = paddedId;
+    }
+    var pObj = (typeof findPatientById === "function") ? findPatientById(paddedId) : null;
+    if (!pObj && typeof findPatientById === "function") {
+        pObj = findPatientById(pId);
+    }
+    wardSummaryState.patient = pObj;
+
+    var userId = (typeof currentSystemId !== "undefined" && currentSystemId) ? currentSystemId : "pharmacy";
+    var myToken = new Date().getTime();
+    wardSummaryState.fetchToken = myToken;
+    wardSummaryState.isFetching = true;
+
+    var badge = document.getElementById("ward-summary-status-badge");
+    if (badge) badge.innerHTML = '<span style="color:#0288d1;">⏳ データ収集中...</span>';
+    var btn = document.getElementById("btn-ward-summary-fetch");
+    if (btn) btn.disabled = true;
+
+    var today = new Date();
+    var todayStr = ("000" + today.getFullYear()).slice(-4) + "/" + ("0" + (today.getMonth() + 1)).slice(-2) + "/" + ("0" + today.getDate()).slice(-2);
+    
+    // 入院開始日の算出（持参薬を拾うために入院初期から検索）
+    var hospDays = (pObj && pObj.daysInHosp) ? parseInt(pObj.daysInHosp, 10) : 0;
+    var rDays = (!isNaN(hospDays) && hospDays > 0) ? Math.min(550, Math.max(hospDays + 14, 60)) : 90;
+    var fetchStart = addSummaryDaysStr(todayStr, -rDays);
+    var fetchEnd = addSummaryDaysStr(todayStr, 14);
+    var yesterdayStr = addSummaryDaysStr(todayStr, -1);
+
+    var shohoUrl = "http://10.5.171.42:8082/karte/karte.php"
+        + "?disp_flgs=0/0/2/0/0/0/1/0/0/1/0/0/0/0/0"
+        + "&kanja_id=" + encodeURIComponent(paddedId)
+        + "&user_id=" + encodeURIComponent(userId)
+        + "&start_date=" + encodeURIComponent(fetchStart)
+        + "&end_date=" + encodeURIComponent(fetchEnd)
+        + "&hakkou_date=" + encodeURIComponent(fetchStart)
+        + "&kijun_date=" + encodeURIComponent(todayStr)
+        + "&range_date=" + encodeURIComponent(rDays + "/7/1/1")
+        + "&disp_selectsection=&disp_selectukind=1,2,3,91&order_kind_set_code=0011&order_kind_code_str=0011&no_log_flg=1&disp_zoom=100"
+        + "&_t=" + new Date().getTime();
+
+    var chushaUrl = "http://10.5.171.42:8082/karte/karte.php"
+        + "?disp_flgs=0/0/2/0/0/0/1/0/0/1/0/0/0/0/0"
+        + "&kanja_id=" + encodeURIComponent(paddedId)
+        + "&user_id=" + encodeURIComponent(userId)
+        + "&start_date=" + encodeURIComponent(addSummaryDaysStr(todayStr, -14))
+        + "&end_date=" + encodeURIComponent(fetchEnd)
+        + "&hakkou_date=" + encodeURIComponent(addSummaryDaysStr(todayStr, -14))
+        + "&kijun_date=" + encodeURIComponent(todayStr)
+        + "&range_date=21/7/1/1&disp_selectsection=&disp_selectukind=1,2,3,91&order_kind_set_code=031&order_kind_code_str=0031&no_log_flg=1&disp_zoom=100"
+        + "&_t=" + new Date().getTime();
+
+    var notesUrl = "http://10.5.171.42:8082/karte/karte.php"
+        + "?disp_flgs=1/0/0/0/0/0/1/0/0/1/0/0/0/0/0"
+        + "&kanja_id=" + encodeURIComponent(paddedId)
+        + "&user_id=" + encodeURIComponent(userId)
+        + "&start_date=" + encodeURIComponent(yesterdayStr)
+        + "&end_date=" + encodeURIComponent(todayStr)
+        + "&kijun_date=" + encodeURIComponent(todayStr)
+        + "&range_date=3/7/1/1&no_log_flg=1&disp_zoom=100"
+        + "&_t=" + new Date().getTime();
+
+    // 逐次フェッチ実行 (処方 -> 注射 -> カルテ記事)
+    fetchSummaryHtmlViaIframe(shohoUrl, 30000, function(bodyShoho, errShoho) {
+        if (myToken !== wardSummaryState.fetchToken) return;
+        var parsedShoho = (!errShoho && bodyShoho) ? parseSummaryKarteOrders(bodyShoho, "0011") : { orders: [] };
+        wardSummaryState.shohoOrders = parsedShoho.orders || [];
+
+        fetchSummaryHtmlViaIframe(chushaUrl, 30000, function(bodyChusha, errChusha) {
+            if (myToken !== wardSummaryState.fetchToken) return;
+            var parsedChusha = (!errChusha && bodyChusha) ? parseSummaryKarteOrders(bodyChusha, "0031") : { orders: [] };
+            wardSummaryState.chushaOrders = parsedChusha.orders || [];
+
+            fetchSummaryHtmlViaIframe(notesUrl, 30000, function(bodyNotes, errNotes) {
+                if (myToken !== wardSummaryState.fetchToken) return;
+                wardSummaryState.karteNotes = (!errNotes && bodyNotes) ? parseWardSummaryNotes(bodyNotes) : [];
+
+                wardSummaryState.isFetching = false;
+                if (btn) btn.disabled = false;
+                if (badge) badge.innerHTML = '<span style="color:#2e7d32;">✔ 取得完了 (' + (pObj ? escapeHtml(pObj.name) : paddedId) + ')</span>';
+
+                renderWardSummaryPanels(todayStr);
+            });
+        });
+    });
+}
+
+function parseWardSummaryNotes(bodyHtml) {
+    if (!bodyHtml) return [];
+    var results = [];
+    var preChunks = bodyHtml.split(/<pre\b[^>]*>/i);
+    for (var i = 1; i < preChunks.length; i++) {
+        var chunk = preChunks[i].split(/<\/pre>/i)[0];
+        var cleanTxt = stripSummaryHtmlTags(chunk).replace(/&nbsp;/gi, " ").trim();
+        if (cleanTxt) {
+            results.push(cleanTxt);
+        }
+    }
+    return results;
+}
+
+function renderWardSummaryPanels(todayStr) {
+    if (!todayStr) todayStr = getTodaySummaryStr();
+    var shoho = wardSummaryState.shohoOrders || [];
+    var chusha = wardSummaryState.chushaOrders || [];
+    var notes = wardSummaryState.karteNotes || [];
+    var d7Ago = addSummaryDaysStr(todayStr, -7);
+    var d14Ago = addSummaryDaysStr(todayStr, -14);
+    var todayDateObj = new Date(todayStr.replace(/\//g, "-"));
+
+    // ==========================================
+    // 1. 処方変更サマリ (先週 vs 今週 左右比較テーブル)
+    // ==========================================
+    // 抽出対象: 定期処方・臨時処方・注射 (※持参薬は下部専用テーブルで扱うため除外)
+    var prevMap = {}; // 8〜14日前の処方・指示
+    var currMap = {}; // 直近7日間の処方・指示
+    var allDrugKeys = {};
+
+    function processOrderForCompare(ord, isChusha) {
+        if (!ord || !ord.rps) return;
+        if (ord.category === "jisan_order") return; // 持参薬は別枠
+
+        var ordDate = ord.orderDate || todayStr;
+        for (var r = 0; r < ord.rps.length; r++) {
+            var rp = ord.rps[r];
+            var sDate = rp.startDate || ordDate;
+            var eDate = rp.endDate || (rp.duration ? addSummaryDaysStr(sDate, rp.duration - 1) : sDate);
+            var dNames = rp.drugs.join(", ");
+            var usage = rp.usageText || (isChusha ? "注射" : "");
+            var durStr = rp.duration ? (rp.duration + "日分") : "-";
+
+            // 今週判定: 直近7日以内に出されたか、または期間が直近7日以内に掛かっている
+            var isCurr = (sDate >= d7Ago && sDate <= todayStr) || (eDate >= d7Ago && sDate <= todayStr);
+            // 先週判定: 8〜14日前以前に出されたか、または期間が先週に掛かっていた
+            var isPrev = (sDate >= d14Ago && sDate < d7Ago) || (eDate >= d14Ago && sDate < d7Ago);
+
+            var itemObj = {
+                name: dNames,
+                usage: usage,
+                duration: durStr,
+                startDate: sDate,
+                endDate: eDate,
+                isChusha: isChusha,
+                category: ord.category || ""
+            };
+
+            allDrugKeys[dNames] = true;
+
+            if (isCurr) {
+                // 最新オーダを優先
+                if (!currMap[dNames] || currMap[dNames].startDate < sDate) {
+                    currMap[dNames] = itemObj;
+                }
+            }
+            if (isPrev) {
+                if (!prevMap[dNames] || prevMap[dNames].startDate < sDate) {
+                    prevMap[dNames] = itemObj;
+                }
+            }
+        }
+    }
+
+    // 処方と注射を走査
+    for (var sIdx = 0; sIdx < shoho.length; sIdx++) {
+        processOrderForCompare(shoho[sIdx], false);
+    }
+    for (var cIdx = 0; cIdx < chusha.length; cIdx++) {
+        processOrderForCompare(chusha[cIdx], true);
+    }
+
+    // 左右突き合わせ行の生成
+    var compareRows = [];
+    var countChanged = 0;
+
+    for (var drugName in allDrugKeys) {
+        if (!allDrugKeys.hasOwnProperty(drugName)) continue;
+        var pItem = prevMap[drugName];
+        var cItem = currMap[drugName];
+
+        var rowObj = {
+            drugName: drugName,
+            prev: pItem || null,
+            curr: cItem || null,
+            status: "unchanged",
+            statusLabel: "🟢 変更なし",
+            note: "-"
+        };
+
+        if (pItem && cItem) {
+            // 両方に存在
+            if (pItem.usage === cItem.usage) {
+                rowObj.status = "unchanged";
+                rowObj.statusLabel = "🟢 変更なし";
+                rowObj.note = "継続中";
+            } else {
+                rowObj.status = "changed";
+                rowObj.statusLabel = "🟠 用量変更";
+                rowObj.note = pItem.usage + " → " + cItem.usage;
+                countChanged++;
+            }
+        } else if (pItem && !cItem) {
+            // 先週のみ (中止または終了)
+            rowObj.status = "stopped";
+            rowObj.statusLabel = "🔴 中止・終了";
+            rowObj.note = (pItem.endDate ? pItem.endDate + " 終了" : "先週で中止");
+            countChanged++;
+        } else if (!pItem && cItem) {
+            // 今週のみ (新規追加)
+            rowObj.status = "added";
+            rowObj.statusLabel = "🆕 新規追加";
+            rowObj.note = (cItem.startDate ? cItem.startDate + " 開始" : "新規開始");
+            countChanged++;
+        }
+
+        compareRows.push(rowObj);
+    }
+
+    // ソート: 変更・追加・中止を上に、変更なしを下に
+    compareRows.sort(function(a, b) {
+        var priority = { "changed": 1, "added": 2, "stopped": 3, "unchanged": 4 };
+        return (priority[a.status] || 99) - (priority[b.status] || 99);
+    });
+
+    // 処方左右比較テーブルの描画
+    var tbodyCompare = document.getElementById("tbody-ward-summary-compare");
+    var badgeChanges = document.getElementById("badge-ward-summary-changes");
+    if (tbodyCompare) {
+        if (compareRows.length === 0) {
+            tbodyCompare.innerHTML = '<tr><td colspan="4" style="text-align:center; color:#999; padding:24px;">直近2週間の処方・注射オーダは見つかりませんでした</td></tr>';
+        } else {
+            var htmlCompare = "";
+            for (var cr = 0; cr < compareRows.length; cr++) {
+                var row = compareRows[cr];
+
+                // 先週セル
+                var prevCell = "";
+                if (row.prev) {
+                    var stoppedClass = (row.status === "stopped") ? ' class="ws-text-stopped"' : '';
+                    var pKindBadge = row.prev.isChusha ? '<span style="background:#fce4ec; color:#c2185b; font-size:9px; padding:1px 4px; border-radius:2px; margin-right:4px;">注射</span>' : '';
+                    prevCell = '<div' + stoppedClass + '>' + pKindBadge + '<b>' + escapeHtml(row.prev.name) + '</b><br><span style="color:#666;">' + escapeHtml(row.prev.usage) + ' (' + row.prev.duration + ')</span></div>';
+                } else {
+                    prevCell = '<span style="color:#aaa;">(なし)</span>';
+                }
+
+                // 判定バッジ
+                var statusCell = '<span class="ws-badge ws-badge-' + row.status + '">' + row.statusLabel + '</span>';
+
+                // 今週セル
+                var currCell = "";
+                if (row.curr) {
+                    var highlightClass = (row.status === "changed" || row.status === "added") ? ' class="ws-highlight-change"' : '';
+                    var cKindBadge = row.curr.isChusha ? '<span style="background:#fce4ec; color:#c2185b; font-size:9px; padding:1px 4px; border-radius:2px; margin-right:4px;">注射</span>' : '';
+                    currCell = '<div' + highlightClass + '>' + cKindBadge + '<b>' + escapeHtml(row.curr.name) + '</b><br><span style="color:#444;">' + escapeHtml(row.curr.usage) + ' (' + row.curr.duration + ')</span></div>';
+                } else {
+                    currCell = '<span style="color:#aaa;">(中止・なし)</span>';
+                }
+
+                // 詳細セル
+                var noteCell = '<span style="color:#555;">' + escapeHtml(row.note) + '</span>';
+
+                htmlCompare += '<tr style="border-bottom:1px solid #e0e0e0;">' +
+                    '<td style="padding:8px 10px; border:1px solid #e0e0e0; vertical-align:middle;">' + prevCell + '</td>' +
+                    '<td style="padding:8px 10px; border:1px solid #e0e0e0; text-align:center; vertical-align:middle;">' + statusCell + '</td>' +
+                    '<td style="padding:8px 10px; border:1px solid #e0e0e0; vertical-align:middle;">' + currCell + '</td>' +
+                    '<td style="padding:8px 10px; border:1px solid #e0e0e0; text-align:center; vertical-align:middle;">' + noteCell + '</td>' +
+                    '</tr>';
+            }
+            tbodyCompare.innerHTML = htmlCompare;
+        }
+    }
+    if (badgeChanges) {
+        if (countChanged > 0) {
+            badgeChanges.innerText = countChanged + "件の処方変更あり";
+            badgeChanges.className = "ws-badge ws-badge-changed";
+        } else {
+            badgeChanges.innerText = "変更なし (安定)";
+            badgeChanges.className = "ws-badge ws-badge-unchanged";
+        }
+    }
+
+    // ==========================================
+    // 2. 持参薬の残日数・終了予定 (医師再開指示分)
+    // ==========================================
+    var jisanList = [];
+    var seenJisan = {};
+    for (var j = 0; j < shoho.length; j++) {
+        var jOrd = shoho[j];
+        // ★重要: ユーザー指示に基づき【持参薬】（検認）ではなく医師再開指示の「jisan_order」のみ対象
+        if (jOrd.category === "jisan_order") {
+            for (var jr = 0; jr < jOrd.rps.length; jr++) {
+                var jRp = jOrd.rps[jr];
+                var jName = jRp.drugs.join(", ");
+                var jStart = jRp.startDate || jOrd.orderDate;
+                var jDays = jRp.duration || 1;
+                var jEnd = jRp.endDate || addSummaryDaysStr(jStart, jDays - 1);
+                var jKey = jName + "_" + jStart;
+                if (!seenJisan[jKey]) {
+                    seenJisan[jKey] = true;
+                    var endDateObj = new Date(jEnd.replace(/\//g, "-"));
+                    var diffDays = Math.round((endDateObj - todayDateObj) / (1000 * 60 * 60 * 24));
+                    jisanList.push({
+                        name: jName,
+                        inst: jRp.usageText,
+                        days: jDays,
+                        startDate: jStart,
+                        endDate: jEnd,
+                        remDays: diffDays
+                    });
+                }
+            }
+        }
+    }
+
+    // 残日数が少ない順にソート
+    jisanList.sort(function(a, b) {
+        return a.remDays - b.remDays;
+    });
+
+    var tbodyJisan = document.getElementById("tbody-ward-summary-jisan");
+    var badgeJisan = document.getElementById("badge-ward-summary-jisan");
+    var pId = wardSummaryState.patient ? (wardSummaryState.patient.id || "p") : "curr";
+    if (tbodyJisan) {
+        if (jisanList.length === 0) {
+            tbodyJisan.innerHTML = '<tr><td colspan="6" style="text-align:center; color:#999; padding:20px;">医師指示による持参薬再開オーダは見つかりませんでした</td></tr>';
+        } else {
+            var htmlJisan = "";
+            for (var jl = 0; jl < jisanList.length; jl++) {
+                var ji = jisanList[jl];
+                var adjKey = pId + "_" + ji.name.replace(/[^a-zA-Z0-9\u3040-\u30ff\u4e00-\u9faf]/g, "_");
+                var offset = (wardSummaryState.jisanAdjustments && wardSummaryState.jisanAdjustments[adjKey]) || 0;
+                var currentRem = ji.remDays + offset;
+
+                var remBadge = "";
+                if (currentRem < 0) {
+                    remBadge = '<span class="ws-rem-danger">⚠️ 終了済 (' + Math.abs(currentRem) + '日超過)</span>';
+                } else if (currentRem <= 3) {
+                    remBadge = '<span class="ws-rem-warning">⚠️ 残り ' + currentRem + ' 日</span>';
+                } else {
+                    remBadge = '<span class="ws-rem-safe">残り ' + currentRem + ' 日</span>';
+                }
+
+                var adjBadge = (offset !== 0) ? '<span class="ws-adj-badge">手動: ' + (offset > 0 ? '+' : '') + offset + '日</span>' : '';
+                var escapedAdjKey = escapeHtml(adjKey);
+
+                var controlHtml = 
+                    '<div class="ws-adj-control">' +
+                    '<button type="button" class="ws-adj-btn" title="-1日" onclick="adjustWardSummaryJisan(\'' + escapedAdjKey + '\', -1)">-1</button>' +
+                    '<input type="number" class="ws-adj-input" value="' + currentRem + '" onchange="onWardSummaryJisanDirectChange(\'' + escapedAdjKey + '\', this.value, ' + ji.remDays + ')">' +
+                    '<button type="button" class="ws-adj-btn" title="+1日" onclick="adjustWardSummaryJisan(\'' + escapedAdjKey + '\', 1)">+1</button>' +
+                    adjBadge +
+                    '</div>';
+
+                htmlJisan += '<tr style="border-bottom:1px solid #e0e0e0;">' +
+                    '<td style="padding:8px 10px; border:1px solid #e0e0e0; vertical-align:middle;"><b>' + escapeHtml(ji.name) + '</b></td>' +
+                    '<td style="padding:8px 10px; border:1px solid #e0e0e0; vertical-align:middle;">' + escapeHtml(ji.inst) + '</td>' +
+                    '<td style="padding:8px 10px; border:1px solid #e0e0e0; text-align:center; vertical-align:middle;">' + ji.days + '日分</td>' +
+                    '<td style="padding:8px 10px; border:1px solid #e0e0e0; text-align:center; vertical-align:middle;">' + ji.startDate + '</td>' +
+                    '<td style="padding:8px 10px; border:1px solid #e0e0e0; text-align:center; font-weight:bold; vertical-align:middle;">' + ji.endDate + '</td>' +
+                    '<td style="padding:8px 10px; border:1px solid #e0e0e0; text-align:center; vertical-align:middle;">' + remBadge + '<br>' + controlHtml + '</td>' +
+                    '</tr>';
+            }
+            tbodyJisan.innerHTML = htmlJisan;
+        }
+    }
+    if (badgeJisan) {
+        badgeJisan.innerText = jisanList.length + "剤";
+    }
+
+    // ==========================================
+    // 3. 定期処方の更新・切れアラート (直近3日以内)
+    // ==========================================
+    var teikiAlerts = [];
+    var seenTeiki = {};
+    for (var t = 0; t < shoho.length; t++) {
+        var tOrd = shoho[t];
+        if (tOrd.category === "inhosp_rx") {
+            for (var tr = 0; tr < tOrd.rps.length; tr++) {
+                var tRp = tOrd.rps[tr];
+                if (tRp.isTonyo || tRp.isGaiyo) continue;
+                var tEnd = tRp.endDate;
+                if (!tEnd) continue;
+                var tEndDateObj = new Date(tEnd.replace(/\//g, "-"));
+                var tDiff = Math.round((tEndDateObj - todayDateObj) / (1000 * 60 * 60 * 24));
+                var tNames = tRp.drugs.join(", ");
+                var tKey = tNames + "_" + tEnd;
+                if (tDiff <= 3 && !seenTeiki[tKey]) {
+                    seenTeiki[tKey] = true;
+                    teikiAlerts.push({
+                        name: tNames,
+                        inst: tRp.usageText,
+                        endDate: tEnd,
+                        diff: tDiff
+                    });
+                }
+            }
+        }
+    }
+
+    var contentTeiki = document.getElementById("content-ward-summary-teiki");
+    var badgeTeiki = document.getElementById("badge-ward-summary-teiki");
+    if (contentTeiki) {
+        if (teikiAlerts.length === 0) {
+            contentTeiki.innerHTML = '<div style="color:#2e7d32; font-size:12px; padding:4px 0;">✔ 直近3日以内に切れる定期処方はありません（余裕あり）。</div>';
+        } else {
+            var htmlTeiki = "";
+            for (var ta = 0; ta < teikiAlerts.length; ta++) {
+                var itemA = teikiAlerts[ta];
+                var tBadge = itemA.diff < 0 ? '<span style="color:#c62828; font-weight:bold;">【本日切れ／終了済】</span>' : '<span style="color:#e65100; font-weight:bold;">【残り ' + itemA.diff + ' 日】</span>';
+                htmlTeiki += '<div class="ws-alert-box">' +
+                    '<div>' + tBadge + ' <b>' + escapeHtml(itemA.name) + '</b> (終了予定日: ' + itemA.endDate + ')</div>' +
+                    '<div style="color:#666; font-size:11px;">' + escapeHtml(itemA.inst) + '</div>' +
+                    '</div>';
+            }
+            contentTeiki.innerHTML = htmlTeiki;
+        }
+    }
+    if (badgeTeiki) {
+        if (teikiAlerts.length > 0) {
+            badgeTeiki.innerText = teikiAlerts.length + "件のアラート";
+            badgeTeiki.className = "ws-badge ws-badge-stopped";
+        } else {
+            badgeTeiki.innerText = "正常 (余裕あり)";
+            badgeTeiki.className = "ws-badge ws-badge-unchanged";
+        }
+    }
+
+    // ==========================================
+    // 4. 直近カルテ記事・退院キーワード抽出 (昨日〜本日)
+    // ==========================================
+    var dischargeMatches = [];
+    var dischargeRegex = /(?:退院|退院予定|退院調整|退院支援|転院|退院日)[^\r\n。]*[。]?/g;
+    for (var ni = 0; ni < notes.length; ni++) {
+        var noteTxt = notes[ni];
+        var match;
+        while ((match = dischargeRegex.exec(noteTxt)) !== null) {
+            var sentence = match[0].trim();
+            if (sentence.length >= 3 && dischargeMatches.indexOf(sentence) === -1) {
+                dischargeMatches.push(sentence);
+            }
+        }
+    }
+
+    var contentDisc = document.getElementById("content-ward-summary-discharge");
+    var badgeDisc = document.getElementById("badge-ward-summary-discharge");
+    if (contentDisc) {
+        if (dischargeMatches.length === 0) {
+            contentDisc.innerHTML = '<div style="color:#888; font-size:12px; padding:4px 0;">昨日〜今日のカルテ記事に退院・転院に関するキーワードは見つかりませんでした。</div>';
+        } else {
+            var htmlDisc = "";
+            for (var dm = 0; dm < dischargeMatches.length; dm++) {
+                htmlDisc += '<div class="ws-discharge-item">' + escapeHtml(dischargeMatches[dm]) + '</div>';
+            }
+            contentDisc.innerHTML = htmlDisc;
+        }
+    }
+    if (badgeDisc) {
+        badgeDisc.innerText = dischargeMatches.length + "件ヒット";
     }
 }
