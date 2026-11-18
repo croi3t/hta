@@ -10509,7 +10509,8 @@ function updateMyDisplayNameMain() {
         function updatePatientDropdowns() {
             var summarySel = document.getElementById('sel-summary-patient-dropdown');
             var medAdjSel = document.getElementById('sel-med-adj-patient-dropdown-2026');
-            if (!summarySel && !medAdjSel) return;
+            var wardSummarySel = document.getElementById('sel-ward-summary-patient-dropdown');
+            if (!summarySel && !medAdjSel && !wardSummarySel) return;
             var list = [];
             if (typeof getCurrentPatientsList === 'function') {
                 try { list = getCurrentPatientsList() || []; } catch(e) {}
@@ -11018,12 +11019,12 @@ function updateMyDisplayNameMain() {
             var targetPane = document.getElementById(tabId);
             addClass(targetPane, 'yr-show');
             addClass(targetPane, 'yr-active');
-            if (tabId === 'yr-tab-macro' || tabId === 'yr-tab-settings' || tabId === 'yr-tab-abbr' || tabId === 'yr-tab-med-adj' || tabId === 'yr-tab-med-adj-2026' || tabId === 'yr-tab-summary') {
+            if (tabId === 'yr-tab-macro' || tabId === 'yr-tab-settings' || tabId === 'yr-tab-abbr' || tabId === 'yr-tab-med-adj' || tabId === 'yr-tab-med-adj-2026' || tabId === 'yr-tab-summary' || tabId === 'yr-tab-ward-summary') {
                 document.getElementById('yr-main-controls').style.display = 'none';
             } else {
                 document.getElementById('yr-main-controls').style.display = 'flex';
             }
-            if (tabId === 'yr-tab-summary' || tabId === 'yr-tab-med-adj-2026') {
+            if (tabId === 'yr-tab-summary' || tabId === 'yr-tab-med-adj-2026' || tabId === 'yr-tab-ward-summary') {
                 if (typeof updatePatientDropdowns === 'function') {
                     updatePatientDropdowns();
                 }
@@ -16583,14 +16584,12 @@ function fetchWardSummaryData() {
         yrShowAlert("患者IDを入力または選択してください。", "error");
         return;
     }
-    var paddedId = pId;
-    if (/^\d+$/.test(pId) && pId.length < 7) {
-        paddedId = ("0000000" + pId).slice(-7);
-        if (ipt) ipt.value = paddedId;
-    }
-    var pObj = (typeof findPatientById === "function") ? findPatientById(paddedId) : null;
-    if (!pObj && typeof findPatientById === "function") {
-        pObj = findPatientById(pId);
+
+    // 患者オブジェクトの解決（ボード登録患者または直接ID）
+    var pObj = (typeof findPatientById === "function") ? findPatientById(pId) : null;
+    var rawId = pObj ? String(pObj.id).replace(/^0+/, "") : pId.replace(/^0+/, "");
+    if (!pObj) {
+        pObj = { id: rawId, name: "ID:" + rawId, disease: "", daysInHosp: "" };
     }
     wardSummaryState.patient = pObj;
 
@@ -16608,43 +16607,72 @@ function fetchWardSummaryData() {
     var todayStr = ("000" + today.getFullYear()).slice(-4) + "/" + ("0" + (today.getMonth() + 1)).slice(-2) + "/" + ("0" + today.getDate()).slice(-2);
     
     // 入院開始日の算出（持参薬を拾うために入院初期から検索）
-    var hospDays = (pObj && pObj.daysInHosp) ? parseInt(pObj.daysInHosp, 10) : 0;
+    var hospDays = parseInt(pObj.daysInHosp, 10);
     var rDays = (!isNaN(hospDays) && hospDays > 0) ? Math.min(550, Math.max(hospDays + 14, 60)) : 90;
     var fetchStart = addSummaryDaysStr(todayStr, -rDays);
+    if (pObj.admissionDate) {
+        var aDatePad = padSummaryDateStr(pObj.admissionDate);
+        if (aDatePad) {
+            var candStart = addSummaryDaysStr(aDatePad, -10);
+            if (candStart < fetchStart) fetchStart = candStart;
+        }
+    }
     var fetchEnd = addSummaryDaysStr(todayStr, 14);
     var yesterdayStr = addSummaryDaysStr(todayStr, -1);
 
+    // 処方・持参薬URL (0011) - サマリ自動生成と完全一致
     var shohoUrl = "http://10.5.171.42:8082/karte/karte.php"
         + "?disp_flgs=0/0/2/0/0/0/1/0/0/1/0/0/0/0/0"
-        + "&kanja_id=" + encodeURIComponent(paddedId)
+        + "&kanja_id=" + encodeURIComponent(rawId)
         + "&user_id=" + encodeURIComponent(userId)
-        + "&start_date=" + encodeURIComponent(fetchStart)
-        + "&end_date=" + encodeURIComponent(fetchEnd)
-        + "&hakkou_date=" + encodeURIComponent(fetchStart)
-        + "&kijun_date=" + encodeURIComponent(todayStr)
-        + "&range_date=" + encodeURIComponent(rDays + "/7/1/1")
-        + "&disp_selectsection=&disp_selectukind=1,2,3,91&order_kind_set_code=0011&order_kind_code_str=0011&no_log_flg=1&disp_zoom=100"
+        + "&start_date=" + fetchStart
+        + "&end_date=" + fetchEnd
+        + "&hakkou_date=" + fetchStart
+        + "&kijun_date=" + todayStr
+        + "&range_date=" + rDays + "/7/1/1"
+        + "&disp_selectsection="
+        + "&disp_selectukind=1,2,3,91"
+        + "&disp_usection_code=0"
+        + "&disp_ukind_code=2122"
+        + "&order_kind_set_code=0011"
+        + "&order_kind_code_str=0011"
+        + "&no_log_flg=1&nyugai_kind=&min_date=&max_date=&disp_zoom=100"
         + "&_t=" + new Date().getTime();
 
+    // 注射URL (0031) - サマリ自動生成と完全一致
     var chushaUrl = "http://10.5.171.42:8082/karte/karte.php"
         + "?disp_flgs=0/0/2/0/0/0/1/0/0/1/0/0/0/0/0"
-        + "&kanja_id=" + encodeURIComponent(paddedId)
+        + "&kanja_id=" + encodeURIComponent(rawId)
         + "&user_id=" + encodeURIComponent(userId)
-        + "&start_date=" + encodeURIComponent(addSummaryDaysStr(todayStr, -14))
-        + "&end_date=" + encodeURIComponent(fetchEnd)
-        + "&hakkou_date=" + encodeURIComponent(addSummaryDaysStr(todayStr, -14))
-        + "&kijun_date=" + encodeURIComponent(todayStr)
-        + "&range_date=21/7/1/1&disp_selectsection=&disp_selectukind=1,2,3,91&order_kind_set_code=031&order_kind_code_str=0031&no_log_flg=1&disp_zoom=100"
+        + "&start_date=" + fetchStart
+        + "&end_date=" + fetchEnd
+        + "&hakkou_date=" + fetchStart
+        + "&kijun_date=" + todayStr
+        + "&range_date=" + rDays + "/7/1/1"
+        + "&disp_selectsection="
+        + "&disp_selectukind=1,2,3,91"
+        + "&disp_usection_code=0"
+        + "&disp_ukind_code=2122"
+        + "&order_kind_set_code=0031"
+        + "&order_kind_code_str=0031"
+        + "&no_log_flg=1&nyugai_kind=&min_date=&max_date=&disp_zoom=100"
         + "&_t=" + new Date().getTime();
 
+    // 直近カルテ記事URL (昨日〜本日)
     var notesUrl = "http://10.5.171.42:8082/karte/karte.php"
         + "?disp_flgs=1/0/0/0/0/0/1/0/0/1/0/0/0/0/0"
-        + "&kanja_id=" + encodeURIComponent(paddedId)
+        + "&kanja_id=" + encodeURIComponent(rawId)
         + "&user_id=" + encodeURIComponent(userId)
-        + "&start_date=" + encodeURIComponent(yesterdayStr)
-        + "&end_date=" + encodeURIComponent(todayStr)
-        + "&kijun_date=" + encodeURIComponent(todayStr)
-        + "&range_date=3/7/1/1&no_log_flg=1&disp_zoom=100"
+        + "&start_date=" + yesterdayStr
+        + "&end_date=" + todayStr
+        + "&hakkou_date=" + yesterdayStr
+        + "&kijun_date=" + todayStr
+        + "&range_date=3/7/1/1"
+        + "&disp_selectsection="
+        + "&disp_selectukind=1,2,3,91"
+        + "&disp_usection_code=0"
+        + "&disp_ukind_code=2122"
+        + "&no_log_flg=1&disp_zoom=100"
         + "&_t=" + new Date().getTime();
 
     // 逐次フェッチ実行 (処方 -> 注射 -> カルテ記事)
@@ -16664,7 +16692,8 @@ function fetchWardSummaryData() {
 
                 wardSummaryState.isFetching = false;
                 if (btn) btn.disabled = false;
-                if (badge) badge.innerHTML = '<span style="color:#2e7d32;">✔ 取得完了 (' + (pObj ? escapeHtml(pObj.name) : paddedId) + ')</span>';
+                var displayName = pObj && pObj.name ? pObj.name : ("ID:" + rawId);
+                if (badge) badge.innerHTML = '<span style="color:#2e7d32;">✔ 取得完了 (' + escapeHtml(displayName) + ')</span>';
 
                 renderWardSummaryPanels(todayStr);
             });
