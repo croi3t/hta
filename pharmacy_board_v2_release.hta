@@ -1721,8 +1721,16 @@ function generateAbbreviation() {}
                     </div>
                 </div>
             </div>
-            <!-- タブ⑧: 病棟サマリ (特定患者の処方変更・持参薬残日数・退院ワード検証) -->
+            <!-- タブ⑧: 病棟サマリ (単体患者の詳細検証 ＆ 病棟一括チェック) -->
             <div id="yr-tab-ward-summary" class="yr-tab-pane">
+                <!-- モード切替バー (単体患者 vs 病棟一括) -->
+                <div style="display:flex; gap:8px; margin-bottom:12px; border-bottom:2px solid #1b5e20; padding-bottom:6px;">
+                    <button type="button" id="btn-ws-mode-single" onclick="switchWardSummaryMainMode('single')" style="padding:6px 16px; font-size:13px; font-weight:bold; border:1px solid #1b5e20; background:#1b5e20; color:#fff; border-radius:4px; cursor:pointer;">👤 単体患者サマリ (処方比較 ＆ 1週間カルテ)</button>
+                    <button type="button" id="btn-ws-mode-batch" onclick="switchWardSummaryMainMode('batch')" style="padding:6px 16px; font-size:13px; font-weight:bold; border:1px solid #ccc; background:#f8f9fa; color:#333; border-radius:4px; cursor:pointer;">🏥 病棟一括チェック (朝の一括確認)</button>
+                </div>
+
+                <!-- モード1: 単体患者サマリ -->
+                <div id="ws-mainpane-single">
                 <!-- 操作バー -->
                 <div style="background:#f1f8e9; border:1px solid #c5e1a5; border-radius:4px; padding:10px 14px; margin-bottom:12px;">
                     <div style="display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center; gap:8px;">
@@ -1879,6 +1887,83 @@ function generateAbbreviation() {}
                         <div style="color:#999; text-align:center; padding:30px;">患者を選択して「⚡ データ取得・分析」を実行してください</div>
                     </div>
                 </div> <!-- /ws-subpane-karte -->
+                </div> <!-- /ws-mainpane-single -->
+
+                <!-- モード2: 病棟一括チェック -->
+                <div id="ws-mainpane-batch" style="display:none;">
+                    <div style="background:#e8f5e9; border:1px solid #c8e6c9; border-radius:4px; padding:10px 14px; margin-bottom:12px;">
+                        <div style="display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center; gap:8px;">
+                            <div style="display:flex; flex-wrap:wrap; align-items:center; gap:10px;">
+                                <span style="font-size:13px; font-weight:bold; color:#1b5e20;">🏥 対象: <span id="ws-batch-ward-label">現在の病棟</span></span>
+                                <label style="font-size:12px; cursor:pointer; color:#333; margin:0;" title="OFFにすると処方・注射のみ収集するためさらに高速になります">
+                                    <input type="checkbox" id="chk-ws-batch-include-discharge" checked> 🏠 直近2日の退院ワードも抽出
+                                </label>
+                                <button type="button" id="btn-ws-batch-start" class="yr-btn" style="background:#2e7d32; color:#fff; font-size:12px; font-weight:bold; padding:5px 14px;" onclick="startWardBatchFetch()">⚡ 病棟一括チェック開始</button>
+                                <button type="button" id="btn-ws-batch-stop" class="yr-btn" style="background:#c62828; color:#fff; font-size:12px; font-weight:bold; padding:5px 12px; display:none;" onclick="stopWardBatchFetch()">⏹ 中断</button>
+                                <button type="button" id="btn-ws-batch-copy" class="yr-btn" style="background:#546e7a; color:#fff; font-size:12px; font-weight:bold; padding:5px 12px;" onclick="copyWardBatchMorningMemo()">📋 朝会用サマリをコピー</button>
+                            </div>
+                            <div id="ws-batch-status-badge" style="font-size:12px; font-weight:bold; color:#555;">
+                                待機中
+                            </div>
+                        </div>
+                        <div id="ws-batch-progress-wrap" style="display:none; margin-top:8px;">
+                            <div style="background:#c8e6c9; border-radius:4px; height:8px; width:100%; overflow:hidden;">
+                                <div id="ws-batch-progress-bar" style="background:#2e7d32; height:100%; width:0%; transition:width 0.2s;"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- KPIサマリフィルターバー -->
+                    <div style="display:flex; flex-wrap:wrap; gap:8px; margin-bottom:12px;">
+                        <div id="ws-kpi-all" onclick="filterWardBatchList('all')" style="flex:1 1 100px; background:#e3f2fd; border:2px solid #1976d2; border-radius:6px; padding:6px 10px; text-align:center; cursor:pointer;">
+                            <div style="font-size:16px; font-weight:bold; color:#1976d2;" id="ws-kpi-val-all">0</div>
+                            <div style="font-size:11px; color:#333;">全患者</div>
+                        </div>
+                        <div id="ws-kpi-action" onclick="filterWardBatchList('action')" style="flex:1 1 100px; background:#fff; border:1px solid #cfd8dc; border-radius:6px; padding:6px 10px; text-align:center; cursor:pointer;">
+                            <div style="font-size:16px; font-weight:bold; color:#c62828;" id="ws-kpi-val-action">0</div>
+                            <div style="font-size:11px; color:#333;">⚠️ 要対応</div>
+                        </div>
+                        <div id="ws-kpi-discharge" onclick="filterWardBatchList('discharge')" style="flex:1 1 100px; background:#fff; border:1px solid #cfd8dc; border-radius:6px; padding:6px 10px; text-align:center; cursor:pointer;">
+                            <div style="font-size:16px; font-weight:bold; color:#6a1b9a;" id="ws-kpi-val-discharge">0</div>
+                            <div style="font-size:11px; color:#333;">🏠 退院ワード</div>
+                        </div>
+                        <div id="ws-kpi-rxchange" onclick="filterWardBatchList('rxchange')" style="flex:1 1 100px; background:#fff; border:1px solid #cfd8dc; border-radius:6px; padding:6px 10px; text-align:center; cursor:pointer;">
+                            <div style="font-size:16px; font-weight:bold; color:#e65100;" id="ws-kpi-val-rxchange">0</div>
+                            <div style="font-size:11px; color:#333;">🔄 処方変更</div>
+                        </div>
+                        <div id="ws-kpi-teiki" onclick="filterWardBatchList('teiki')" style="flex:1 1 100px; background:#fff; border:1px solid #cfd8dc; border-radius:6px; padding:6px 10px; text-align:center; cursor:pointer;">
+                            <div style="font-size:16px; font-weight:bold; color:#ef6c00;" id="ws-kpi-val-teiki">0</div>
+                            <div style="font-size:11px; color:#333;">⏳ 定期切れ</div>
+                        </div>
+                        <div id="ws-kpi-jisan" onclick="filterWardBatchList('jisan')" style="flex:1 1 100px; background:#fff; border:1px solid #cfd8dc; border-radius:6px; padding:6px 10px; text-align:center; cursor:pointer;">
+                            <div style="font-size:16px; font-weight:bold; color:#ad1457;" id="ws-kpi-val-jisan">0</div>
+                            <div style="font-size:11px; color:#333;">💊 持参薬注意</div>
+                        </div>
+                        <div id="ws-kpi-stable" onclick="filterWardBatchList('stable')" style="flex:1 1 100px; background:#fff; border:1px solid #cfd8dc; border-radius:6px; padding:6px 10px; text-align:center; cursor:pointer;">
+                            <div style="font-size:16px; font-weight:bold; color:#2e7d32;" id="ws-kpi-val-stable">0</div>
+                            <div style="font-size:11px; color:#333;">🟢 安定継続</div>
+                        </div>
+                    </div>
+
+                    <!-- 一覧テーブル -->
+                    <div style="background:#fff; border:1px solid #cfd8dc; border-radius:6px; overflow-x:auto;">
+                        <table style="width:100%; border-collapse:collapse; font-size:12px;">
+                            <thead>
+                                <tr style="background:#eceff1; color:#37474f;">
+                                    <th style="width:15%; padding:8px 10px; text-align:left; border:1px solid #cfd8dc;">病室 / 患者名</th>
+                                    <th style="width:20%; padding:8px 10px; text-align:left; border:1px solid #cfd8dc;">🏠 退院関連抜粋</th>
+                                    <th style="width:31%; padding:8px 10px; text-align:left; border:1px solid #cfd8dc;">🔄 処方・注射の変更 (先週比)</th>
+                                    <th style="width:14%; padding:8px 10px; text-align:left; border:1px solid #cfd8dc;">💊 持参薬アラート</th>
+                                    <th style="width:12%; padding:8px 10px; text-align:left; border:1px solid #cfd8dc;">⏳ 定期切れ</th>
+                                    <th style="width:8%; padding:8px 10px; text-align:center; border:1px solid #cfd8dc;">操作</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tbody-ws-batch-list">
+                                <tr><td colspan="6" style="text-align:center; color:#999; padding:30px;">「⚡ 病棟一括チェック開始」をクリックすると、現在の病棟患者を一括分析します</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div> <!-- /ws-mainpane-batch -->
             </div>
             </div> <!-- /yr-scroll-area -->
         </div>
@@ -17533,36 +17618,609 @@ function renderWardSummaryPanels(todayStr) {
     }
 
     // ==========================================
-    // 4. 直近カルテ記事・退院キーワード抽出 (昨日〜本日)
+    // 4. 直近カルテ記事・退院キーワード抽出 (出典: いつの誰の記録かを明記)
     // ==========================================
-    var dischargeMatches = [];
-    var dischargeRegex = /(?:退院|退院予定|退院調整|退院支援|転院|退院日)[^\r\n。]*[。]?/g;
-    for (var ni = 0; ni < notes.length; ni++) {
-        var noteTxt = notes[ni];
-        var match;
-        while ((match = dischargeRegex.exec(noteTxt)) !== null) {
-            var sentence = match[0].trim();
-            if (sentence.length >= 3 && dischargeMatches.indexOf(sentence) === -1) {
-                dischargeMatches.push(sentence);
-            }
-        }
-    }
+    var recsForDisc = wardSummaryState.karteRecords || [];
+    var dischargeMatches = extractWardDischargeMatches(recsForDisc, notes);
 
     var contentDisc = document.getElementById("content-ward-summary-discharge");
     var badgeDisc = document.getElementById("badge-ward-summary-discharge");
     if (contentDisc) {
         if (dischargeMatches.length === 0) {
-            contentDisc.innerHTML = '<div style="color:#888; font-size:12px; padding:4px 0;">昨日〜今日のカルテ記事に退院・転院に関するキーワードは見つかりませんでした。</div>';
+            contentDisc.innerHTML = '<div style="color:#888; font-size:12px; padding:4px 0;">直近のカルテ記事に退院・転院に関するキーワードは見つかりませんでした。</div>';
         } else {
             var htmlDisc = "";
             for (var dm = 0; dm < dischargeMatches.length; dm++) {
-                htmlDisc += '<div class="ws-discharge-item">' + escapeHtml(dischargeMatches[dm]) + '</div>';
+                var dmObj = dischargeMatches[dm];
+                var metaInfo = "";
+                if (dmObj.date || dmObj.author || dmObj.kind) {
+                    metaInfo = '<div style="font-size:10px; color:#6a1b9a; font-weight:bold; margin-bottom:2px;">' +
+                        (dmObj.date ? '📅 ' + escapeHtml(dmObj.date) + ' │ ' : '') +
+                        (dmObj.author ? '👤 ' + escapeHtml(dmObj.author) + (dmObj.role ? ' &lt;' + escapeHtml(dmObj.role) + '&gt;' : '') + ' ' : '') +
+                        (dmObj.kind ? '(' + escapeHtml(dmObj.kind) + ')' : '') +
+                        '</div>';
+                }
+                htmlDisc += '<div class="ws-discharge-item">' + metaInfo + '<div>' + escapeHtml(dmObj.sentence) + '</div></div>';
             }
             contentDisc.innerHTML = htmlDisc;
         }
     }
     if (badgeDisc) {
         badgeDisc.innerText = dischargeMatches.length + "件ヒット";
+    }
+}
+
+// 退院キーワード抽出ヘルパー（出典付き）
+function extractWardDischargeMatches(karteRecords, fallbackNotes) {
+    var dischargeMatches = [];
+    var seenSentences = {};
+    var dischargeRegex = /(?:退院|退院予定|退院調整|退院支援|転院|退院日)[^\r\n。]*[。]?/g;
+
+    if (karteRecords && karteRecords.length > 0) {
+        // 新しい順（末尾から）で抽出
+        for (var i = karteRecords.length - 1; i >= 0; i--) {
+            var rec = karteRecords[i];
+            var txt = rec.body || "";
+            if (!txt) continue;
+            dischargeRegex.lastIndex = 0;
+            var match;
+            while ((match = dischargeRegex.exec(txt)) !== null) {
+                var sentence = trimSummaryStr(match[0]);
+                var uKey = (rec.date || "") + "_" + sentence;
+                if (sentence.length >= 3 && !seenSentences[uKey]) {
+                    seenSentences[uKey] = true;
+                    dischargeMatches.push({
+                        date: rec.date || "",
+                        author: rec.author || "",
+                        role: rec.role || "",
+                        kind: rec.kind || "",
+                        sentence: sentence
+                    });
+                }
+            }
+        }
+    } else if (fallbackNotes && fallbackNotes.length > 0) {
+        for (var ni = 0; ni < fallbackNotes.length; ni++) {
+            var noteTxt = fallbackNotes[ni];
+            dischargeRegex.lastIndex = 0;
+            var m2;
+            while ((m2 = dischargeRegex.exec(noteTxt)) !== null) {
+                var s2 = trimSummaryStr(m2[0]);
+                if (s2.length >= 3 && !seenSentences[s2]) {
+                    seenSentences[s2] = true;
+                    dischargeMatches.push({
+                        date: "",
+                        author: "",
+                        role: "",
+                        kind: "",
+                        sentence: s2
+                    });
+                }
+            }
+        }
+    }
+    return dischargeMatches;
+}
+
+// =========================================================
+// モード切替 & 病棟一括チェック機能 (朝の一括確認)
+// =========================================================
+var wardBatchState = {
+    isRunning: false,
+    stopRequested: false,
+    runToken: 0,
+    filter: "all",
+    results: [], // { patient, compareChanges, jisanAlerts, teikiAlerts, dischargeMatches, hasAction, shohoOrders, chushaOrders }
+    wardName: ""
+};
+
+function switchWardSummaryMainMode(mode) {
+    var btnSingle = document.getElementById("btn-ws-mode-single");
+    var btnBatch = document.getElementById("btn-ws-mode-batch");
+    var paneSingle = document.getElementById("ws-mainpane-single");
+    var paneBatch = document.getElementById("ws-mainpane-batch");
+    if (!paneSingle || !paneBatch) return;
+
+    if (mode === "batch") {
+        paneSingle.style.display = "none";
+        paneBatch.style.display = "block";
+        if (btnSingle) {
+            btnSingle.style.background = "#f8f9fa";
+            btnSingle.style.color = "#333";
+            btnSingle.style.borderColor = "#ccc";
+        }
+        if (btnBatch) {
+            btnBatch.style.background = "#1b5e20";
+            btnBatch.style.color = "#fff";
+            btnBatch.style.borderColor = "#1b5e20";
+        }
+        var lbl = document.getElementById("ws-batch-ward-label");
+        if (lbl) {
+            var list = (typeof getCurrentPatientsList === "function") ? (getCurrentPatientsList() || []) : [];
+            var wName = (typeof currentWard !== "undefined" && currentWard) ? currentWard : "現在の病棟";
+            lbl.innerText = wName + " (" + list.length + "名)";
+        }
+    } else {
+        paneSingle.style.display = "block";
+        paneBatch.style.display = "none";
+        if (btnSingle) {
+            btnSingle.style.background = "#1b5e20";
+            btnSingle.style.color = "#fff";
+            btnSingle.style.borderColor = "#1b5e20";
+        }
+        if (btnBatch) {
+            btnBatch.style.background = "#f8f9fa";
+            btnBatch.style.color = "#333";
+            btnBatch.style.borderColor = "#ccc";
+        }
+    }
+}
+
+function stopWardBatchFetch() {
+    wardBatchState.stopRequested = true;
+    var badge = document.getElementById("ws-batch-status-badge");
+    if (badge) badge.innerHTML = '<span style="color:#e65100;">⏹ 中断処理中...</span>';
+}
+
+function startWardBatchFetch() {
+    if (wardBatchState.isRunning) {
+        yrShowAlert("現在一括チェックを実行中です。", "info");
+        return;
+    }
+    var list = [];
+    if (typeof getCurrentPatientsList === "function") {
+        try { list = getCurrentPatientsList() || []; } catch(e) {}
+    }
+    if (!list || list.length === 0) {
+        yrShowAlert("現在の病棟に患者が見つかりません。", "error");
+        return;
+    }
+
+    var includeDischarge = true;
+    var chkDisc = document.getElementById("chk-ws-batch-include-discharge");
+    if (chkDisc) includeDischarge = !!chkDisc.checked;
+
+    var myToken = new Date().getTime();
+    wardBatchState.runToken = myToken;
+    wardBatchState.isRunning = true;
+    wardBatchState.stopRequested = false;
+    wardBatchState.results = [];
+    wardBatchState.filter = "all";
+    wardBatchState.wardName = (typeof currentWard !== "undefined" && currentWard) ? currentWard : "病棟";
+
+    var btnStart = document.getElementById("btn-ws-batch-start");
+    var btnStop = document.getElementById("btn-ws-batch-stop");
+    var progWrap = document.getElementById("ws-batch-progress-wrap");
+    var progBar = document.getElementById("ws-batch-progress-bar");
+    var badge = document.getElementById("ws-batch-status-badge");
+
+    if (btnStart) btnStart.style.display = "none";
+    if (btnStop) btnStop.style.display = "inline-block";
+    if (progWrap) progWrap.style.display = "block";
+    if (progBar) progBar.style.width = "0%";
+
+    var tbody = document.getElementById("tbody-ws-batch-list");
+    if (tbody) tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:#0288d1; padding:24px;">⏳ カルテから情報を順次収集しています...</td></tr>';
+
+    var todayStr = (typeof getTodayYmdStr === "function") ? getTodayYmdStr() : "";
+    if (!todayStr) {
+        var td = new Date();
+        todayStr = ("000" + td.getFullYear()).slice(-4) + "/" + ("0" + (td.getMonth() + 1)).slice(-2) + "/" + ("0" + td.getDate()).slice(-2);
+    }
+    var todayDateObj = new Date(todayStr.replace(/-/g, "/"));
+    var dow = todayDateObj.getDay();
+    var diffToMon = (dow === 0) ? -6 : (1 - dow);
+    var thisMon = addSummaryDaysStr(todayStr, diffToMon);
+    var thisSun = addSummaryDaysStr(thisMon, 6);
+    var lastMon = addSummaryDaysStr(thisMon, -7);
+    var lastSun = addSummaryDaysStr(thisMon, -1);
+
+    var userId = (typeof currentSystemId !== "undefined" && currentSystemId) ? currentSystemId : "pharmacy";
+    var total = list.length;
+    var idx = 0;
+
+    function finishBatch(stopped) {
+        if (myToken !== wardBatchState.runToken) return;
+        wardBatchState.isRunning = false;
+        if (btnStart) btnStart.style.display = "inline-block";
+        if (btnStop) btnStop.style.display = "none";
+        if (badge) {
+            if (stopped) {
+                badge.innerHTML = '<span style="color:#e65100;">⏹ 中断 (' + idx + ' / ' + total + '名完了)</span>';
+            } else {
+                badge.innerHTML = '<span style="color:#2e7d32;">✔ 一括チェック完了 (' + total + '名)</span>';
+            }
+        }
+        renderWardBatchTable();
+    }
+
+    function processNext() {
+        if (myToken !== wardBatchState.runToken) return;
+        if (wardBatchState.stopRequested || idx >= total) {
+            finishBatch(wardBatchState.stopRequested);
+            return;
+        }
+
+        var pObj = list[idx];
+        var rawId = String(pObj.id || "");
+        var curNum = idx + 1;
+        if (badge) badge.innerHTML = '<span style="color:#0288d1;">⏳ 取得中: ' + curNum + ' / ' + total + '名 (' + escapeHtml(pObj.name || rawId) + ')</span>';
+        if (progBar) progBar.style.width = Math.round((idx / total) * 100) + "%";
+
+        var hospDays = parseInt(pObj.daysInHosp, 10);
+        var rDays = (!isNaN(hospDays) && hospDays > 0) ? Math.min(550, Math.max(hospDays + 14, 60)) : 90;
+        var fetchStart = addSummaryDaysStr(todayStr, -rDays);
+        if (pObj.admissionDate) {
+            var aPad = padSummaryDateStr(pObj.admissionDate);
+            if (aPad) {
+                var cStart = addSummaryDaysStr(aPad, -10);
+                if (cStart < fetchStart) fetchStart = cStart;
+            }
+        }
+        var fetchEnd = addSummaryDaysStr(todayStr, 14);
+        var yesterdayStr = addSummaryDaysStr(todayStr, -1);
+
+        var shohoUrl = "http://10.5.171.42:8082/karte/karte.php"
+            + "?disp_flgs=0/0/2/0/0/0/1/0/0/1/0/0/0/0/0"
+            + "&kanja_id=" + encodeURIComponent(rawId)
+            + "&user_id=" + encodeURIComponent(userId)
+            + "&start_date=" + fetchStart + "&end_date=" + fetchEnd + "&hakkou_date=" + fetchStart + "&kijun_date=" + todayStr
+            + "&range_date=" + rDays + "/7/1/1&disp_selectsection=&disp_selectukind=1,2,3,91&disp_usection_code=0&disp_ukind_code=2122"
+            + "&order_kind_set_code=0011&order_kind_code_str=0011&no_log_flg=1&nyugai_kind=&min_date=&max_date=&disp_zoom=100&_t=" + new Date().getTime();
+
+        var chushaUrl = "http://10.5.171.42:8082/karte/karte.php"
+            + "?disp_flgs=0/0/2/0/0/0/1/0/0/1/0/0/0/0/0"
+            + "&kanja_id=" + encodeURIComponent(rawId)
+            + "&user_id=" + encodeURIComponent(userId)
+            + "&start_date=" + fetchStart + "&end_date=" + fetchEnd + "&hakkou_date=" + fetchStart + "&kijun_date=" + todayStr
+            + "&range_date=" + rDays + "/7/1/1&disp_selectsection=&disp_selectukind=1,2,3,91&disp_usection_code=0&disp_ukind_code=2122"
+            + "&order_kind_set_code=0031&order_kind_code_str=0031&no_log_flg=1&nyugai_kind=&min_date=&max_date=&disp_zoom=100&_t=" + new Date().getTime();
+
+        var notesUrl = "http://10.5.171.42:8082/karte/karte.php"
+            + "?disp_flgs=1/0/1/0/0/0/1/0/0/1/0/0/0/0/0"
+            + "&kanja_id=" + encodeURIComponent(rawId)
+            + "&user_id=" + encodeURIComponent(userId)
+            + "&start_date=" + yesterdayStr + "&end_date=" + todayStr + "&hakkou_date=" + yesterdayStr + "&kijun_date=" + todayStr
+            + "&range_date=3/7/1/1&disp_selectsection=&disp_selectukind=1,2,3,91&disp_usection_code=0&disp_ukind_code=2122"
+            + "&no_log_flg=1&disp_zoom=100&_t=" + new Date().getTime();
+
+        fetchSummaryHtmlViaIframe(shohoUrl, 20000, function(bodyShoho, errShoho) {
+            if (myToken !== wardBatchState.runToken) return;
+            var shohoOrders = (!errShoho && bodyShoho) ? (parseSummaryKarteOrders(bodyShoho, "0011").orders || []) : [];
+
+            fetchSummaryHtmlViaIframe(chushaUrl, 20000, function(bodyChusha, errChusha) {
+                if (myToken !== wardBatchState.runToken) return;
+                var chushaOrders = (!errChusha && bodyChusha) ? (parseSummaryKarteOrders(bodyChusha, "0031").orders || []) : [];
+
+                function onNotesDone(karteRecs) {
+                    if (myToken !== wardBatchState.runToken) return;
+                    var analyzed = analyzeSinglePatientForBatch(pObj, shohoOrders, chushaOrders, karteRecs, todayStr, todayDateObj, thisMon, thisSun, lastMon, lastSun);
+                    wardBatchState.results.push(analyzed);
+
+                    idx++;
+                    if (progBar) progBar.style.width = Math.round((idx / total) * 100) + "%";
+                    renderWardBatchTable();
+                    setTimeout(processNext, 50);
+                }
+
+                if (includeDischarge) {
+                    fetchSummaryHtmlViaIframe(notesUrl, 20000, function(bodyNotes, errNotes) {
+                        var recs = (!errNotes && bodyNotes) ? parseWardSummaryKarteRecords(bodyNotes) : [];
+                        onNotesDone(recs);
+                    });
+                } else {
+                    onNotesDone([]);
+                }
+            });
+        });
+    }
+
+    processNext();
+}
+
+function analyzeSinglePatientForBatch(pObj, shoho, chusha, karteRecs, todayStr, todayDateObj, thisMon, thisSun, lastMon, lastSun) {
+    // 1. 処方変更判定
+    var prevMap = {};
+    var currMap = {};
+    var allDrugKeys = {};
+    function scanOrd(ord, isChusha) {
+        if (!ord || !ord.rps) return;
+        if (ord.category === "jisan_order" || ord.category === "jisan_kennin") return;
+        var ordDate = ord.orderDate || todayStr;
+        for (var r = 0; r < ord.rps.length; r++) {
+            var rp = ord.rps[r];
+            var sDate = rp.startDate || ordDate;
+            var eDate = rp.endDate || (rp.duration ? addSummaryDaysStr(sDate, rp.duration - 1) : sDate);
+            var dNames = rp.drugs.join(", ");
+            var usage = rp.usageText || (isChusha ? "注射" : "");
+            var isCurr = (sDate <= thisSun && eDate >= thisMon);
+            var isPrev = (sDate <= lastSun && eDate >= lastMon);
+            var obj = { name: dNames, usage: usage, startDate: sDate, endDate: eDate, isChusha: isChusha };
+            if (isCurr) {
+                allDrugKeys[dNames] = true;
+                if (!currMap[dNames] || currMap[dNames].startDate < sDate) currMap[dNames] = obj;
+            }
+            if (isPrev) {
+                allDrugKeys[dNames] = true;
+                if (!prevMap[dNames] || prevMap[dNames].startDate < sDate) prevMap[dNames] = obj;
+            }
+        }
+    }
+    for (var s = 0; s < shoho.length; s++) scanOrd(shoho[s], false);
+    for (var c = 0; c < chusha.length; c++) scanOrd(chusha[c], true);
+
+    var compareChanges = [];
+    for (var dKey in allDrugKeys) {
+        if (!allDrugKeys.hasOwnProperty(dKey)) continue;
+        var pItem = prevMap[dKey];
+        var cItem = currMap[dKey];
+        if (pItem && cItem) {
+            var pNorm = String(pItem.usage || "").replace(/\s*\d+\s*日分\s*/g, "").replace(/[\s\u3000]+/g, "");
+            var cNorm = String(cItem.usage || "").replace(/\s*\d+\s*日分\s*/g, "").replace(/[\s\u3000]+/g, "");
+            if (pNorm !== cNorm) {
+                compareChanges.push({ type: "changed", name: dKey, text: dKey + " 用量変更" });
+            }
+        } else if (pItem && !cItem) {
+            compareChanges.push({ type: "stopped", name: dKey, text: dKey + " 中止/終了" });
+        } else if (!pItem && cItem) {
+            compareChanges.push({ type: "added", name: dKey, text: dKey + " 追加" });
+        }
+    }
+
+    // 2. 持参薬アラート (残3日以内または超過)
+    var jisanAlerts = [];
+    var seenJisan = {};
+    for (var j = 0; j < shoho.length; j++) {
+        var jOrd = shoho[j];
+        if (jOrd.category === "jisan_order") {
+            for (var jr = 0; jr < jOrd.rps.length; jr++) {
+                var jRp = jOrd.rps[jr];
+                var jName = jRp.drugs.join(", ");
+                var jStart = jRp.startDate || jOrd.orderDate;
+                var jDays = jRp.duration || 1;
+                var jEnd = jRp.endDate || addSummaryDaysStr(jStart, jDays - 1);
+                var jKey = jName + "_" + jStart;
+                if (!seenJisan[jKey]) {
+                    seenJisan[jKey] = true;
+                    var endObj = new Date(jEnd.replace(/-/g, "/"));
+                    var rem = Math.round((endObj - todayDateObj) / (1000 * 60 * 60 * 24));
+                    if (rem <= 3) {
+                        jisanAlerts.push({ name: jName, remDays: rem, endDate: jEnd });
+                    }
+                }
+            }
+        }
+    }
+
+    // 3. 定期切れアラート (-1〜+3日)
+    var latestEnd = {};
+    for (var lt = 0; lt < shoho.length; lt++) {
+        var ltOrd = shoho[lt];
+        if (ltOrd.category === "inhosp_rx" || ltOrd.category === "jisan_order") {
+            for (var ltr = 0; ltr < ltOrd.rps.length; ltr++) {
+                var ltRp = ltOrd.rps[ltr];
+                if (!ltRp.endDate) continue;
+                var ltN = ltRp.drugs.join(", ");
+                if (!latestEnd[ltN] || ltRp.endDate > latestEnd[ltN]) latestEnd[ltN] = ltRp.endDate;
+            }
+        }
+    }
+    var teikiAlerts = [];
+    var seenTeiki = {};
+    for (var t = 0; t < shoho.length; t++) {
+        var tOrd = shoho[t];
+        if (tOrd.category === "inhosp_rx") {
+            var isTHeader = (tOrd.headerText && tOrd.headerText.indexOf("[定期]") !== -1);
+            for (var tr = 0; tr < tOrd.rps.length; tr++) {
+                var tRp = tOrd.rps[tr];
+                if (tRp.isTonyo || tRp.isGaiyo) continue;
+                if (!isTHeader && (!tRp.duration || tRp.duration < 2)) continue;
+                var tEnd = tRp.endDate;
+                if (!tEnd) continue;
+                var tName = tRp.drugs.join(", ");
+                if (latestEnd[tName] && latestEnd[tName] > tEnd) continue;
+                var tDiff = Math.round((new Date(tEnd.replace(/-/g, "/")) - todayDateObj) / (1000 * 60 * 60 * 24));
+                var tKey = tName + "_" + tEnd;
+                if (tDiff >= -1 && tDiff <= 3 && !seenTeiki[tKey]) {
+                    seenTeiki[tKey] = true;
+                    teikiAlerts.push({ name: tName, diff: tDiff, endDate: tEnd });
+                }
+            }
+        }
+    }
+
+    // 4. 退院ワード抽出
+    var dischargeMatches = extractWardDischargeMatches(karteRecs, []);
+
+    var hasAction = (compareChanges.length > 0 || jisanAlerts.length > 0 || teikiAlerts.length > 0 || dischargeMatches.length > 0);
+    return {
+        patient: pObj,
+        compareChanges: compareChanges,
+        jisanAlerts: jisanAlerts,
+        teikiAlerts: teikiAlerts,
+        dischargeMatches: dischargeMatches,
+        hasAction: hasAction,
+        shohoOrders: shoho,
+        chushaOrders: chusha
+    };
+}
+
+function filterWardBatchList(filterKey) {
+    wardBatchState.filter = filterKey || "all";
+    var keys = ["all", "action", "discharge", "rxchange", "teiki", "jisan", "stable"];
+    for (var i = 0; i < keys.length; i++) {
+        var el = document.getElementById("ws-kpi-" + keys[i]);
+        if (!el) continue;
+        if (keys[i] === wardBatchState.filter) {
+            el.style.background = "#e3f2fd";
+            el.style.border = "2px solid #1976d2";
+        } else {
+            el.style.background = "#fff";
+            el.style.border = "1px solid #cfd8dc";
+        }
+    }
+    renderWardBatchTable();
+}
+
+function renderWardBatchTable() {
+    var allRes = wardBatchState.results || [];
+    var cntAll = allRes.length;
+    var cntAction = 0, cntDisc = 0, cntRx = 0, cntTeiki = 0, cntJisan = 0, cntStable = 0;
+    for (var i = 0; i < allRes.length; i++) {
+        var r = allRes[i];
+        if (r.hasAction) cntAction++; else cntStable++;
+        if (r.dischargeMatches.length > 0) cntDisc++;
+        if (r.compareChanges.length > 0) cntRx++;
+        if (r.teikiAlerts.length > 0) cntTeiki++;
+        if (r.jisanAlerts.length > 0) cntJisan++;
+    }
+    var mapVals = { all: cntAll, action: cntAction, discharge: cntDisc, rxchange: cntRx, teiki: cntTeiki, jisan: cntJisan, stable: cntStable };
+    for (var k in mapVals) {
+        var el = document.getElementById("ws-kpi-val-" + k);
+        if (el) el.innerText = mapVals[k];
+    }
+
+    var tbody = document.getElementById("tbody-ws-batch-list");
+    if (!tbody) return;
+
+    var fKey = wardBatchState.filter || "all";
+    var filtered = [];
+    for (var j = 0; j < allRes.length; j++) {
+        var item = allRes[j];
+        if (fKey === "all") filtered.push(item);
+        else if (fKey === "action" && item.hasAction) filtered.push(item);
+        else if (fKey === "discharge" && item.dischargeMatches.length > 0) filtered.push(item);
+        else if (fKey === "rxchange" && item.compareChanges.length > 0) filtered.push(item);
+        else if (fKey === "teiki" && item.teikiAlerts.length > 0) filtered.push(item);
+        else if (fKey === "jisan" && item.jisanAlerts.length > 0) filtered.push(item);
+        else if (fKey === "stable" && !item.hasAction) filtered.push(item);
+    }
+
+    if (filtered.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:#999; padding:24px;">該当する患者はいません</td></tr>';
+        return;
+    }
+
+    var html = "";
+    for (var fi = 0; fi < filtered.length; fi++) {
+        var row = filtered[fi];
+        var p = row.patient;
+        var roomStr = p.room ? (escapeHtml(p.room) + " ") : "";
+
+        // 退院列
+        var discHtml = '<span style="color:#aaa;">-</span>';
+        if (row.dischargeMatches.length > 0) {
+            var d0 = row.dischargeMatches[0];
+            var metaStr = (d0.date ? d0.date.replace(/\d{4}年/, "") : "") + (d0.author ? " " + d0.author.split("(")[0] : "");
+            discHtml = '<div style="background:#f3e5f5; border-left:3px solid #9c27b0; padding:3px 6px; font-size:11px; color:#4a148c;">' +
+                (metaStr ? '<div style="font-size:10px; font-weight:bold;">' + escapeHtml(metaStr) + '</div>' : '') +
+                '<div>' + escapeHtml(d0.sentence) + '</div>' +
+                '</div>';
+        }
+
+        // 処方変更列
+        var rxHtml = '<span class="ws-badge ws-badge-unchanged">🟢 変更なし</span>';
+        if (row.compareChanges.length > 0) {
+            rxHtml = "";
+            for (var rc = 0; rc < row.compareChanges.length; rc++) {
+                var ch = row.compareChanges[rc];
+                var bCls = (ch.type === "stopped") ? "ws-badge-stopped" : ((ch.type === "added") ? "ws-badge-added" : "ws-badge-changed");
+                rxHtml += '<span class="ws-badge ' + bCls + '" style="margin:1px 3px 1px 0; font-size:10px;">' + escapeHtml(ch.text) + '</span>';
+            }
+        }
+
+        // 持参薬アラート列
+        var jisanHtml = '<span style="color:#aaa;">-</span>';
+        if (row.jisanAlerts.length > 0) {
+            jisanHtml = "";
+            for (var ja = 0; ja < row.jisanAlerts.length; ja++) {
+                var jit = row.jisanAlerts[ja];
+                var jMsg = jit.remDays < 0 ? ("終了済(" + Math.abs(jit.remDays) + "日超過)") : ("残" + jit.remDays + "日");
+                jisanHtml += '<div style="font-size:11px; color:#c62828; font-weight:bold;">⚠️ ' + escapeHtml(jit.name) + ' (' + jMsg + ')</div>';
+            }
+        }
+
+        // 定期切れ列
+        var teikiHtml = '<span style="color:#aaa;">-</span>';
+        if (row.teikiAlerts.length > 0) {
+            teikiHtml = "";
+            for (var ta = 0; ta < row.teikiAlerts.length; ta++) {
+                var tit = row.teikiAlerts[ta];
+                var tMsg = tit.diff <= 0 ? "本日切れ" : ("残" + tit.diff + "日");
+                teikiHtml += '<div style="font-size:11px; color:#e65100; font-weight:bold;">⏳ ' + escapeHtml(tit.name) + ' (' + tMsg + ')</div>';
+            }
+        }
+
+        var rowBg = row.hasAction ? ' style="background:#fffcfb;"' : '';
+        var pIdEsc = escapeHtml(String(p.id));
+        html += '<tr' + rowBg + '>' +
+            '<td style="padding:8px 10px; border:1px solid #e0e0e0;"><b>' + roomStr + '</b><span style="color:#0d47a1; font-weight:bold;">' + escapeHtml(p.name || p.id) + '</span><br><span style="font-size:10px; color:#666;">ID:' + pIdEsc + (p.daysInHosp ? ' / ' + p.daysInHosp + '日目' : '') + '</span></td>' +
+            '<td style="padding:8px 10px; border:1px solid #e0e0e0;">' + discHtml + '</td>' +
+            '<td style="padding:8px 10px; border:1px solid #e0e0e0;">' + rxHtml + '</td>' +
+            '<td style="padding:8px 10px; border:1px solid #e0e0e0;">' + jisanHtml + '</td>' +
+            '<td style="padding:8px 10px; border:1px solid #e0e0e0;">' + teikiHtml + '</td>' +
+            '<td style="padding:8px 10px; border:1px solid #e0e0e0; text-align:center;"><button type="button" class="yr-btn" style="background:#2e7d32; color:#fff; font-size:11px; padding:3px 8px;" onclick="jumpToWardSummaryDetail(\'' + pIdEsc + '\')">詳細 ❯</button></td>' +
+            '</tr>';
+    }
+    tbody.innerHTML = html;
+}
+
+function jumpToWardSummaryDetail(pId) {
+    switchWardSummaryMainMode("single");
+    var ipt = document.getElementById("ipt-ward-summary-patient-search");
+    if (ipt) ipt.value = pId;
+    var sel = document.getElementById("sel-ward-summary-patient-dropdown");
+    if (sel) sel.value = pId;
+    fetchWardSummaryData();
+}
+
+function copyWardBatchMorningMemo() {
+    var allRes = wardBatchState.results || [];
+    if (allRes.length === 0) {
+        yrShowAlert("先に「⚡ 病棟一括チェック開始」を実行してください。", "error");
+        return;
+    }
+    var memo = "【" + (wardBatchState.wardName || "病棟") + " 朝の処方・退院サマリ (" + (typeof getTodayYmdStr === "function" ? getTodayYmdStr() : "") + ")】\r\n\r\n";
+    var discLines = [];
+    var rxLines = [];
+    var alertLines = [];
+    for (var i = 0; i < allRes.length; i++) {
+        var r = allRes[i];
+        var pName = (r.patient.room ? r.patient.room + " " : "") + (r.patient.name || r.patient.id);
+        if (r.dischargeMatches.length > 0) {
+            discLines.push("  ・" + pName + ": " + r.dischargeMatches[0].sentence);
+        }
+        if (r.compareChanges.length > 0) {
+            var cTxts = [];
+            for (var c = 0; c < r.compareChanges.length; c++) cTxts.push(r.compareChanges[c].text);
+            rxLines.push("  ・" + pName + ": " + cTxts.join(" / "));
+        }
+        if (r.jisanAlerts.length > 0 || r.teikiAlerts.length > 0) {
+            var aTxts = [];
+            for (var ja = 0; ja < r.jisanAlerts.length; ja++) aTxts.push("持参:" + r.jisanAlerts[ja].name + "(残" + r.jisanAlerts[ja].remDays + "日)");
+            for (var ta = 0; ta < r.teikiAlerts.length; ta++) aTxts.push("定期:" + r.teikiAlerts[ta].name + "(残" + r.teikiAlerts[ta].diff + "日)");
+            alertLines.push("  ・" + pName + ": " + aTxts.join(", "));
+        }
+    }
+    memo += "■ 🏠 退院・転院ワード (" + discLines.length + "名):\r\n" + (discLines.length ? discLines.join("\r\n") : "  なし") + "\r\n\r\n";
+    memo += "■ 🔄 処方・注射変更 (" + rxLines.length + "名):\r\n" + (rxLines.length ? rxLines.join("\r\n") : "  なし") + "\r\n\r\n";
+    memo += "■ ⏳ 持参薬・定期切れ注意 (" + alertLines.length + "名):\r\n" + (alertLines.length ? alertLines.join("\r\n") : "  なし") + "\r\n";
+
+    try {
+        if (window.clipboardData && window.clipboardData.setData) {
+            window.clipboardData.setData("Text", memo);
+            yrShowAlert("📋 朝会用サマリをクリップボードにコピーしました！", "info");
+            return;
+        }
+    } catch(e) {}
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(memo).then(function() {
+            yrShowAlert("📋 朝会用サマリをクリップボードにコピーしました！", "info");
+        }, function() {
+            prompt("以下をコピーしてください:", memo);
+        });
+    } else {
+        prompt("以下をコピーしてください:", memo);
     }
 }
 
