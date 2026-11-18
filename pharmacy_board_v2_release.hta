@@ -16585,10 +16585,11 @@ function fetchWardSummaryData() {
         return;
     }
 
-    // 患者オブジェクトの解決（ボード登録患者または直接ID）
+    // 患者オブジェクトの解決（サマリ自動生成と同一方式: ボード患者はpObj.idをそのまま使用）
     var pObj = (typeof findPatientById === "function") ? findPatientById(pId) : null;
-    var rawId = pObj ? String(pObj.id).replace(/^0+/, "") : pId.replace(/^0+/, "");
+    var rawId = pObj ? String(pObj.id) : pId;
     if (!pObj) {
+        rawId = pId.replace(/^0+/, "");
         pObj = { id: rawId, name: "ID:" + rawId, disease: "", daysInHosp: "" };
     }
     wardSummaryState.patient = pObj;
@@ -16678,22 +16679,28 @@ function fetchWardSummaryData() {
     // 逐次フェッチ実行 (処方 -> 注射 -> カルテ記事)
     fetchSummaryHtmlViaIframe(shohoUrl, 30000, function(bodyShoho, errShoho) {
         if (myToken !== wardSummaryState.fetchToken) return;
+        var shohoLen = bodyShoho ? bodyShoho.length : 0;
         var parsedShoho = (!errShoho && bodyShoho) ? parseSummaryKarteOrders(bodyShoho, "0011") : { orders: [] };
         wardSummaryState.shohoOrders = parsedShoho.orders || [];
 
         fetchSummaryHtmlViaIframe(chushaUrl, 30000, function(bodyChusha, errChusha) {
             if (myToken !== wardSummaryState.fetchToken) return;
+            var chushaLen = bodyChusha ? bodyChusha.length : 0;
             var parsedChusha = (!errChusha && bodyChusha) ? parseSummaryKarteOrders(bodyChusha, "0031") : { orders: [] };
             wardSummaryState.chushaOrders = parsedChusha.orders || [];
 
             fetchSummaryHtmlViaIframe(notesUrl, 30000, function(bodyNotes, errNotes) {
                 if (myToken !== wardSummaryState.fetchToken) return;
+                var notesLen = bodyNotes ? bodyNotes.length : 0;
                 wardSummaryState.karteNotes = (!errNotes && bodyNotes) ? parseWardSummaryNotes(bodyNotes) : [];
 
                 wardSummaryState.isFetching = false;
                 if (btn) btn.disabled = false;
                 var displayName = pObj && pObj.name ? pObj.name : ("ID:" + rawId);
-                if (badge) badge.innerHTML = '<span style="color:#2e7d32;">✔ 取得完了 (' + escapeHtml(displayName) + ')</span>';
+                var diagTxt = "処方:" + wardSummaryState.shohoOrders.length + "件(" + shohoLen + "B), 注射:" + wardSummaryState.chushaOrders.length + "件(" + chushaLen + "B), 記事:" + wardSummaryState.karteNotes.length + "件";
+                if (badge) {
+                    badge.innerHTML = '<span style="color:#2e7d32;">✔ 取得完了 (' + escapeHtml(displayName) + ')</span> <span style="font-size:10px; color:#666;">[' + diagTxt + ']</span>';
+                }
 
                 renderWardSummaryPanels(todayStr);
             });
@@ -16716,13 +16723,20 @@ function parseWardSummaryNotes(bodyHtml) {
 }
 
 function renderWardSummaryPanels(todayStr) {
-    if (!todayStr) todayStr = getTodaySummaryStr();
+    if (!todayStr) {
+        if (typeof getTodayYmdStr === "function") {
+            todayStr = getTodayYmdStr();
+        } else {
+            var td = new Date();
+            todayStr = ("000" + td.getFullYear()).slice(-4) + "/" + ("0" + (td.getMonth() + 1)).slice(-2) + "/" + ("0" + td.getDate()).slice(-2);
+        }
+    }
     var shoho = wardSummaryState.shohoOrders || [];
     var chusha = wardSummaryState.chushaOrders || [];
     var notes = wardSummaryState.karteNotes || [];
     var d7Ago = addSummaryDaysStr(todayStr, -7);
     var d14Ago = addSummaryDaysStr(todayStr, -14);
-    var todayDateObj = new Date(todayStr.replace(/\//g, "-"));
+    var todayDateObj = new Date(todayStr.replace(/-/g, "/"));
 
     // ==========================================
     // 1. 処方変更サマリ (先週 vs 今週 左右比較テーブル)
@@ -16760,15 +16774,15 @@ function renderWardSummaryPanels(todayStr) {
                 category: ord.category || ""
             };
 
-            allDrugKeys[dNames] = true;
-
             if (isCurr) {
+                allDrugKeys[dNames] = true;
                 // 最新オーダを優先
                 if (!currMap[dNames] || currMap[dNames].startDate < sDate) {
                     currMap[dNames] = itemObj;
                 }
             }
             if (isPrev) {
+                allDrugKeys[dNames] = true;
                 if (!prevMap[dNames] || prevMap[dNames].startDate < sDate) {
                     prevMap[dNames] = itemObj;
                 }
@@ -16912,7 +16926,7 @@ function renderWardSummaryPanels(todayStr) {
                 var jKey = jName + "_" + jStart;
                 if (!seenJisan[jKey]) {
                     seenJisan[jKey] = true;
-                    var endDateObj = new Date(jEnd.replace(/\//g, "-"));
+                    var endDateObj = new Date(jEnd.replace(/-/g, "/"));
                     var diffDays = Math.round((endDateObj - todayDateObj) / (1000 * 60 * 60 * 24));
                     jisanList.push({
                         name: jName,
@@ -16995,7 +17009,7 @@ function renderWardSummaryPanels(todayStr) {
                 if (tRp.isTonyo || tRp.isGaiyo) continue;
                 var tEnd = tRp.endDate;
                 if (!tEnd) continue;
-                var tEndDateObj = new Date(tEnd.replace(/\//g, "-"));
+                var tEndDateObj = new Date(tEnd.replace(/-/g, "/"));
                 var tDiff = Math.round((tEndDateObj - todayDateObj) / (1000 * 60 * 60 * 24));
                 var tNames = tRp.drugs.join(", ");
                 var tKey = tNames + "_" + tEnd;
