@@ -17062,6 +17062,10 @@ function parseWardSummaryKarteRecords(bodyHtml) {
         var lastSepIdx = Math.max(prevHtml.lastIndexOf("<hr"), prevHtml.lastIndexOf('name="#order_no_'));
         var headerPart = (lastSepIdx !== -1) ? prevHtml.substring(lastSepIdx) : prevHtml;
 
+        var orderNo = "";
+        var onM = headerPart.match(/order_no[_=]?(\d+)/i);
+        if (onM) orderNo = onM[1];
+
         var orderCode = "";
         var kindLabel = "記事";
         var iconM = headerPart.match(/\/karte_image\/(\d+)\.bmp[^>]*alt=["']?([^"'>]*)["']?/i);
@@ -17165,6 +17169,7 @@ function parseWardSummaryKarteRecords(bodyHtml) {
         if (cleanBody || images.length > 0) {
             results.push({
                 date: currentDate,
+                orderNo: orderNo,
                 orderCode: orderCode,
                 kind: kindLabel,
                 title: titleText,
@@ -17307,9 +17312,9 @@ function renderWardSummaryPanels(todayStr) {
     // ==========================================
     // 1. 処方変更サマリ (先週 vs 今週 左右比較テーブル)
     // ==========================================
-    // 抽出対象: 定期処方・臨時処方・緊急処方・退院処方・注射 (※持参薬・検認は除外)
-    var prevMap = {}; // 先週(月〜日)の処方・指示
-    var currMap = {}; // 今週(月〜日)の処方・指示
+    // 開始日基準 (先週月〜日 vs 今週月〜日) ＋ 薬剤単体展開（一包化複合Rpも統合）＋ 外用1日分除外
+    var prevMap = {};
+    var currMap = {};
     var allDrugKeys = {};
     var debugMaxDate = "";
     var debugTotalRps = 0;
@@ -17327,7 +17332,14 @@ function renderWardSummaryPanels(todayStr) {
         debugOrderLogs.push(logLine);
 
         if (!ord.rps) return;
-        if (ord.category === "jisan_order" || ord.category === "jisan_kennin") return; // 持参薬・検認は別枠
+        if (ord.category === "jisan_order" || ord.category === "jisan_kennin") return;
+
+        var ordKindTag = "";
+        if (ord.headerText) {
+            if (ord.headerText.indexOf("[定期]") !== -1) ordKindTag = "定期";
+            else if (ord.headerText.indexOf("[臨時]") !== -1) ordKindTag = "臨時";
+            else if (ord.headerText.indexOf("[退院]") !== -1) ordKindTag = "退院";
+        }
 
         for (var r = 0; r < ord.rps.length; r++) {
             var rp = ord.rps[r];
@@ -17335,35 +17347,50 @@ function renderWardSummaryPanels(todayStr) {
             var sDate = rp.startDate || ordDate;
             var eDate = rp.endDate || (rp.duration ? addSummaryDaysStr(sDate, rp.duration - 1) : sDate);
             if (!debugMaxDate || eDate > debugMaxDate) debugMaxDate = eDate;
-            var dNames = rp.drugs.join(", ");
-            var usage = rp.usageText || (isChusha ? "注射" : "");
-            var durStr = rp.duration ? (rp.duration + "日分") : "-";
 
-            // 区間重複判定: [sDate, eDate] がそれぞれの週と1日でも重なっているか
-            var isCurr = (sDate <= thisSun && eDate >= thisMon);
-            var isPrev = (sDate <= lastSun && eDate >= lastMon);
+            var rawUsage = rp.usageText || (isChusha ? "注射" : "");
+            var cleanUsage = trimSummaryStr(rawUsage.replace(/\s*\d+\s*日分\s*$/g, ""));
 
-            var itemObj = {
-                name: dNames,
-                usage: usage,
-                duration: durStr,
-                startDate: sDate,
-                endDate: eDate,
-                isChusha: isChusha,
-                category: ord.category || ""
-            };
+            // 開始日基準で先週・今週に振り分け（先週の定期処方が今週に跨っても今週定期には混ぜない）
+            var isCurr = (sDate >= thisMon && sDate <= thisSun);
+            var isPrev = (sDate >= lastMon && sDate <= lastSun);
+            if (!isCurr && !isPrev) continue;
 
-            if (isCurr) {
-                allDrugKeys[dNames] = true;
-                // 最新オーダを優先
-                if (!currMap[dNames] || currMap[dNames].startDate < sDate) {
-                    currMap[dNames] = itemObj;
+            for (var d = 0; d < rp.drugs.length; d++) {
+                var dName = rp.drugs[d];
+                if (!dName) continue;
+                var subCat = (typeof detectSummaryRpSubCategory === "function") ? detectSummaryRpSubCategory(isChusha ? "0031" : "0011", dName, rawUsage) : "";
+                var isGaiyo = (subCat === "外用" || rp.isGaiyo);
+                var durStr = isGaiyo ? "外用" : (rp.duration ? (rp.duration + "日分") : "-");
+
+                var itemObj = {
+                    name: dName,
+                    usage: cleanUsage || rawUsage,
+                    duration: durStr,
+                    startDate: sDate,
+                    endDate: eDate,
+                    isChusha: isChusha,
+                    isGaiyo: isGaiyo,
+                    ordKindTag: ordKindTag,
+                    category: ord.category || "",
+                    historyNotes: []
+                };
+
+                allDrugKeys[dName] = true;
+                if (isCurr) {
+                    if (!currMap[dName]) {
+                        currMap[dName] = itemObj;
+                    } else if (currMap[dName].startDate <= sDate) {
+                        var oldH = currMap[dName].historyNotes || [];
+                        oldH.push(currMap[dName].startDate.slice(5) + (currMap[dName].ordKindTag ? "(" + currMap[dName].ordKindTag + ")" : ""));
+                        itemObj.historyNotes = oldH;
+                        currMap[dName] = itemObj;
+                    }
                 }
-            }
-            if (isPrev) {
-                allDrugKeys[dNames] = true;
-                if (!prevMap[dNames] || prevMap[dNames].startDate < sDate) {
-                    prevMap[dNames] = itemObj;
+                if (isPrev) {
+                    if (!prevMap[dName] || prevMap[dName].startDate <= sDate) {
+                        prevMap[dName] = itemObj;
+                    }
                 }
             }
         }
@@ -17396,30 +17423,29 @@ function renderWardSummaryPanels(todayStr) {
         };
 
         if (pItem && cItem) {
-            // 両方に存在（処方日数の違いによる誤判定を防ぐため「○日分」および空白を除いて用法・用量を比較）
             var pUsageNorm = String(pItem.usage || "").replace(/\s*\d+\s*日分\s*/g, "").replace(/[\s\u3000]+/g, "");
             var cUsageNorm = String(cItem.usage || "").replace(/\s*\d+\s*日分\s*/g, "").replace(/[\s\u3000]+/g, "");
+            var histSuffix = (cItem.historyNotes && cItem.historyNotes.length > 0) ? (" [同週:" + cItem.historyNotes.join(",") + "→]") : "";
             if (pUsageNorm === cUsageNorm) {
                 rowObj.status = "unchanged";
                 rowObj.statusLabel = "🟢 変更なし";
-                rowObj.note = "継続中";
+                rowObj.note = "継続中" + histSuffix;
             } else {
                 rowObj.status = "changed";
                 rowObj.statusLabel = "🟠 用量変更";
-                rowObj.note = pItem.usage + " → " + cItem.usage;
+                rowObj.note = pItem.usage + " → " + cItem.usage + histSuffix;
                 countChanged++;
             }
         } else if (pItem && !cItem) {
-            // 先週のみ (中止または終了)
             rowObj.status = "stopped";
-            rowObj.statusLabel = "🔴 中止・終了";
-            rowObj.note = (pItem.endDate ? pItem.endDate + " 終了" : "先週で中止");
+            rowObj.statusLabel = "🔴 中止・今回なし";
+            rowObj.note = (pItem.endDate ? pItem.endDate + " 終了" : "今週処方なし");
             countChanged++;
         } else if (!pItem && cItem) {
-            // 今週のみ (新規追加)
+            var histSuffix2 = (cItem.historyNotes && cItem.historyNotes.length > 0) ? (" [同週:" + cItem.historyNotes.join(",") + "→]") : "";
             rowObj.status = "added";
             rowObj.statusLabel = "🆕 新規追加";
-            rowObj.note = (cItem.startDate ? cItem.startDate + " 開始" : "新規開始");
+            rowObj.note = (cItem.startDate ? cItem.startDate + " 開始" : "新規開始") + histSuffix2;
             countChanged++;
         }
 
@@ -17750,6 +17776,8 @@ function extractWardDischargeMatches(karteRecords, fallbackNotes) {
                     seenSentences[uKey] = true;
                     dischargeMatches.push({
                         date: meta.date || "",
+                        orderNo: meta.orderNo || "",
+                        images: meta.images || [],
                         author: meta.author || "",
                         role: meta.role || "",
                         kind: meta.kind || "",
@@ -18039,30 +18067,47 @@ function analyzeSinglePatientForBatch(pObj, shoho, chusha, karteRecs, todayStr, 
         if (ord.category === "jisan_order" || ord.category === "jisan_kennin") return;
         var ordDate = ord.orderDate || todayStr;
         var isTeikiHeader = (!isChusha && ord.category === "inhosp_rx" && ord.headerText && ord.headerText.indexOf("[定期]") !== -1);
+        var ordKindTag = isTeikiHeader ? "定期" : ((ord.headerText && ord.headerText.indexOf("[臨時]") !== -1) ? "臨時" : "");
 
         for (var r = 0; r < ord.rps.length; r++) {
             var rp = ord.rps[r];
             var sDate = rp.startDate || ordDate;
             var eDate = rp.endDate || (rp.duration ? addSummaryDaysStr(sDate, rp.duration - 1) : sDate);
-            var dNames = rp.drugs.join(", ");
-            var usage = rp.usageText || (isChusha ? "注射" : "");
-            var durStr = rp.duration ? (rp.duration + "日分") : "-";
-            var isCurr = (sDate <= thisSun && eDate >= thisMon);
-            var isPrev = (sDate <= lastSun && eDate >= lastMon);
+            var rawUsage = rp.usageText || (isChusha ? "注射" : "");
+            var cleanUsage = trimSummaryStr(rawUsage.replace(/\s*\d+\s*日分\s*$/g, ""));
 
-            // 定期処方判定 ([定期]ヘッダ、または2日分以上の内服・外用処方)
+            // 開始日基準で先週・今週を振り分け
+            var isCurr = (sDate >= thisMon && sDate <= thisSun);
+            var isPrev = (sDate >= lastMon && sDate <= lastSun);
+            if (!isCurr && !isPrev) continue;
+
             var isTeikiRp = (!isChusha && ord.category === "inhosp_rx" && !rp.isTonyo && !rp.isGaiyo && (isTeikiHeader || (rp.duration && rp.duration >= 2)));
 
-            var obj = { name: dNames, usage: usage, duration: durStr, startDate: sDate, endDate: eDate, isChusha: isChusha };
-            if (isCurr) {
-                allDrugKeys[dNames] = true;
-                if (!currMap[dNames] || currMap[dNames].startDate < sDate) currMap[dNames] = obj;
-                if (isTeikiRp) currTeikiDrugs[dNames] = true;
-            }
-            if (isPrev) {
-                allDrugKeys[dNames] = true;
-                if (!prevMap[dNames] || prevMap[dNames].startDate < sDate) prevMap[dNames] = obj;
-                if (isTeikiRp) prevTeikiDrugs[dNames] = true;
+            for (var d = 0; d < rp.drugs.length; d++) {
+                var dName = rp.drugs[d];
+                if (!dName) continue;
+                var subCat = (typeof detectSummaryRpSubCategory === "function") ? detectSummaryRpSubCategory(isChusha ? "0031" : "0011", dName, rawUsage) : "";
+                var isGaiyo = (subCat === "外用" || rp.isGaiyo);
+                var durStr = isGaiyo ? "外用" : (rp.duration ? (rp.duration + "日分") : "-");
+
+                var obj = { name: dName, usage: cleanUsage || rawUsage, duration: durStr, startDate: sDate, endDate: eDate, isChusha: isChusha, isGaiyo: isGaiyo, ordKindTag: ordKindTag, historyNotes: [] };
+                if (isCurr) {
+                    allDrugKeys[dName] = true;
+                    if (!currMap[dName]) {
+                        currMap[dName] = obj;
+                    } else if (currMap[dName].startDate <= sDate) {
+                        var oldH = currMap[dName].historyNotes || [];
+                        oldH.push(currMap[dName].startDate.slice(5) + (currMap[dName].ordKindTag ? "(" + currMap[dName].ordKindTag + ")" : ""));
+                        obj.historyNotes = oldH;
+                        currMap[dName] = obj;
+                    }
+                    if (isTeikiRp) currTeikiDrugs[dName] = true;
+                }
+                if (isPrev) {
+                    allDrugKeys[dName] = true;
+                    if (!prevMap[dName] || prevMap[dName].startDate <= sDate) prevMap[dName] = obj;
+                    if (isTeikiRp) prevTeikiDrugs[dName] = true;
+                }
             }
         }
     }
@@ -18546,24 +18591,43 @@ function renderWardBatchDischargeOnlyTable() {
         return;
     }
     rows = sortWardBatchResults(rows);
+    var userId = (typeof currentSystemId !== "undefined" && currentSystemId) ? currentSystemId : "pharmacy";
     var html = "";
     for (var j = 0; j < rows.length; j++) {
         var row = rows[j];
         var p = row.patient;
-        var pIdEsc = escapeHtml(String(p.id));
+        var pIdStr = String(p.id);
+        var pIdEsc = escapeHtml(pIdStr);
         var roomStr = p.room ? (escapeHtml(p.room) + " ") : "";
+
+        // 1人の患者につき複数ヒットを1セル内に整理してまとめる
+        var metaListHtml = "";
+        var itemsHtml = "";
         for (var d = 0; d < row.dischargeMatches.length; d++) {
             var dm = row.dischargeMatches[d];
-            var metaStr = (dm.date ? "📅 " + escapeHtml(dm.date) + "<br>" : "") +
-                          (dm.author ? "👤 " + escapeHtml(dm.author) + (dm.role ? " &lt;" + escapeHtml(dm.role) + "&gt;" : "") : "") +
-                          (dm.kind ? " (" + escapeHtml(dm.kind) + ")" : "");
-            html += '<tr style="border-bottom:1px solid #e0e0e0;">' +
-                '<td style="padding:8px 10px; border:1px solid #e0e0e0; vertical-align:middle;"><b>' + roomStr + '</b><span style="color:#0d47a1; font-weight:bold;">' + escapeHtml(p.name || p.id) + '</span><br><span style="font-size:10px; color:#666;">ID:' + pIdEsc + '</span></td>' +
-                '<td style="padding:8px 10px; border:1px solid #e0e0e0; font-size:11px; color:#555; vertical-align:middle;">' + (metaStr || "-") + '</td>' +
-                '<td style="padding:8px 10px; border:1px solid #e0e0e0; font-size:12px; color:#4a148c; font-weight:bold; vertical-align:middle;">' + escapeHtml(dm.sentence) + '</td>' +
-                '<td style="padding:8px 10px; border:1px solid #e0e0e0; text-align:center; vertical-align:middle;"><button type="button" class="yr-btn" style="background:#546e7a; color:#fff; font-size:11px; padding:3px 8px;" onclick="jumpToWardSummaryDetail(\'' + pIdEsc + '\')">カルテ</button></td>' +
-                '</tr>';
+            var metaLine = (dm.date ? "📅 " + escapeHtml(dm.date) + " " : "") +
+                           (dm.author ? "👤 " + escapeHtml(dm.author) + (dm.role ? " &lt;" + escapeHtml(dm.role) + "&gt;" : "") : "") +
+                           (dm.kind ? " (" + escapeHtml(dm.kind) + ")" : "");
+            var linkBtn = "";
+            if (dm.images && dm.images.length > 0) {
+                var imgUrlEsc = escapeHtml(dm.images[0]).replace(/\\/g, "\\\\");
+                linkBtn = ' <button type="button" onclick="window.open(\'' + imgUrlEsc + '\')" style="font-size:10px; padding:1px 6px; background:#fff; border:1px solid #f57c00; color:#e65100; border-radius:3px; cursor:pointer; font-weight:bold;">🖼 文書画像</button>';
+            } else if (dm.orderNo) {
+                var docUrl = "http://10.5.171.42:8082/karte/karte_print_page.php?kanja_id=" + encodeURIComponent(pIdStr) + "&order_no=" + encodeURIComponent(dm.orderNo) + "&user_id=" + encodeURIComponent(userId);
+                linkBtn = ' <button type="button" onclick="window.open(\'' + docUrl + '\')" style="font-size:10px; padding:1px 6px; background:#fff; border:1px solid #1976d2; color:#1976d2; border-radius:3px; cursor:pointer; font-weight:bold;">📄 記録を開く</button>';
+            }
+            var borderTop = (d > 0) ? "border-top:1px dashed #e1bee7; padding-top:6px; margin-top:6px;" : "";
+            itemsHtml += '<div style="' + borderTop + '">' +
+                '<div style="font-size:10px; color:#666; margin-bottom:2px;">' + (metaLine || "-") + linkBtn + '</div>' +
+                '<div style="font-size:12px; color:#4a148c; font-weight:bold;">' + escapeHtml(dm.sentence) + '</div>' +
+                '</div>';
         }
+
+        html += '<tr style="border-bottom:2px solid #cfd8dc;">' +
+            '<td style="padding:10px; border:1px solid #e0e0e0; vertical-align:top; background:#faf5fc;"><b>' + roomStr + '</b><span style="color:#0d47a1; font-weight:bold;">' + escapeHtml(p.name || p.id) + '</span><br><span style="font-size:10px; color:#666;">ID:' + pIdEsc + (p.daysInHosp ? ' / ' + p.daysInHosp + '日目' : '') + '</span><br><span style="font-size:10px; color:#6a1b9a; font-weight:bold;">(' + row.dischargeMatches.length + '件)</span></td>' +
+            '<td colspan="2" style="padding:10px; border:1px solid #e0e0e0; vertical-align:top;">' + itemsHtml + '</td>' +
+            '<td style="padding:10px; border:1px solid #e0e0e0; text-align:center; vertical-align:middle;"><button type="button" class="yr-btn" style="background:#546e7a; color:#fff; font-size:11px; padding:4px 8px;" onclick="jumpToWardSummaryDetail(\'' + pIdEsc + '\')">カルテ</button></td>' +
+            '</tr>';
     }
     tbody.innerHTML = html;
 }
