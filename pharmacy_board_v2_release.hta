@@ -1846,15 +1846,33 @@ function generateAbbreviation() {}
 
                 <!-- サブペイン2: 直近1週間のカルテ記事・文書画像 -->
                 <div id="ws-subpane-karte" style="display:none;">
-                    <div style="background:#f8f9fa; border:1px solid #dee2e6; border-radius:4px; padding:8px 12px; margin-bottom:12px; display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center; gap:8px;">
-                        <div style="display:flex; gap:6px; align-items:center;">
-                            <span style="font-size:12px; font-weight:bold; color:#333;">表示フィルタ:</span>
-                            <button type="button" id="btn-ws-kfilter-all" onclick="filterWardSummaryKarte('all')" style="padding:3px 10px; font-size:11px; font-weight:bold; border:1px solid #1976d2; background:#1976d2; color:#fff; border-radius:4px; cursor:pointer;">すべて</button>
-                            <button type="button" id="btn-ws-kfilter-img" onclick="filterWardSummaryKarte('img')" style="padding:3px 10px; font-size:11px; font-weight:bold; border:1px solid #ccc; background:#fff; color:#333; border-radius:4px; cursor:pointer;">🖼 文書・画像あり</button>
-                            <button type="button" id="btn-ws-kfilter-note" onclick="filterWardSummaryKarte('note')" style="padding:3px 10px; font-size:11px; font-weight:bold; border:1px solid #ccc; background:#fff; color:#333; border-radius:4px; cursor:pointer;">📝 経過記事のみ</button>
+                    <div style="background:#f8f9fa; border:1px solid #dee2e6; border-radius:4px; padding:8px 12px; margin-bottom:12px;">
+                        <div style="display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center; gap:8px; margin-bottom:8px;">
+                            <div style="display:flex; gap:6px; align-items:center;">
+                                <span style="font-size:12px; font-weight:bold; color:#333;">種別:</span>
+                                <button type="button" id="btn-ws-kfilter-all" onclick="filterWardSummaryKarte('all')" style="padding:3px 10px; font-size:11px; font-weight:bold; border:1px solid #1976d2; background:#1976d2; color:#fff; border-radius:4px; cursor:pointer;">すべて</button>
+                                <button type="button" id="btn-ws-kfilter-img" onclick="filterWardSummaryKarte('img')" style="padding:3px 10px; font-size:11px; font-weight:bold; border:1px solid #ccc; background:#fff; color:#333; border-radius:4px; cursor:pointer;">🖼 文書・画像あり</button>
+                                <button type="button" id="btn-ws-kfilter-note" onclick="filterWardSummaryKarte('note')" style="padding:3px 10px; font-size:11px; font-weight:bold; border:1px solid #ccc; background:#fff; color:#333; border-radius:4px; cursor:pointer;">📝 経過記事のみ</button>
+                            </div>
+                            <div style="display:flex; gap:10px; align-items:center;">
+                                <label style="font-size:11px; font-weight:bold; color:#333; margin:0;">
+                                    🖼 画像表示:
+                                    <select id="sel-ws-karte-imgsize" onchange="onWardKartePrefChange()" style="font-size:11px; padding:2px 6px; border:1px solid #ccc; border-radius:3px;">
+                                        <option value="large">大 (全幅表示)</option>
+                                        <option value="small">小 (サムネイル)</option>
+                                        <option value="link">リンクのみ</option>
+                                    </select>
+                                </label>
+                                <input type="text" id="ipt-ws-karte-search" class="yr-form-control" style="width:170px; font-size:12px; height:26px;" placeholder="キーワード検索 (例: 透析)" onkeyup="renderWardSummaryKarteList()">
+                            </div>
                         </div>
-                        <div style="display:flex; gap:6px; align-items:center;">
-                            <input type="text" id="ipt-ws-karte-search" class="yr-form-control" style="width:180px; font-size:12px; height:26px;" placeholder="キーワード検索 (例: 透析, 食事)" onkeyup="renderWardSummaryKarteList()">
+                        <div style="display:flex; flex-wrap:wrap; gap:10px; align-items:center; padding-top:6px; border-top:1px dashed #ddd; font-size:11px;">
+                            <span style="font-weight:bold; color:#555;">👤 職種フィルタ <span style="font-weight:normal; color:#888;">(ユーザー別自動保存)</span>:</span>
+                            <label style="cursor:pointer; margin:0;"><input type="checkbox" id="chk-ws-role-doctor" checked onchange="onWardKartePrefChange()"> 医師</label>
+                            <label style="cursor:pointer; margin:0;"><input type="checkbox" id="chk-ws-role-nurse" checked onchange="onWardKartePrefChange()"> 看護師</label>
+                            <label style="cursor:pointer; margin:0;"><input type="checkbox" id="chk-ws-role-pharm" checked onchange="onWardKartePrefChange()"> 薬剤師</label>
+                            <label style="cursor:pointer; margin:0;"><input type="checkbox" id="chk-ws-role-rehab" checked onchange="onWardKartePrefChange()"> リハビリ(PT/OT/ST)</label>
+                            <label style="cursor:pointer; margin:0;"><input type="checkbox" id="chk-ws-role-other" checked onchange="onWardKartePrefChange()"> その他(栄養/MSW等)</label>
                         </div>
                     </div>
                     <div id="content-ward-summary-karte-notes" style="max-height:600px; overflow-y:auto;">
@@ -11066,6 +11084,9 @@ function updateMyDisplayNameMain() {
                     updatePatientDropdowns();
                 }
             }
+            if (tabId === 'yr-tab-ward-summary' && typeof loadWardKartePrefs === 'function') {
+                loadWardKartePrefs();
+            }
             if (tabId === 'yr-tab-med-adj-2026') {
                 var adjIpt = document.getElementById('ipt-med-adj-patient-search-2026');
                 if (adjIpt && !adjIpt.value) {
@@ -16820,6 +16841,63 @@ function fetchWardSummaryData() {
     });
 }
 
+function classifyWardKarteRole(roleStr) {
+    var r = String(roleStr || "");
+    if (r.indexOf("医師") !== -1) return "doctor";
+    if (r.indexOf("看護") !== -1 || r.indexOf("助産") !== -1) return "nurse";
+    if (r.indexOf("薬剤") !== -1) return "pharm";
+    if (r.indexOf("理学") !== -1 || r.indexOf("作業") !== -1 || r.indexOf("言語") !== -1 || r.indexOf("リハ") !== -1) return "rehab";
+    return "other";
+}
+
+function getWardKartePrefsKey() {
+    var uid = (typeof currentSystemId !== "undefined" && currentSystemId) ? String(currentSystemId) : "default";
+    return "ward_karte_prefs_" + uid;
+}
+
+function loadWardKartePrefs() {
+    try {
+        if (typeof localStorage === "undefined") return;
+        var raw = localStorage.getItem(getWardKartePrefsKey());
+        if (!raw) return;
+        var prefs = JSON.parse(raw);
+        if (prefs.imgSize) {
+            var sel = document.getElementById("sel-ws-karte-imgsize");
+            if (sel) sel.value = prefs.imgSize;
+        }
+        if (prefs.roles) {
+            var rKeys = ["doctor", "nurse", "pharm", "rehab", "other"];
+            for (var i = 0; i < rKeys.length; i++) {
+                var k = rKeys[i];
+                var chk = document.getElementById("chk-ws-role-" + k);
+                if (chk && typeof prefs.roles[k] === "boolean") {
+                    chk.checked = prefs.roles[k];
+                }
+            }
+        }
+    } catch(e) {}
+}
+
+function onWardKartePrefChange() {
+    try {
+        if (typeof localStorage !== "undefined") {
+            var sel = document.getElementById("sel-ws-karte-imgsize");
+            var prefs = {
+                imgSize: sel ? sel.value : "large",
+                roles: {
+                    doctor: (document.getElementById("chk-ws-role-doctor") || { checked: true }).checked,
+                    nurse:  (document.getElementById("chk-ws-role-nurse")  || { checked: true }).checked,
+                    pharm:  (document.getElementById("chk-ws-role-pharm")  || { checked: true }).checked,
+                    rehab:  (document.getElementById("chk-ws-role-rehab")  || { checked: true }).checked,
+                    other:  (document.getElementById("chk-ws-role-other")  || { checked: true }).checked
+                }
+            };
+            localStorage.setItem(getWardKartePrefsKey(), JSON.stringify(prefs));
+        }
+    } catch(e) {}
+    renderWardSummaryKarteList();
+}
+
 function parseWardSummaryKarteRecords(bodyHtml) {
     if (!bodyHtml) return [];
     var results = [];
@@ -16837,7 +16915,6 @@ function parseWardSummaryKarteRecords(bodyHtml) {
         }
 
         // 直前のヘッダアイコン (/karte_image/XXXX.bmp) とタイトル (<span>【...】...</span>) を抽出
-        // prevHtml の末尾（最後の <a name="#order_no_"> や <hr> 以降）を対象にする
         var lastSepIdx = Math.max(prevHtml.lastIndexOf("<hr"), prevHtml.lastIndexOf('name="#order_no_'));
         var headerPart = (lastSepIdx !== -1) ? prevHtml.substring(lastSepIdx) : prevHtml;
 
@@ -16865,25 +16942,69 @@ function parseWardSummaryKarteRecords(bodyHtml) {
             if (st) titleText = st;
         }
 
-        // 本文抽出 (</pre> まで)
+        // <pre> 内のテキスト（投稿者・職種・No.、および追加行）を抽出
         var curChunk = preChunks[i];
         var closePreIdx = curChunk.search(/<\/pre>/i);
-        var rawBody = (closePreIdx !== -1) ? curChunk.substring(0, closePreIdx) : curChunk;
-        var cleanBody = trimSummaryStr(stripSummaryHtmlTags(rawBody).replace(/&nbsp;/gi, " "));
+        var rawPre = (closePreIdx !== -1) ? curChunk.substring(0, closePreIdx) : curChunk;
+        var preTxt = stripSummaryHtmlTags(rawPre).replace(/&nbsp;/gi, " ");
+        var preLines = preTxt.split(/\r\n|\r|\r\n/);
 
-        // </pre> 以降、次のレコード開始 (<a name="#order_no_ or <hr or 日付見出し) までの間に添付画像があるか探す
+        var authorName = "";
+        var roleStr = "";
+        var preBodyLines = [];
+        for (var pl = 0; pl < preLines.length; pl++) {
+            var lineT = trimSummaryStr(preLines[pl]);
+            if (!lineT) continue;
+            if (pl === 0) {
+                // 投稿者行例: 山村 泰弘(脳神経外科) <医師>
+                var rMatch = lineT.match(/<([^>]+)>/);
+                if (rMatch) {
+                    roleStr = trimSummaryStr(rMatch[1]);
+                    authorName = trimSummaryStr(lineT.replace(/<[^>]+>/, ""));
+                } else {
+                    authorName = lineT;
+                }
+                continue;
+            }
+            if (/^(?:完成|下書|削除)?\s*No\.\d+/.test(lineT)) continue;
+            preBodyLines.push(lineT);
+        }
+
+        // </pre> 以降、次のレコード開始 (<a name="#order_no_ or <hr or 日付見出し) までの領域から本文テーブルと画像を抽出
         var afterPre = (closePreIdx !== -1) ? curChunk.substring(closePreIdx) : "";
         var nextRecIdx = afterPre.search(/<a\s+name=["']?#(?:order_no_|karte_)|<hr\b/i);
         var tailPart = (nextRecIdx !== -1) ? afterPre.substring(0, nextRecIdx) : afterPre;
 
+        // 1. SOAP / その他記録の本文 (<TABLE> 内の <TR> / <TD>) を抽出
+        var tableBodyLines = [];
+        var trRe = /<tr\b[^>]*>([\s\S]*?)<\/tr>/gi;
+        var trM;
+        while ((trM = trRe.exec(tailPart)) !== null) {
+            var trHtml = trM[1];
+            var tdCells = [];
+            var tdRe = /<td\b[^>]*>([\s\S]*?)<\/td>/gi;
+            var tdM;
+            while ((tdM = tdRe.exec(trHtml)) !== null) {
+                var cellRaw = tdM[1];
+                // 画像のみのセルはスキップ
+                if (/<img\b/i.test(cellRaw) && trimSummaryStr(stripSummaryHtmlTags(cellRaw)) === "") continue;
+                var cellTxt = trimSummaryStr(stripSummaryHtmlTags(cellRaw).replace(/&nbsp;/gi, " "));
+                if (cellTxt) tdCells.push(cellTxt);
+            }
+            if (tdCells.length >= 2 && /^(?:S|O|A|P|＃|#)$/i.test(tdCells[0])) {
+                tableBodyLines.push("【" + tdCells[0] + "】 " + tdCells.slice(1).join("\r\n"));
+            } else if (tdCells.length >= 1) {
+                tableBodyLines.push(tdCells.join("\r\n"));
+            }
+        }
+
+        // 2. 添付画像抽出
         var images = [];
         var imgRe = /<img\b[^>]*src=["']([^"']+)["'][^>]*>/gi;
         var im;
         while ((im = imgRe.exec(tailPart)) !== null) {
             var srcVal = im[1];
-            // システム用小アイコン (/karte_image/...) は除外
             if (!srcVal || srcVal.indexOf("/karte_image/") !== -1) continue;
-            // 相対パスならベースURL補完 (UNCパス \\10.5.171.43\... はそのまま保持)
             if (srcVal.indexOf("\\\\") !== 0 && srcVal.indexOf("http") !== 0 && srcVal.indexOf("file:") !== 0) {
                 if (srcVal.charAt(0) === "/") {
                     srcVal = "http://10.5.171.42:8082" + srcVal;
@@ -16894,12 +17015,18 @@ function parseWardSummaryKarteRecords(bodyHtml) {
             images.push(srcVal);
         }
 
+        var combinedLines = preBodyLines.concat(tableBodyLines);
+        var cleanBody = trimSummaryStr(combinedLines.join("\r\n"));
+
         if (cleanBody || images.length > 0) {
             results.push({
                 date: currentDate,
                 orderCode: orderCode,
                 kind: kindLabel,
                 title: titleText,
+                author: authorName,
+                role: roleStr,
+                roleCat: classifyWardKarteRole(roleStr),
                 body: cleanBody,
                 images: images
             });
@@ -16917,25 +17044,39 @@ function renderWardSummaryKarteList() {
     var searchIpt = document.getElementById("ipt-ws-karte-search");
     var keyword = searchIpt ? trimSummaryStr(searchIpt.value).toLowerCase() : "";
 
+    var imgSel = document.getElementById("sel-ws-karte-imgsize");
+    var imgMode = imgSel ? imgSel.value : "large";
+
+    var roleAllowed = {
+        doctor: (document.getElementById("chk-ws-role-doctor") || { checked: true }).checked,
+        nurse:  (document.getElementById("chk-ws-role-nurse")  || { checked: true }).checked,
+        pharm:  (document.getElementById("chk-ws-role-pharm")  || { checked: true }).checked,
+        rehab:  (document.getElementById("chk-ws-role-rehab")  || { checked: true }).checked,
+        other:  (document.getElementById("chk-ws-role-other")  || { checked: true }).checked
+    };
+
     var filtered = [];
     for (var i = 0; i < recs.length; i++) {
         var r = recs[i];
+        var rCat = r.roleCat || "other";
+        if (!roleAllowed[rCat]) continue;
+
         var hasImg = (r.images && r.images.length > 0) || (r.orderCode === "0502");
         if (filter === "img" && !hasImg) continue;
         if (filter === "note" && hasImg) continue;
         if (keyword) {
-            var haystack = ((r.date || "") + " " + (r.kind || "") + " " + (r.title || "") + " " + (r.body || "")).toLowerCase();
+            var haystack = ((r.date || "") + " " + (r.kind || "") + " " + (r.title || "") + " " + (r.author || "") + " " + (r.role || "") + " " + (r.body || "")).toLowerCase();
             if (haystack.indexOf(keyword) === -1) continue;
         }
         filtered.push(r);
     }
 
     if (filtered.length === 0) {
-        container.innerHTML = '<div style="color:#888; text-align:center; padding:30px;">該当する直近1週間のカルテ記事・文書はありません</div>';
+        container.innerHTML = '<div style="color:#888; text-align:center; padding:30px;">該当する直近1週間のカルテ記事・文書はありません（職種フィルタ等の条件をご確認ください）</div>';
         return;
     }
 
-    // 新しい順（逆順）で表示すると直近が見やすい
+    // 新しい順（逆順）で表示
     var html = "";
     for (var j = filtered.length - 1; j >= 0; j--) {
         var item = filtered[j];
@@ -16944,7 +17085,7 @@ function renderWardSummaryKarteList() {
         var badgeBg = isDoc ? "#fff3e0" : "#e3f2fd";
         var badgeCol = isDoc ? "#e65100" : "#0d47a1";
 
-        var bodyHtml = escapeHtml(item.body).replace(/\r?\r\n/g, "<br>");
+        var bodyHtml = escapeHtml(item.body || "").replace(/\r?\r\n/g, "<br>");
         if (keyword) {
             try {
                 var escKw = escapeHtml(keyword).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -16957,18 +17098,32 @@ function renderWardSummaryKarteList() {
             imgHtml += '<div style="margin-top:8px; padding-top:8px; border-top:1px dashed #ddd;">';
             for (var m = 0; m < item.images.length; m++) {
                 var imgSrc = escapeHtml(item.images[m]);
-                imgHtml += '<div style="margin-bottom:6px;">' +
-                    '<img src="' + imgSrc + '" style="max-width:100%; border:1px solid #bbb; border-radius:4px; cursor:pointer;" onclick="window.open(this.src)" title="クリックで別ウィンドウ原寸表示">' +
-                    '</div>';
+                if (imgMode === "link") {
+                    imgHtml += '<div style="margin-bottom:4px;">' +
+                        '<button type="button" onclick="window.open(\'' + imgSrc.replace(/\\/g, "\\\\") + '\')" style="padding:4px 10px; font-size:11px; background:#fff; border:1px solid #1976d2; color:#1976d2; border-radius:4px; cursor:pointer; font-weight:bold;">🖼 画像' + (m + 1) + 'を別ウィンドウで開く</button>' +
+                        '</div>';
+                } else {
+                    var imgStyle = (imgMode === "small")
+                        ? "max-width:320px; max-height:220px; border:1px solid #bbb; border-radius:4px; cursor:pointer;"
+                        : "max-width:100%; border:1px solid #bbb; border-radius:4px; cursor:pointer;";
+                    imgHtml += '<div style="margin-bottom:6px;">' +
+                        '<img src="' + imgSrc + '" style="' + imgStyle + '" onclick="window.open(this.src)" title="クリックで別ウィンドウ原寸表示">' +
+                        '</div>';
+                }
             }
             imgHtml += '</div>';
         }
+
+        var authorBadge = item.role
+            ? '<span style="font-size:10px; background:#eceff1; color:#455a64; padding:1px 6px; border-radius:3px; margin-left:6px;">' + escapeHtml(item.author) + ' &lt;' + escapeHtml(item.role) + '&gt;</span>'
+            : (item.author ? '<span style="font-size:10px; color:#666; margin-left:6px;">' + escapeHtml(item.author) + '</span>' : '');
 
         html += '<div style="background:#fff; border:1px solid #cfd8dc; border-left:4px solid ' + borderCol + '; border-radius:4px; padding:10px 14px; margin-bottom:10px; box-shadow:0 1px 2px rgba(0,0,0,0.03);">' +
             '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; border-bottom:1px solid #f0f0f0; padding-bottom:4px;">' +
                 '<div>' +
                     '<span style="font-size:11px; font-weight:bold; background:' + badgeBg + '; color:' + badgeCol + '; padding:2px 6px; border-radius:3px; margin-right:6px;">' + escapeHtml(item.kind || "記事") + '</span>' +
                     '<b style="font-size:12px; color:#333;">' + escapeHtml(item.title || "") + '</b>' +
+                    authorBadge +
                 '</div>' +
                 '<span style="font-size:11px; color:#666;">' + escapeHtml(item.date || "") + '</span>' +
             '</div>' +
