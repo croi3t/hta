@@ -539,8 +539,7 @@ body {
         border: 1px solid #b3e5fc;
     }
     .ws-text-stopped {
-        text-decoration: line-through;
-        color: #888;
+        color: #777;
     }
     .ws-highlight-change {
         color: #d84315;
@@ -1746,6 +1745,15 @@ function generateAbbreviation() {}
                     <b>⚠️ ご注意:</b> 電子カルテ『新薬歴』画面からの直接の中止・再開指示はオーダ情報に即時反映されない場合があります。最終的な変更・確定情報は必ずカルテ本画面でも併せてご確認ください。
                 </div>
 
+                <!-- サブビュー切り替えバー -->
+                <div style="display:flex; gap:6px; border-bottom:2px solid #2e7d32; margin-bottom:14px;">
+                    <button type="button" id="btn-ws-subtab-rx" onclick="switchWardSummarySubTab('rx')" style="padding:7px 16px; font-size:12px; font-weight:bold; border:1px solid #2e7d32; border-bottom:none; background:#2e7d32; color:#fff; border-radius:5px 5px 0 0; cursor:pointer;">💊 処方変更・持参薬サマリ</button>
+                    <button type="button" id="btn-ws-subtab-karte" onclick="switchWardSummarySubTab('karte')" style="padding:7px 16px; font-size:12px; font-weight:bold; border:1px solid #cfd8dc; border-bottom:none; background:#f1f3f4; color:#333; border-radius:5px 5px 0 0; cursor:pointer;">📋 直近1週間のカルテ・文書画像 <span id="badge-ws-karte-count" style="background:#fff; color:#2e7d32; padding:1px 6px; border-radius:10px; font-size:10px; margin-left:4px;">0件</span></button>
+                </div>
+
+                <!-- サブペイン1: 処方変更・持参薬サマリ -->
+                <div id="ws-subpane-rx">
+
                 <!-- 1. 処方変更サマリ (先週 vs 今週 左右比較テーブル) -->
                 <div style="background:#fff; border:1px solid #cfd8dc; border-radius:6px; margin-bottom:16px; box-shadow:0 1px 3px rgba(0,0,0,0.04); overflow:hidden;">
                     <div style="background:#f8f9fa; padding:10px 16px; border-bottom:1px solid #e0e0e0; display:flex; justify-content:space-between; align-items:center;">
@@ -1834,6 +1842,25 @@ function generateAbbreviation() {}
                         未取得
                     </div>
                 </details>
+                </div> <!-- /ws-subpane-rx -->
+
+                <!-- サブペイン2: 直近1週間のカルテ記事・文書画像 -->
+                <div id="ws-subpane-karte" style="display:none;">
+                    <div style="background:#f8f9fa; border:1px solid #dee2e6; border-radius:4px; padding:8px 12px; margin-bottom:12px; display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center; gap:8px;">
+                        <div style="display:flex; gap:6px; align-items:center;">
+                            <span style="font-size:12px; font-weight:bold; color:#333;">表示フィルタ:</span>
+                            <button type="button" id="btn-ws-kfilter-all" onclick="filterWardSummaryKarte('all')" style="padding:3px 10px; font-size:11px; font-weight:bold; border:1px solid #1976d2; background:#1976d2; color:#fff; border-radius:4px; cursor:pointer;">すべて</button>
+                            <button type="button" id="btn-ws-kfilter-img" onclick="filterWardSummaryKarte('img')" style="padding:3px 10px; font-size:11px; font-weight:bold; border:1px solid #ccc; background:#fff; color:#333; border-radius:4px; cursor:pointer;">🖼 文書・画像あり</button>
+                            <button type="button" id="btn-ws-kfilter-note" onclick="filterWardSummaryKarte('note')" style="padding:3px 10px; font-size:11px; font-weight:bold; border:1px solid #ccc; background:#fff; color:#333; border-radius:4px; cursor:pointer;">📝 経過記事のみ</button>
+                        </div>
+                        <div style="display:flex; gap:6px; align-items:center;">
+                            <input type="text" id="ipt-ws-karte-search" class="yr-form-control" style="width:180px; font-size:12px; height:26px;" placeholder="キーワード検索 (例: 透析, 食事)" onkeyup="renderWardSummaryKarteList()">
+                        </div>
+                    </div>
+                    <div id="content-ward-summary-karte-notes" style="max-height:600px; overflow-y:auto;">
+                        <div style="color:#999; text-align:center; padding:30px;">患者を選択して「⚡ データ取得・分析」を実行してください</div>
+                    </div>
+                </div> <!-- /ws-subpane-karte -->
             </div>
             </div> <!-- /yr-scroll-area -->
         </div>
@@ -11164,8 +11191,8 @@ function updateMyDisplayNameMain() {
             }
             text = text.replace(/^[ \t]*.*(?:院外|院内)[\s\(].*\d{4}\/\d{2}\/\d{2}.*?$[\r\n]*/gm, '\r\n◆外来\r\n');
             text = text.replace(/^[ \t]*.*\[?(?:定期|臨時|緊急|実施済|退院)\]?.*\d{4}\/\d{2}\/\d{2}.*?$[\r\n]*/gm, '\r\n◇入院\r\n');
-            text = text.replace(/^[ \t]*.*【持参薬】.*検認.*?(?:\r?\n[^\r\n]*?)?\d{4}\/\d{2}\/\d{2}[^\r\n]*[\r\n]*/gm, '\r\n▼持参薬検認\r\n');
-            text = text.replace(/^[ \t]*.*【持参薬】(?!.*検認).*?(?:\r?\n[^\r\n]*?)?\d{4}\/\d{2}\/\d{2}[^\r\n]*[\r\n]*/gm, '\r\n■持参薬\r\n');
+            text = text.replace(/^[ \t]*.*【持参薬】.*検認.*?(?:\r?\r\n[^\r\n]*?)?\d{4}\/\d{2}\/\d{2}[^\r\n]*[\r\n]*/gm, '\r\n▼持参薬検認\r\n');
+            text = text.replace(/^[ \t]*.*【持参薬】(?!.*検認).*?(?:\r?\r\n[^\r\n]*?)?\d{4}\/\d{2}\/\d{2}[^\r\n]*[\r\n]*/gm, '\r\n■持参薬\r\n');
             text = text.replace(/^[ \t]*.*院内[\(].*?$[\r\n]*/gm, '');
             text = text.replace(/^[ \t]*.*院内採用.*?$[\r\n]*/gm, '');
             text = text.replace(/^[ \t]*.*薬効名称.*?$[\r\n]*/gm, '');
@@ -11225,20 +11252,20 @@ function updateMyDisplayNameMain() {
             text = text.replace(/\[.*?\]/g, '');
             text = text.replace(/\]/g, '');
             text = text.replace(/^ +/gm, '');
-            text = text.replace(/\[\$T\]\r?\n?/g, 'T ');
-            text = text.replace(/\[\$C\]\r?\n?/g, 'C ');
-            text = text.replace(/\[\$ｷｯﾄ\]\r?\n?/g, 'ﾄ ');
-            text = text.replace(/\[\$本\]\r?\n?/g, '本 ');
-            text = text.replace(/\[\$枚\]\r?\n?/g, '枚 ');
-            text = text.replace(/\[\$袋\]\r?\n?/g, '袋 ');
-            text = text.replace(/\[\$包\]\r?\n?/g, '包 ');
-            text = text.replace(/\[\$器\]\r?\n?/g, '器 ');
-            text = text.replace(/\[\$位\]\r?\n?/g, '位 ');
-            text = text.replace(/\[\$箱\]\r?\n?/g, '箱 ');
-            text = text.replace(/\[\$缶\]\r?\n?/g, '缶 ');
-            text = text.replace(/\[\$g\]\r?\n?/g, 'g ');
-            text = text.replace(/\[\$l\]\r?\n?/g, 'l ');
-            text = text.replace(/\[\$V\]\r?\n?/g, 'V ');
+            text = text.replace(/\[\$T\]\r?\r\n?/g, 'T ');
+            text = text.replace(/\[\$C\]\r?\r\n?/g, 'C ');
+            text = text.replace(/\[\$ｷｯﾄ\]\r?\r\n?/g, 'ﾄ ');
+            text = text.replace(/\[\$本\]\r?\r\n?/g, '本 ');
+            text = text.replace(/\[\$枚\]\r?\r\n?/g, '枚 ');
+            text = text.replace(/\[\$袋\]\r?\r\n?/g, '袋 ');
+            text = text.replace(/\[\$包\]\r?\r\n?/g, '包 ');
+            text = text.replace(/\[\$器\]\r?\r\n?/g, '器 ');
+            text = text.replace(/\[\$位\]\r?\r\n?/g, '位 ');
+            text = text.replace(/\[\$箱\]\r?\r\n?/g, '箱 ');
+            text = text.replace(/\[\$缶\]\r?\r\n?/g, '缶 ');
+            text = text.replace(/\[\$g\]\r?\r\n?/g, 'g ');
+            text = text.replace(/\[\$l\]\r?\r\n?/g, 'l ');
+            text = text.replace(/\[\$V\]\r?\r\n?/g, 'V ');
             text = text.replace(/ﾅﾄﾘｳﾑ/g, 'Na');
             var mergeEl = document.getElementById('set-merge');
             if (mergeEl && mergeEl.checked) {
@@ -11453,7 +11480,7 @@ function updateMyDisplayNameMain() {
         function yrCopyMacroResult() {
             var text = document.getElementById('macroOutput').value;
             if (!text) return;
-            text = text.replace(/\r?\n/g, '\r\n'); // Windows向けの改行コード（\r\n）強制置換
+            text = text.replace(/\r?\r\n/g, '\r\n'); // Windows向けの改行コード（\r\n）強制置換
             try {
                 window.clipboardData.setData("Text", text);
                 yrShowAlert("整理されたテキストをコピーしました！");
@@ -12293,7 +12320,7 @@ function renderTable() {
         function updateText(cat, id, newText) {
             var item = null; for(var kz=0;kz<globalResults[cat].length;kz++){if(globalResults[cat][kz].id===id) item=globalResults[cat][kz];}
             if (item) {
-                item.fullText = newText.replace(/\r?\n/g, "");
+                item.fullText = newText.replace(/\r?\r\n/g, "");
             }
         }
         function handleEnter(e, el) {
@@ -15418,7 +15445,7 @@ function parseSummaryKarteOrders(bodyHtml, orderKind) {
         while ((fm = fontRe.exec(prevHtml)) !== null) {
             var fTxt = trimSummaryStr(stripSummaryHtmlTags(fm[1]));
             if (fTxt.indexOf("初回発行") !== -1 || fTxt.indexOf("により更新") !== -1) {
-                var linesF = fTxt.split(/\r\n|\r|\n/);
+                var linesF = fTxt.split(/\r\n|\r|\r\n/);
                 issueStamp = trimSummaryStr(linesF[linesF.length - 1]);
             }
         }
@@ -15431,7 +15458,7 @@ function parseSummaryKarteOrders(bodyHtml, orderKind) {
         if (lastHeaderTxt.indexOf("[中止]") !== -1 || lastHeaderTxt.indexOf("×") !== -1) {
             continue;
         }
-        var preLines = preTxt.split(/\r\n|\r|\n/);
+        var preLines = preTxt.split(/\r\n|\r|\r\n/);
         var orderDate = lastHeaderDate || currentSectionDate;
         var orderTimeSlot = "";
         var orderCancelled = false;
@@ -15526,7 +15553,9 @@ function parseSummaryKarteOrders(bodyHtml, orderKind) {
                     rpRawDrugLines.push(trimmedL);
                 }
             } else if (/^\u3000{2}/.test(rawL) || trimmedL !== "") {
-                rpUsageLines.push(trimmedL);
+                if (!/^(?:薬効名称[：:]|院内採用薬|院内\(|院内代替|院外専用|同種同効)/.test(trimmedL)) {
+                    rpUsageLines.push(trimmedL);
+                }
                 var durMatch = rawL.match(/(\d+)\s*日分/);
                 if (durMatch) {
                     var dNum = parseInt(durMatch[1], 10);
@@ -16560,8 +16589,68 @@ var wardSummaryState = {
     shohoOrders: [],
     chushaOrders: [],
     karteNotes: [],
+    karteRecords: [],
+    karteFilter: "all",
     jisanAdjustments: {}
 };
+
+function switchWardSummarySubTab(tab) {
+    var btnRx = document.getElementById("btn-ws-subtab-rx");
+    var btnKarte = document.getElementById("btn-ws-subtab-karte");
+    var paneRx = document.getElementById("ws-subpane-rx");
+    var paneKarte = document.getElementById("ws-subpane-karte");
+    if (!paneRx || !paneKarte) return;
+
+    if (tab === "karte") {
+        paneRx.style.display = "none";
+        paneKarte.style.display = "block";
+        if (btnRx) {
+            btnRx.style.background = "#f1f3f4";
+            btnRx.style.color = "#333";
+            btnRx.style.borderColor = "#cfd8dc";
+        }
+        if (btnKarte) {
+            btnKarte.style.background = "#2e7d32";
+            btnKarte.style.color = "#fff";
+            btnKarte.style.borderColor = "#2e7d32";
+        }
+    } else {
+        paneRx.style.display = "block";
+        paneKarte.style.display = "none";
+        if (btnRx) {
+            btnRx.style.background = "#2e7d32";
+            btnRx.style.color = "#fff";
+            btnRx.style.borderColor = "#2e7d32";
+        }
+        if (btnKarte) {
+            btnKarte.style.background = "#f1f3f4";
+            btnKarte.style.color = "#333";
+            btnKarte.style.borderColor = "#cfd8dc";
+        }
+    }
+}
+
+function filterWardSummaryKarte(filterType) {
+    wardSummaryState.karteFilter = filterType || "all";
+    var btns = {
+        all: document.getElementById("btn-ws-kfilter-all"),
+        img: document.getElementById("btn-ws-kfilter-img"),
+        note: document.getElementById("btn-ws-kfilter-note")
+    };
+    for (var k in btns) {
+        if (!btns.hasOwnProperty(k) || !btns[k]) continue;
+        if (k === wardSummaryState.karteFilter) {
+            btns[k].style.background = "#1976d2";
+            btns[k].style.color = "#fff";
+            btns[k].style.borderColor = "#1976d2";
+        } else {
+            btns[k].style.background = "#fff";
+            btns[k].style.color = "#333";
+            btns[k].style.borderColor = "#ccc";
+        }
+    }
+    renderWardSummaryKarteList();
+}
 
 function adjustWardSummaryJisan(adjKey, delta) {
     if (!wardSummaryState.jisanAdjustments) wardSummaryState.jisanAdjustments = {};
@@ -16669,16 +16758,17 @@ function fetchWardSummaryData() {
         + "&no_log_flg=1&nyugai_kind=&min_date=&max_date=&disp_zoom=100"
         + "&_t=" + new Date().getTime();
 
-    // 直近カルテ記事URL (昨日〜本日)
+    // 直近1週間カルテ記事・文書画像URL (7日前〜本日: disp_flgs第1=1[記事], 第3=1[全オーダ=文書作成含む])
+    var weekAgoStr = addSummaryDaysStr(todayStr, -7);
     var notesUrl = "http://10.5.171.42:8082/karte/karte.php"
-        + "?disp_flgs=1/0/0/0/0/0/1/0/0/1/0/0/0/0/0"
+        + "?disp_flgs=1/0/1/0/0/0/1/0/0/1/0/0/0/0/0"
         + "&kanja_id=" + encodeURIComponent(rawId)
         + "&user_id=" + encodeURIComponent(userId)
-        + "&start_date=" + yesterdayStr
+        + "&start_date=" + weekAgoStr
         + "&end_date=" + todayStr
-        + "&hakkou_date=" + yesterdayStr
+        + "&hakkou_date=" + weekAgoStr
         + "&kijun_date=" + todayStr
-        + "&range_date=3/7/1/1"
+        + "&range_date=8/7/1/1"
         + "&disp_selectsection="
         + "&disp_selectukind=1,2,3,91"
         + "&disp_usection_code=0"
@@ -16702,34 +16792,191 @@ function fetchWardSummaryData() {
             fetchSummaryHtmlViaIframe(notesUrl, 30000, function(bodyNotes, errNotes) {
                 if (myToken !== wardSummaryState.fetchToken) return;
                 var notesLen = bodyNotes ? bodyNotes.length : 0;
-                wardSummaryState.karteNotes = (!errNotes && bodyNotes) ? parseWardSummaryNotes(bodyNotes) : [];
+                var parsedRecs = (!errNotes && bodyNotes) ? parseWardSummaryKarteRecords(bodyNotes) : [];
+                wardSummaryState.karteRecords = parsedRecs;
+
+                // 退院ワード抽出用にテキスト配列を構築
+                var plainNotes = [];
+                for (var pi = 0; pi < parsedRecs.length; pi++) {
+                    if (parsedRecs[pi].body) plainNotes.push(parsedRecs[pi].body);
+                }
+                wardSummaryState.karteNotes = plainNotes;
 
                 wardSummaryState.isFetching = false;
                 if (btn) btn.disabled = false;
                 var displayName = pObj && pObj.name ? pObj.name : ("ID:" + rawId);
-                var diagTxt = "処方:" + wardSummaryState.shohoOrders.length + "件(" + shohoLen + "B), 注射:" + wardSummaryState.chushaOrders.length + "件(" + chushaLen + "B), 記事:" + wardSummaryState.karteNotes.length + "件";
+                var diagTxt = "処方:" + wardSummaryState.shohoOrders.length + "件(" + shohoLen + "B), 注射:" + wardSummaryState.chushaOrders.length + "件(" + chushaLen + "B), 記事・文書:" + parsedRecs.length + "件";
                 if (badge) {
                     badge.innerHTML = '<span style="color:#2e7d32;">✔ 取得完了 (' + escapeHtml(displayName) + ')</span> <span style="font-size:10px; color:#666;">[' + diagTxt + ']</span>';
                 }
 
+                var badgeKCount = document.getElementById("badge-ws-karte-count");
+                if (badgeKCount) badgeKCount.innerText = parsedRecs.length + "件";
+
                 renderWardSummaryPanels(todayStr);
+                renderWardSummaryKarteList();
             });
         });
     });
 }
 
-function parseWardSummaryNotes(bodyHtml) {
+function parseWardSummaryKarteRecords(bodyHtml) {
     if (!bodyHtml) return [];
     var results = [];
     var preChunks = bodyHtml.split(/<pre\b[^>]*>/i);
+    var currentDate = "";
+
     for (var i = 1; i < preChunks.length; i++) {
-        var chunk = preChunks[i].split(/<\/pre>/i)[0];
-        var cleanTxt = stripSummaryHtmlTags(chunk).replace(/&nbsp;/gi, " ").trim();
-        if (cleanTxt) {
-            results.push(cleanTxt);
+        var prevHtml = preChunks[i - 1];
+        // 日付見出し (<TD bgcolor="#DEB887"|"yellow"|"#ccffcc">) を更新
+        var secRe = /<td\b[^>]*bgcolor=["']?(?:#DEB887|#ccffcc|yellow)["']?[^>]*>([\s\S]*?)<\/td>/gi;
+        var secM;
+        while ((secM = secRe.exec(prevHtml)) !== null) {
+            var sTxt = trimSummaryStr(stripSummaryHtmlTags(secM[1]).replace(/&nbsp;/gi, " "));
+            if (sTxt) currentDate = sTxt;
+        }
+
+        // 直前のヘッダアイコン (/karte_image/XXXX.bmp) とタイトル (<span>【...】...</span>) を抽出
+        // prevHtml の末尾（最後の <a name="#order_no_"> や <hr> 以降）を対象にする
+        var lastSepIdx = Math.max(prevHtml.lastIndexOf("<hr"), prevHtml.lastIndexOf('name="#order_no_'));
+        var headerPart = (lastSepIdx !== -1) ? prevHtml.substring(lastSepIdx) : prevHtml;
+
+        var orderCode = "";
+        var kindLabel = "記事";
+        var iconM = headerPart.match(/\/karte_image\/(\d+)\.bmp[^>]*alt=["']?([^"'>]*)["']?/i);
+        if (iconM) {
+            orderCode = iconM[1];
+            if (iconM[2]) kindLabel = iconM[2];
+        } else {
+            var fontM = headerPart.match(/<font\b[^>]*color=["']?#bb2266["']?[^>]*>([\s\S]*?)<\/font>/i);
+            if (fontM) kindLabel = trimSummaryStr(stripSummaryHtmlTags(fontM[1]));
+        }
+
+        // 処方(0011)と注射(0031)は専用タブで解析するため、カルテ記事一覧からは除外
+        if (orderCode === "0011" || orderCode === "0031") {
+            continue;
+        }
+
+        var titleText = "";
+        var spanRe = /<span\b[^>]*>([\s\S]*?)<\/span>/gi;
+        var sm;
+        while ((sm = spanRe.exec(headerPart)) !== null) {
+            var st = trimSummaryStr(stripSummaryHtmlTags(sm[1]).replace(/&nbsp;/gi, " "));
+            if (st) titleText = st;
+        }
+
+        // 本文抽出 (</pre> まで)
+        var curChunk = preChunks[i];
+        var closePreIdx = curChunk.search(/<\/pre>/i);
+        var rawBody = (closePreIdx !== -1) ? curChunk.substring(0, closePreIdx) : curChunk;
+        var cleanBody = trimSummaryStr(stripSummaryHtmlTags(rawBody).replace(/&nbsp;/gi, " "));
+
+        // </pre> 以降、次のレコード開始 (<a name="#order_no_ or <hr or 日付見出し) までの間に添付画像があるか探す
+        var afterPre = (closePreIdx !== -1) ? curChunk.substring(closePreIdx) : "";
+        var nextRecIdx = afterPre.search(/<a\s+name=["']?#(?:order_no_|karte_)|<hr\b/i);
+        var tailPart = (nextRecIdx !== -1) ? afterPre.substring(0, nextRecIdx) : afterPre;
+
+        var images = [];
+        var imgRe = /<img\b[^>]*src=["']([^"']+)["'][^>]*>/gi;
+        var im;
+        while ((im = imgRe.exec(tailPart)) !== null) {
+            var srcVal = im[1];
+            // システム用小アイコン (/karte_image/...) は除外
+            if (!srcVal || srcVal.indexOf("/karte_image/") !== -1) continue;
+            // 相対パスならベースURL補完 (UNCパス \\10.5.171.43\... はそのまま保持)
+            if (srcVal.indexOf("\\\\") !== 0 && srcVal.indexOf("http") !== 0 && srcVal.indexOf("file:") !== 0) {
+                if (srcVal.charAt(0) === "/") {
+                    srcVal = "http://10.5.171.42:8082" + srcVal;
+                } else {
+                    srcVal = "http://10.5.171.42:8082/karte/" + srcVal;
+                }
+            }
+            images.push(srcVal);
+        }
+
+        if (cleanBody || images.length > 0) {
+            results.push({
+                date: currentDate,
+                orderCode: orderCode,
+                kind: kindLabel,
+                title: titleText,
+                body: cleanBody,
+                images: images
+            });
         }
     }
     return results;
+}
+
+function renderWardSummaryKarteList() {
+    var container = document.getElementById("content-ward-summary-karte-notes");
+    if (!container) return;
+
+    var recs = wardSummaryState.karteRecords || [];
+    var filter = wardSummaryState.karteFilter || "all";
+    var searchIpt = document.getElementById("ipt-ws-karte-search");
+    var keyword = searchIpt ? trimSummaryStr(searchIpt.value).toLowerCase() : "";
+
+    var filtered = [];
+    for (var i = 0; i < recs.length; i++) {
+        var r = recs[i];
+        var hasImg = (r.images && r.images.length > 0) || (r.orderCode === "0502");
+        if (filter === "img" && !hasImg) continue;
+        if (filter === "note" && hasImg) continue;
+        if (keyword) {
+            var haystack = ((r.date || "") + " " + (r.kind || "") + " " + (r.title || "") + " " + (r.body || "")).toLowerCase();
+            if (haystack.indexOf(keyword) === -1) continue;
+        }
+        filtered.push(r);
+    }
+
+    if (filtered.length === 0) {
+        container.innerHTML = '<div style="color:#888; text-align:center; padding:30px;">該当する直近1週間のカルテ記事・文書はありません</div>';
+        return;
+    }
+
+    // 新しい順（逆順）で表示すると直近が見やすい
+    var html = "";
+    for (var j = filtered.length - 1; j >= 0; j--) {
+        var item = filtered[j];
+        var isDoc = (item.images && item.images.length > 0) || item.orderCode === "0502";
+        var borderCol = isDoc ? "#f57c00" : "#1976d2";
+        var badgeBg = isDoc ? "#fff3e0" : "#e3f2fd";
+        var badgeCol = isDoc ? "#e65100" : "#0d47a1";
+
+        var bodyHtml = escapeHtml(item.body).replace(/\r?\r\n/g, "<br>");
+        if (keyword) {
+            try {
+                var escKw = escapeHtml(keyword).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+                bodyHtml = bodyHtml.replace(new RegExp("(" + escKw + ")", "gi"), '<mark style="background:#fff59d; font-weight:bold;">$1</mark>');
+            } catch(e) {}
+        }
+
+        var imgHtml = "";
+        if (item.images && item.images.length > 0) {
+            imgHtml += '<div style="margin-top:8px; padding-top:8px; border-top:1px dashed #ddd;">';
+            for (var m = 0; m < item.images.length; m++) {
+                var imgSrc = escapeHtml(item.images[m]);
+                imgHtml += '<div style="margin-bottom:6px;">' +
+                    '<img src="' + imgSrc + '" style="max-width:100%; border:1px solid #bbb; border-radius:4px; cursor:pointer;" onclick="window.open(this.src)" title="クリックで別ウィンドウ原寸表示">' +
+                    '</div>';
+            }
+            imgHtml += '</div>';
+        }
+
+        html += '<div style="background:#fff; border:1px solid #cfd8dc; border-left:4px solid ' + borderCol + '; border-radius:4px; padding:10px 14px; margin-bottom:10px; box-shadow:0 1px 2px rgba(0,0,0,0.03);">' +
+            '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; border-bottom:1px solid #f0f0f0; padding-bottom:4px;">' +
+                '<div>' +
+                    '<span style="font-size:11px; font-weight:bold; background:' + badgeBg + '; color:' + badgeCol + '; padding:2px 6px; border-radius:3px; margin-right:6px;">' + escapeHtml(item.kind || "記事") + '</span>' +
+                    '<b style="font-size:12px; color:#333;">' + escapeHtml(item.title || "") + '</b>' +
+                '</div>' +
+                '<span style="font-size:11px; color:#666;">' + escapeHtml(item.date || "") + '</span>' +
+            '</div>' +
+            '<div style="font-size:12px; line-height:1.5; color:#222; word-wrap:break-word;">' + bodyHtml + '</div>' +
+            imgHtml +
+            '</div>';
+    }
+    container.innerHTML = html;
 }
 
 function renderWardSummaryPanels(todayStr) {
@@ -17054,21 +17301,42 @@ function renderWardSummaryPanels(todayStr) {
     // ==========================================
     // 3. 定期処方の更新・切れアラート (直近3日以内)
     // ==========================================
+    var latestEndByDrug = {};
+    for (var lt = 0; lt < shoho.length; lt++) {
+        var ltOrd = shoho[lt];
+        if (ltOrd.category === "inhosp_rx" || ltOrd.category === "jisan_order") {
+            for (var ltr = 0; ltr < ltOrd.rps.length; ltr++) {
+                var ltRp = ltOrd.rps[ltr];
+                if (!ltRp.endDate) continue;
+                var ltNames = ltRp.drugs.join(", ");
+                if (!latestEndByDrug[ltNames] || ltRp.endDate > latestEndByDrug[ltNames]) {
+                    latestEndByDrug[ltNames] = ltRp.endDate;
+                }
+            }
+        }
+    }
+
     var teikiAlerts = [];
     var seenTeiki = {};
     for (var t = 0; t < shoho.length; t++) {
         var tOrd = shoho[t];
         if (tOrd.category === "inhosp_rx") {
+            // [定期]ヘッダまたは2日分以上の継続処方を対象（1日分の臨時処方を除外）
+            var isTeikiHeader = (tOrd.headerText && tOrd.headerText.indexOf("[定期]") !== -1);
             for (var tr = 0; tr < tOrd.rps.length; tr++) {
                 var tRp = tOrd.rps[tr];
                 if (tRp.isTonyo || tRp.isGaiyo) continue;
+                if (!isTeikiHeader && (!tRp.duration || tRp.duration < 2)) continue;
                 var tEnd = tRp.endDate;
                 if (!tEnd) continue;
+                var tNames = tRp.drugs.join(", ");
+                // 既に新しい更新処方（より先の終了日）が出ている場合は除外
+                if (latestEndByDrug[tNames] && latestEndByDrug[tNames] > tEnd) continue;
                 var tEndDateObj = new Date(tEnd.replace(/-/g, "/"));
                 var tDiff = Math.round((tEndDateObj - todayDateObj) / (1000 * 60 * 60 * 24));
-                var tNames = tRp.drugs.join(", ");
                 var tKey = tNames + "_" + tEnd;
-                if (tDiff <= 3 && !seenTeiki[tKey]) {
+                // 昨日(-1)〜3日後(+3)に終了予定のもののみ抽出（1ヶ月前の過去処方等を除外）
+                if (tDiff >= -1 && tDiff <= 3 && !seenTeiki[tKey]) {
                     seenTeiki[tKey] = true;
                     teikiAlerts.push({
                         name: tNames,
