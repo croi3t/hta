@@ -6568,35 +6568,58 @@ function renderWardSummaryPanels(todayStr) {
     var shoho = wardSummaryState.shohoOrders || [];
     var chusha = wardSummaryState.chushaOrders || [];
     var notes = wardSummaryState.karteNotes || [];
-    var d7Ago = addSummaryDaysStr(todayStr, -7);
-    var d14Ago = addSummaryDaysStr(todayStr, -14);
     var todayDateObj = new Date(todayStr.replace(/-/g, "/"));
+    // カレンダー上の週（月曜日起算）を算出（利用曜日に左右されない固定比較）
+    var dow = todayDateObj.getDay(); // 0:日, 1:月, ..., 6:土
+    var diffToMon = (dow === 0) ? -6 : (1 - dow);
+    var thisMon = addSummaryDaysStr(todayStr, diffToMon);
+    var thisSun = addSummaryDaysStr(thisMon, 6);
+    var lastMon = addSummaryDaysStr(thisMon, -7);
+    var lastSun = addSummaryDaysStr(thisMon, -1);
+
+    var thPrevEl = document.getElementById("th-ward-summary-prev");
+    if (thPrevEl) thPrevEl.innerHTML = "◀ 先週の処方内容 (" + lastMon.slice(5) + "〜" + lastSun.slice(5) + ")";
+    var thCurrEl = document.getElementById("th-ward-summary-curr");
+    if (thCurrEl) thCurrEl.innerHTML = "▶ 今週の処方内容 (" + thisMon.slice(5) + "〜" + thisSun.slice(5) + ")";
 
     // ==========================================
     // 1. 処方変更サマリ (先週 vs 今週 左右比較テーブル)
     // ==========================================
-    // 抽出対象: 定期処方・臨時処方・注射 (※持参薬は下部専用テーブルで扱うため除外)
-    var prevMap = {}; // 8〜14日前の処方・指示
-    var currMap = {}; // 直近7日間の処方・指示
+    // 抽出対象: 定期処方・臨時処方・緊急処方・退院処方・注射 (※持参薬・検認は除外)
+    var prevMap = {}; // 先週(月〜日)の処方・指示
+    var currMap = {}; // 今週(月〜日)の処方・指示
     var allDrugKeys = {};
+    var debugMaxDate = "";
+    var debugTotalRps = 0;
+    var debugOrderLogs = [];
 
     function processOrderForCompare(ord, isChusha) {
-        if (!ord || !ord.rps) return;
-        if (ord.category === "jisan_order") return; // 持参薬は別枠
-
+        if (!ord) return;
         var ordDate = ord.orderDate || todayStr;
+        var rpCount = ord.rps ? ord.rps.length : 0;
+        var logLine = "[" + (isChusha ? "注射" : "処方") + ":" + (ord.category || "?") + "] " + ordDate + " | " + (ord.headerText || "") + " (Rp:" + rpCount + ")";
+        if (rpCount > 0) {
+            var rp0 = ord.rps[0];
+            logLine += " => " + (rp0.startDate || ordDate) + "〜" + (rp0.endDate || "") + " : " + (rp0.drugs ? rp0.drugs.join(",") : "");
+        }
+        debugOrderLogs.push(logLine);
+
+        if (!ord.rps) return;
+        if (ord.category === "jisan_order" || ord.category === "jisan_kennin") return; // 持参薬・検認は別枠
+
         for (var r = 0; r < ord.rps.length; r++) {
             var rp = ord.rps[r];
+            debugTotalRps++;
             var sDate = rp.startDate || ordDate;
             var eDate = rp.endDate || (rp.duration ? addSummaryDaysStr(sDate, rp.duration - 1) : sDate);
+            if (!debugMaxDate || eDate > debugMaxDate) debugMaxDate = eDate;
             var dNames = rp.drugs.join(", ");
             var usage = rp.usageText || (isChusha ? "注射" : "");
             var durStr = rp.duration ? (rp.duration + "日分") : "-";
 
-            // 今週判定: 直近7日以内に出されたか、または期間が直近7日以内に掛かっている
-            var isCurr = (sDate >= d7Ago && sDate <= todayStr) || (eDate >= d7Ago && sDate <= todayStr);
-            // 先週判定: 8〜14日前以前に出されたか、または期間が先週に掛かっていた
-            var isPrev = (sDate >= d14Ago && sDate < d7Ago) || (eDate >= d14Ago && sDate < d7Ago);
+            // 区間重複判定: [sDate, eDate] がそれぞれの週と1日でも重なっているか
+            var isCurr = (sDate <= thisSun && eDate >= thisMon);
+            var isPrev = (sDate <= lastSun && eDate >= lastMon);
 
             var itemObj = {
                 name: dNames,
@@ -6689,8 +6712,28 @@ function renderWardSummaryPanels(todayStr) {
     var tbodyCompare = document.getElementById("tbody-ward-summary-compare");
     var badgeChanges = document.getElementById("badge-ward-summary-changes");
     if (tbodyCompare) {
+        // デバッグ一覧の描画
+        var debugEl = document.getElementById("content-ward-summary-debug");
+        if (debugEl) {
+            if (debugOrderLogs.length === 0) {
+                debugEl.innerHTML = "取得オーダ 0件";
+            } else {
+                var dHtml = "";
+                for (var dl = 0; dl < debugOrderLogs.length; dl++) {
+                    dHtml += "<div>" + escapeHtml(debugOrderLogs[dl]) + "</div>";
+                }
+                debugEl.innerHTML = dHtml;
+            }
+        }
+
         if (compareRows.length === 0) {
-            tbodyCompare.innerHTML = '<tr><td colspan="4" style="text-align:center; color:#999; padding:24px;">直近2週間の処方・注射オーダは見つかりませんでした</td></tr>';
+            var diagMsg = "対象期間 (先週 " + lastMon.slice(5) + "〜" + lastSun.slice(5) + " / 今週 " + thisMon.slice(5) + "〜" + thisSun.slice(5) + ") の処方・注射オーダは見つかりませんでした";
+            if (debugTotalRps > 0) {
+                diagMsg += "<br><span style='font-size:11px; color:#666;'>(対象カテゴリRp: " + debugTotalRps + "件 / 最新終了日: " + (debugMaxDate || "不明") + ")</span>";
+            } else if (debugOrderLogs.length > 0) {
+                diagMsg += "<br><span style='font-size:11px; color:#666;'>(※取得オーダ " + debugOrderLogs.length + "件は持参薬・検認のみ、またはRp情報なし。下部の「🔍 取得した処方・注射オーダ解析一覧」をご確認ください)</span>";
+            }
+            tbodyCompare.innerHTML = '<tr><td colspan="4" style="text-align:center; color:#999; padding:24px;">' + diagMsg + '</td></tr>';
         } else {
             var htmlCompare = "";
             for (var cr = 0; cr < compareRows.length; cr++) {
