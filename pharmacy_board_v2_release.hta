@@ -11212,8 +11212,8 @@ function updateMyDisplayNameMain() {
             }
             text = text.replace(/^[ \t]*.*(?:院外|院内)[\s\(].*\d{4}\/\d{2}\/\d{2}.*?$[\r\n]*/gm, '\r\n◆外来\r\n');
             text = text.replace(/^[ \t]*.*\[?(?:定期|臨時|緊急|実施済|退院)\]?.*\d{4}\/\d{2}\/\d{2}.*?$[\r\n]*/gm, '\r\n◇入院\r\n');
-            text = text.replace(/^[ \t]*.*【持参薬】.*検認.*?(?:\r?\r\n[^\r\n]*?)?\d{4}\/\d{2}\/\d{2}[^\r\n]*[\r\n]*/gm, '\r\n▼持参薬検認\r\n');
-            text = text.replace(/^[ \t]*.*【持参薬】(?!.*検認).*?(?:\r?\r\n[^\r\n]*?)?\d{4}\/\d{2}\/\d{2}[^\r\n]*[\r\n]*/gm, '\r\n■持参薬\r\n');
+            text = text.replace(/^[ \t]*.*【持参薬】.*検認.*?(?:\r?\n[^\r\n]*?)?\d{4}\/\d{2}\/\d{2}[^\r\n]*[\r\n]*/gm, '\r\n▼持参薬検認\r\n');
+            text = text.replace(/^[ \t]*.*【持参薬】(?!.*検認).*?(?:\r?\n[^\r\n]*?)?\d{4}\/\d{2}\/\d{2}[^\r\n]*[\r\n]*/gm, '\r\n■持参薬\r\n');
             text = text.replace(/^[ \t]*.*院内[\(].*?$[\r\n]*/gm, '');
             text = text.replace(/^[ \t]*.*院内採用.*?$[\r\n]*/gm, '');
             text = text.replace(/^[ \t]*.*薬効名称.*?$[\r\n]*/gm, '');
@@ -11273,20 +11273,20 @@ function updateMyDisplayNameMain() {
             text = text.replace(/\[.*?\]/g, '');
             text = text.replace(/\]/g, '');
             text = text.replace(/^ +/gm, '');
-            text = text.replace(/\[\$T\]\r?\r\n?/g, 'T ');
-            text = text.replace(/\[\$C\]\r?\r\n?/g, 'C ');
-            text = text.replace(/\[\$ｷｯﾄ\]\r?\r\n?/g, 'ﾄ ');
-            text = text.replace(/\[\$本\]\r?\r\n?/g, '本 ');
-            text = text.replace(/\[\$枚\]\r?\r\n?/g, '枚 ');
-            text = text.replace(/\[\$袋\]\r?\r\n?/g, '袋 ');
-            text = text.replace(/\[\$包\]\r?\r\n?/g, '包 ');
-            text = text.replace(/\[\$器\]\r?\r\n?/g, '器 ');
-            text = text.replace(/\[\$位\]\r?\r\n?/g, '位 ');
-            text = text.replace(/\[\$箱\]\r?\r\n?/g, '箱 ');
-            text = text.replace(/\[\$缶\]\r?\r\n?/g, '缶 ');
-            text = text.replace(/\[\$g\]\r?\r\n?/g, 'g ');
-            text = text.replace(/\[\$l\]\r?\r\n?/g, 'l ');
-            text = text.replace(/\[\$V\]\r?\r\n?/g, 'V ');
+            text = text.replace(/\[\$T\]\r?\n?/g, 'T ');
+            text = text.replace(/\[\$C\]\r?\n?/g, 'C ');
+            text = text.replace(/\[\$ｷｯﾄ\]\r?\n?/g, 'ﾄ ');
+            text = text.replace(/\[\$本\]\r?\n?/g, '本 ');
+            text = text.replace(/\[\$枚\]\r?\n?/g, '枚 ');
+            text = text.replace(/\[\$袋\]\r?\n?/g, '袋 ');
+            text = text.replace(/\[\$包\]\r?\n?/g, '包 ');
+            text = text.replace(/\[\$器\]\r?\n?/g, '器 ');
+            text = text.replace(/\[\$位\]\r?\n?/g, '位 ');
+            text = text.replace(/\[\$箱\]\r?\n?/g, '箱 ');
+            text = text.replace(/\[\$缶\]\r?\n?/g, '缶 ');
+            text = text.replace(/\[\$g\]\r?\n?/g, 'g ');
+            text = text.replace(/\[\$l\]\r?\n?/g, 'l ');
+            text = text.replace(/\[\$V\]\r?\n?/g, 'V ');
             text = text.replace(/ﾅﾄﾘｳﾑ/g, 'Na');
             var mergeEl = document.getElementById('set-merge');
             if (mergeEl && mergeEl.checked) {
@@ -11501,7 +11501,7 @@ function updateMyDisplayNameMain() {
         function yrCopyMacroResult() {
             var text = document.getElementById('macroOutput').value;
             if (!text) return;
-            text = text.replace(/\r?\r\n/g, '\r\n'); // Windows向けの改行コード（\r\n）強制置換
+            text = text.replace(/\r?\n/g, '\r\n'); // Windows向けの改行コード（\r\n）強制置換
             try {
                 window.clipboardData.setData("Text", text);
                 yrShowAlert("整理されたテキストをコピーしました！");
@@ -12341,7 +12341,7 @@ function renderTable() {
         function updateText(cat, id, newText) {
             var item = null; for(var kz=0;kz<globalResults[cat].length;kz++){if(globalResults[cat][kz].id===id) item=globalResults[cat][kz];}
             if (item) {
-                item.fullText = newText.replace(/\r?\r\n/g, "");
+                item.fullText = newText.replace(/\r?\n/g, "");
             }
         }
         function handleEnter(e, el) {
@@ -12522,7 +12522,7 @@ function yrFormatTextCore(text, keepIndentation) {
         s = s.trim();
     } else {
         // インデント保持の場合: 各行の末尾のみトリム
-        var lines = s.split(/\r\n|\r|\r\n/);
+        var lines = s.split(/\r\n|\r|\n/);
         for(var i=0; i<lines.length; i++) {
             lines[i] = lines[i].replace(/\s+$/, "");
         }
@@ -15466,7 +15466,7 @@ function parseSummaryKarteOrders(bodyHtml, orderKind) {
         while ((fm = fontRe.exec(prevHtml)) !== null) {
             var fTxt = trimSummaryStr(stripSummaryHtmlTags(fm[1]));
             if (fTxt.indexOf("初回発行") !== -1 || fTxt.indexOf("により更新") !== -1) {
-                var linesF = fTxt.split(/\r\n|\r|\r\n/);
+                var linesF = fTxt.split(/\r\n|\r|\n/);
                 issueStamp = trimSummaryStr(linesF[linesF.length - 1]);
             }
         }
@@ -15479,7 +15479,7 @@ function parseSummaryKarteOrders(bodyHtml, orderKind) {
         if (lastHeaderTxt.indexOf("[中止]") !== -1 || lastHeaderTxt.indexOf("×") !== -1) {
             continue;
         }
-        var preLines = preTxt.split(/\r\n|\r|\r\n/);
+        var preLines = preTxt.split(/\r\n|\r|\n/);
         var orderDate = lastHeaderDate || currentSectionDate;
         var orderTimeSlot = "";
         var orderCancelled = false;
@@ -16947,7 +16947,7 @@ function parseWardSummaryKarteRecords(bodyHtml) {
         var closePreIdx = curChunk.search(/<\/pre>/i);
         var rawPre = (closePreIdx !== -1) ? curChunk.substring(0, closePreIdx) : curChunk;
         var preTxt = stripSummaryHtmlTags(rawPre).replace(/&nbsp;/gi, " ");
-        var preLines = preTxt.split(/\r\n|\r|\r\n/);
+        var preLines = preTxt.split(/\r\n|\r|\n/);
 
         var authorName = "";
         var roleStr = "";
@@ -17085,7 +17085,7 @@ function renderWardSummaryKarteList() {
         var badgeBg = isDoc ? "#fff3e0" : "#e3f2fd";
         var badgeCol = isDoc ? "#e65100" : "#0d47a1";
 
-        var bodyHtml = escapeHtml(item.body || "").replace(/\r?\r\n/g, "<br>");
+        var bodyHtml = escapeHtml(item.body || "").replace(/\r?\n/g, "<br>");
         if (keyword) {
             try {
                 var escKw = escapeHtml(keyword).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
