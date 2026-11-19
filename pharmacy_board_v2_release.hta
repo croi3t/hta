@@ -1259,6 +1259,7 @@ function generateAbbreviation() {}
                                 <button type="button" id="btn-ws-batch-start" class="yr-btn" style="background:#2e7d32; color:#fff; font-size:12px; font-weight:bold; padding:5px 12px;" onclick="startWardBatchFetch('full')">⚡ 病棟一括チェック</button>
                                 <button type="button" id="btn-ws-batch-disc-only" class="yr-btn" style="background:#6a1b9a; color:#fff; font-size:12px; font-weight:bold; padding:5px 12px;" onclick="startWardBatchFetch('discharge_only')" title="処方情報を取得せず、退院ワードのみを高速抽出します">🏠 退院ワードのみ抽出</button>
                                 <button type="button" id="btn-ws-batch-karte-all" class="yr-btn" style="background:#1565c0; color:#fff; font-size:12px; font-weight:bold; padding:5px 12px;" onclick="startWardBatchKarteAllFetch()" title="選択中の取得期間で全患者のカルテを一括取得してキャッシュします">📋 カルテ一括取得</button>
+                                <button type="button" id="btn-ws-batch-karte-stop" class="yr-btn" style="background:#c62828; color:#fff; font-size:12px; font-weight:bold; padding:5px 12px; display:none;" onclick="stopWardBatchKarteAllFetch()">⏹ カルテ中断</button>
                                 <button type="button" id="btn-ws-batch-stop" class="yr-btn" style="background:#c62828; color:#fff; font-size:12px; font-weight:bold; padding:5px 12px; display:none;" onclick="stopWardBatchFetch()">⏹ 中断</button>
                                 <button type="button" id="btn-ws-batch-copy" class="yr-btn" style="background:#546e7a; color:#fff; font-size:12px; font-weight:bold; padding:5px 12px;" onclick="copyWardBatchMorningMemo()">📋 病棟サマリをコピー</button>
                             </div>
@@ -16977,6 +16978,8 @@ function stopWardBatchKarteAllFetch() {
     wardSummaryCache.karteAllStopRequested = true;
     var st = document.getElementById("ws-karte-all-status");
     if (st) st.innerText = "⏹ 中断中...";
+    var bBadge = document.getElementById("ws-batch-status-badge");
+    if (bBadge) bBadge.innerHTML = '<span style="color:#e65100;">⏹ カルテ一括取得を中断中...</span>';
 }
 
 function startWardBatchKarteAllFetch() {
@@ -16989,7 +16992,7 @@ function startWardBatchKarteAllFetch() {
         try { list = getCurrentPatientsList() || []; } catch(e) {}
     }
     if (!list || list.length === 0) {
-        yrShowAlert("現在の病棟に患者が見つかりません。", "error");
+        yrShowAlert("現在の病棟に患者が見つかりません。先に患者データを読み込んでください。", "error");
         return;
     }
     list = list.slice();
@@ -17000,6 +17003,15 @@ function startWardBatchKarteAllFetch() {
         return String(a.id || "").localeCompare(String(b.id || ""));
     });
 
+    // 単体画面で患者が未選択なら先頭患者を選択状態にしておく
+    if (!wardSummaryState.patient && list.length > 0) {
+        wardSummaryState.patient = list[0];
+        var ipt = document.getElementById("ipt-ward-summary-patient-search");
+        if (ipt) ipt.value = String(list[0].id || "");
+        var sel = document.getElementById("sel-ward-summary-patient-dropdown");
+        if (sel) sel.value = String(list[0].id || "");
+    }
+
     var myToken = new Date().getTime();
     wardSummaryCache.karteAllToken = myToken;
     wardSummaryCache.karteAllFetching = true;
@@ -17008,11 +17020,18 @@ function startWardBatchKarteAllFetch() {
     var btnSingle = document.getElementById("btn-ws-single-karte-all");
     var btnStop = document.getElementById("btn-ws-single-karte-stop");
     var btnBatch = document.getElementById("btn-ws-batch-karte-all");
+    var btnBatchStop = document.getElementById("btn-ws-batch-karte-stop");
     var stEl = document.getElementById("ws-karte-all-status");
+    var bBadge = document.getElementById("ws-batch-status-badge");
+    var progWrap = document.getElementById("ws-batch-progress-wrap");
+    var progBar = document.getElementById("ws-batch-progress-bar");
 
     if (btnSingle) btnSingle.style.display = "none";
     if (btnStop) btnStop.style.display = "inline-block";
-    if (btnBatch) btnBatch.disabled = true;
+    if (btnBatch) btnBatch.style.display = "none";
+    if (btnBatchStop) btnBatchStop.style.display = "inline-block";
+    if (progWrap) progWrap.style.display = "block";
+    if (progBar) progBar.style.width = "0%";
 
     var today = new Date();
     var todayStr = ("000" + today.getFullYear()).slice(-4) + "/" + ("0" + (today.getMonth() + 1)).slice(-2) + "/" + ("0" + today.getDate()).slice(-2);
@@ -17026,12 +17045,14 @@ function startWardBatchKarteAllFetch() {
         wardSummaryCache.karteAllFetching = false;
         if (btnSingle) btnSingle.style.display = "inline-block";
         if (btnStop) btnStop.style.display = "none";
-        if (btnBatch) btnBatch.disabled = false;
-        if (stEl) {
-            stEl.innerHTML = stopped
-                ? ('<span style="color:#e65100;">⏹ 中断 (' + idx + '/' + total + '名)</span>')
-                : ('<span style="color:#2e7d32;">✔ カルテ一括取得完了 (' + total + '名)</span>');
-        }
+        if (btnBatch) btnBatch.style.display = "inline-block";
+        if (btnBatchStop) btnBatchStop.style.display = "none";
+        if (progWrap) progWrap.style.display = "none";
+        var doneHtml = stopped
+            ? ('<span style="color:#e65100;">⏹ カルテ一括取得を中断 (' + idx + '/' + total + '名)</span>')
+            : ('<span style="color:#2e7d32;">✔ カルテ一括取得完了 (' + total + '名)</span>');
+        if (stEl) stEl.innerHTML = doneHtml;
+        if (bBadge) bBadge.innerHTML = doneHtml;
         yrShowAlert(stopped ? "カルテ一括取得を中断しました。" : ("全" + total + "名のカルテをキャッシュしました！"), "info");
     }
 
@@ -17043,7 +17064,10 @@ function startWardBatchKarteAllFetch() {
         }
         var pObj = list[idx];
         var rawId = String(pObj.id || "");
-        if (stEl) stEl.innerHTML = '<span style="color:#1565c0;">⏳ 取得中 ' + (idx + 1) + '/' + total + '名 (' + escapeHtml(pObj.name || rawId) + ')</span>';
+        var progHtml = '<span style="color:#1565c0;">⏳ カルテ取得中 ' + (idx + 1) + '/' + total + '名 (' + escapeHtml(pObj.name || rawId) + ')</span>';
+        if (stEl) stEl.innerHTML = progHtml;
+        if (bBadge) bBadge.innerHTML = progHtml;
+        if (progBar) progBar.style.width = Math.round((idx / total) * 100) + "%";
 
         var notesUrl = buildWardKarteNotesUrl(rawId, userId, todayStr, daysBack);
 
@@ -17067,11 +17091,14 @@ function startWardBatchKarteAllFetch() {
                 wardSummaryState.karteNotes = plainNotes;
                 var badgeKCount = document.getElementById("badge-ws-karte-count");
                 if (badgeKCount) badgeKCount.innerText = parsedRecs.length + "件";
+                var sBadge = document.getElementById("ward-summary-status-badge");
+                if (sBadge) sBadge.innerHTML = '<span style="color:#2e7d32;">✔ カルテ取得済み (' + escapeHtml(pObj.name || rawId) + ')</span> <span style="font-size:10px; color:#666;">[記事:' + parsedRecs.length + '件]</span>';
                 renderWardSummaryKarteList();
                 renderWardSummaryPanels(todayStr);
             }
 
             idx++;
+            if (progBar) progBar.style.width = Math.round((idx / total) * 100) + "%";
             setTimeout(nextPatient, 30);
         });
     }
@@ -19063,13 +19090,37 @@ function buildWardBatchSummaryText() {
     return memo;
 }
 
+function toggleWsSectionCard(secId) {
+    var bodyEl = document.getElementById("ws-sec-body-" + secId);
+    var arrowEl = document.getElementById("ws-sec-arrow-" + secId);
+    if (!bodyEl) return;
+    var isHidden = (bodyEl.style.display === "none");
+    bodyEl.style.display = isHidden ? "block" : "none";
+    if (arrowEl) arrowEl.innerText = isHidden ? "▼" : "▶";
+}
+
+function toggleWsInlineBlock(blockId, labelText) {
+    var bodyEl = document.getElementById(blockId);
+    var btnEl = document.getElementById("btn-" + blockId);
+    if (!bodyEl) return;
+    var isHidden = (bodyEl.style.display === "none");
+    bodyEl.style.display = isHidden ? "block" : "none";
+    if (btnEl && labelText) {
+        btnEl.innerText = (isHidden ? "▼ " : "▶ ") + labelText;
+    }
+}
+
 function toggleWardRichSummarySections(openFlag) {
     var container = document.getElementById("ws-batch-rich-summary");
     if (!container) return;
-    var detailsList = container.getElementsByTagName("details");
-    for (var i = 0; i < detailsList.length; i++) {
-        if (detailsList[i].className && detailsList[i].className.indexOf("ws-rich-section") !== -1) {
-            detailsList[i].open = !!openFlag;
+    var divs = container.getElementsByTagName("div");
+    for (var i = 0; i < divs.length; i++) {
+        var el = divs[i];
+        if (el.className && el.className.indexOf("ws-rich-section-body") !== -1) {
+            el.style.display = openFlag ? "block" : "none";
+            var secId = el.id ? el.id.replace("ws-sec-body-", "") : "";
+            var arrowEl = secId ? document.getElementById("ws-sec-arrow-" + secId) : null;
+            if (arrowEl) arrowEl.innerText = openFlag ? "▼" : "▶";
         }
     }
 }
@@ -19117,14 +19168,17 @@ function renderWardBatchRichSummary() {
         return '<button type="button" class="yr-btn" style="background:#546e7a; color:#fff; font-size:10px; padding:3px 7px;" onclick="jumpToWardSummaryDetail(\'' + pIdEsc + '\')">カルテ</button>';
     }
 
+    var secSeq = 0;
     function buildSectionCard(titleHtml, count, headerBg, borderColor, badgeBg, badgeColor, bodyHtml) {
-        return '<details open class="ws-rich-section" style="background:#fff; border:1px solid ' + borderColor + '; border-radius:6px; margin-bottom:14px; box-shadow:0 1px 2px rgba(0,0,0,0.03);">' +
-            '<summary style="background:' + headerBg + '; padding:8px 14px; border-bottom:1px solid ' + borderColor + '; border-radius:6px 6px 0 0; cursor:pointer; display:flex; justify-content:space-between; align-items:center; list-style:none;">' +
-            '<span style="font-size:13px; font-weight:bold; color:' + badgeColor + ';">▼ ' + titleHtml + '</span>' +
+        secSeq++;
+        var sId = "s" + secSeq;
+        return '<div style="background:#fff; border:1px solid ' + borderColor + '; border-radius:6px; margin-bottom:14px; box-shadow:0 1px 2px rgba(0,0,0,0.03);">' +
+            '<div onclick="toggleWsSectionCard(\'' + sId + '\')" style="background:' + headerBg + '; padding:8px 14px; border-bottom:1px solid ' + borderColor + '; border-radius:6px 6px 0 0; cursor:pointer; display:flex; justify-content:space-between; align-items:center;">' +
+            '<span style="font-size:13px; font-weight:bold; color:' + badgeColor + ';"><span id="ws-sec-arrow-' + sId + '" style="display:inline-block; width:14px;">▼</span> ' + titleHtml + '</span>' +
             '<span style="font-size:11px; font-weight:bold; background:' + badgeBg + '; color:' + badgeColor + '; border:1px solid ' + borderColor + '; padding:2px 9px; border-radius:10px;">' + count + '名</span>' +
-            '</summary>' +
-            '<div style="padding:10px 12px;">' + bodyHtml + '</div>' +
-            '</details>';
+            '</div>' +
+            '<div id="ws-sec-body-' + sId + '" class="ws-rich-section-body" style="padding:10px 12px; display:block;">' + bodyHtml + '</div>' +
+            '</div>';
     }
 
     function formatRxCell(item, isStoppedStyle) {
@@ -19255,9 +19309,12 @@ function renderWardBatchRichSummary() {
                 subTbl += '</tbody></table>';
 
                 if (unchangedRows.length > 0) {
-                    subTbl += '<details style="margin-top:4px;">' +
-                        '<summary style="font-size:10px; color:#2e7d32; cursor:pointer; font-weight:bold;">▶ 変更なし（継続中 ' + unchangedRows.length + '件）も含めて全処方を表示</summary>' +
-                        '<table style="width:100%; border-collapse:collapse; font-size:11px; margin-top:4px;"><tbody>';
+                    var unchId = "ws-rich-unch-" + escapeHtml(String(rp.id || ri));
+                    var unchLbl = "変更なし（継続中 " + unchangedRows.length + "件）も含めて全処方を表示";
+                    subTbl += '<div style="margin-top:4px;">' +
+                        '<button type="button" id="btn-' + unchId + '" onclick="toggleWsInlineBlock(\'' + unchId + '\', \'' + unchLbl + '\')" style="background:#f1f8e9; border:1px solid #c5e1a5; color:#2e7d32; font-size:10px; font-weight:bold; padding:2px 8px; border-radius:3px; cursor:pointer;">▶ ' + unchLbl + '</button>' +
+                        '<div id="' + unchId + '" style="display:none; margin-top:4px;">' +
+                        '<table style="width:100%; border-collapse:collapse; font-size:11px;"><tbody>';
                     for (var uIdx = 0; uIdx < unchangedRows.length; uIdx++) {
                         var uro = unchangedRows[uIdx];
                         subTbl += '<tr style="background:#fafafa;">' +
@@ -19267,7 +19324,7 @@ function renderWardBatchRichSummary() {
                             '<td style="width:16%; padding:4px 6px; border:1px solid #eee; text-align:center; vertical-align:middle; font-size:10px; color:#555;">' + escapeHtml(uro.note || "") + '</td>' +
                             '</tr>';
                     }
-                    subTbl += '</tbody></table></details>';
+                    subTbl += '</tbody></table></div></div>';
                 }
 
                 rxBody += '<tr style="border-bottom:2px solid #ffe0b2;">' +
@@ -19330,9 +19387,12 @@ function renderWardBatchRichSummary() {
                     if (jListAll[oj].isGaiyo || jListAll[oj].remDays > 3) otherJisan.push(jListAll[oj]);
                 }
                 if (otherJisan.length > 0) {
-                    alSubTbl += '<details style="margin-top:4px;">' +
-                        '<summary style="font-size:10px; color:#2e7d32; cursor:pointer; font-weight:bold;">▶ 継続中のその他持参薬も表示 (' + otherJisan.length + '件)</summary>' +
-                        '<table style="width:100%; border-collapse:collapse; font-size:11px; margin-top:4px;"><tbody>';
+                    var ojId = "ws-rich-oj-" + escapeHtml(String(ap.id || ai));
+                    var ojLbl = "継続中のその他持参薬も表示 (" + otherJisan.length + "件)";
+                    alSubTbl += '<div style="margin-top:4px;">' +
+                        '<button type="button" id="btn-' + ojId + '" onclick="toggleWsInlineBlock(\'' + ojId + '\', \'' + ojLbl + '\')" style="background:#f1f8e9; border:1px solid #c5e1a5; color:#2e7d32; font-size:10px; font-weight:bold; padding:2px 8px; border-radius:3px; cursor:pointer;">▶ ' + ojLbl + '</button>' +
+                        '<div id="' + ojId + '" style="display:none; margin-top:4px;">' +
+                        '<table style="width:100%; border-collapse:collapse; font-size:11px;"><tbody>';
                     for (var oji = 0; oji < otherJisan.length; oji++) {
                         var oItem = otherJisan[oji];
                         var oTxt = oItem.isGaiyo ? ("継続 " + oItem.elapsedDays + "日目") : ("残り " + oItem.remDays + " 日");
@@ -19344,7 +19404,7 @@ function renderWardBatchRichSummary() {
                             '<td style="width:20%; padding:4px 6px; border:1px solid #eee; text-align:center;"><span class="ws-rem-safe">' + oTxt + '</span></td>' +
                             '</tr>';
                     }
-                    alSubTbl += '</tbody></table></details>';
+                    alSubTbl += '</tbody></table></div></div>';
                 }
 
                 alBody += '<tr style="border-bottom:2px solid #f8bbd0;">' +
