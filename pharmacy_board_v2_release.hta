@@ -1734,13 +1734,25 @@ function generateAbbreviation() {}
                 <!-- 操作バー -->
                 <div style="background:#f1f8e9; border:1px solid #c5e1a5; border-radius:4px; padding:10px 14px; margin-bottom:12px;">
                     <div style="display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center; gap:8px;">
-                        <div style="display:flex; align-items:center; gap:8px;">
+                        <div style="display:flex; flex-wrap:wrap; align-items:center; gap:6px;">
                             <span style="font-size:13px; font-weight:bold; color:#2e7d32;">👤 患者選択:</span>
-                            <select id="sel-ward-summary-patient-dropdown" class="yr-form-control" style="width:240px; font-size:12px; height:28px;" onchange="onWardSummaryPatientDropdownChange(this.value)">
+                            <button type="button" class="yr-btn" style="background:#fff; color:#2e7d32; border:1px solid #a5d6a7; font-size:11px; font-weight:bold; padding:4px 8px;" onclick="navigateWardSummaryPatient(-1)" title="前の患者へ">◀ 前へ</button>
+                            <select id="sel-ward-summary-patient-dropdown" class="yr-form-control" style="width:220px; font-size:12px; height:28px;" onchange="onWardSummaryPatientDropdownChange(this.value)">
                                 <option value="">-- 患者一覧から選択 --</option>
                             </select>
-                            <input type="text" id="ipt-ward-summary-patient-search" class="yr-form-control" style="width:110px; font-size:12px; height:28px;" placeholder="患者ID直接入力" onkeypress="if(event.keyCode===13) fetchWardSummaryData()">
-                            <button id="btn-ward-summary-fetch" class="yr-btn" style="background:#2e7d32; color:#fff; font-size:12px; font-weight:bold; padding:4px 14px;" onclick="fetchWardSummaryData()">⚡ データ取得・分析</button>
+                            <button type="button" class="yr-btn" style="background:#fff; color:#2e7d32; border:1px solid #a5d6a7; font-size:11px; font-weight:bold; padding:4px 8px;" onclick="navigateWardSummaryPatient(1)" title="次の患者へ">次へ ▶</button>
+                            <input type="text" id="ipt-ward-summary-patient-search" class="yr-form-control" style="width:100px; font-size:12px; height:28px;" placeholder="患者ID直接入力" onkeypress="if(event.keyCode===13) fetchWardSummaryData(true)">
+                            <button id="btn-ward-summary-fetch" class="yr-btn" style="background:#2e7d32; color:#fff; font-size:12px; font-weight:bold; padding:4px 12px;" onclick="fetchWardSummaryData(true)" title="最新の処方・カルテを再取得します">⚡ 最新再取得</button>
+                            <select id="sel-ws-karte-range" class="yr-form-control" style="width:125px; font-size:11px; height:28px;" onchange="onWardKarteRangeChange()" title="カルテ記事・文書画像の取得期間">
+                                <option value="0">本日のみ (1日)</option>
+                                <option value="1">昨日〜本日 (2日間)</option>
+                                <option value="2">直近3日間</option>
+                                <option value="7" selected>直近1週間</option>
+                                <option value="14">直近2週間</option>
+                            </select>
+                            <button type="button" id="btn-ws-single-karte-all" class="yr-btn" style="background:#1565c0; color:#fff; font-size:11px; font-weight:bold; padding:4px 10px;" onclick="startWardBatchKarteAllFetch()" title="選択中の取得期間で病棟全患者のカルテを一括取得してキャッシュします">📋 全患者カルテ一括取得</button>
+                            <button type="button" id="btn-ws-single-karte-stop" class="yr-btn" style="background:#c62828; color:#fff; font-size:11px; font-weight:bold; padding:4px 10px; display:none;" onclick="stopWardBatchKarteAllFetch()">⏹ 中断</button>
+                            <span id="ws-karte-all-status" style="font-size:11px; font-weight:bold; color:#1565c0;"></span>
                         </div>
                         <div id="ward-summary-status-badge" style="font-size:12px; font-weight:bold; color:#555;">
                             待機中
@@ -1907,6 +1919,7 @@ function generateAbbreviation() {}
                                 </label>
                                 <button type="button" id="btn-ws-batch-start" class="yr-btn" style="background:#2e7d32; color:#fff; font-size:12px; font-weight:bold; padding:5px 12px;" onclick="startWardBatchFetch('full')">⚡ 病棟一括チェック</button>
                                 <button type="button" id="btn-ws-batch-disc-only" class="yr-btn" style="background:#6a1b9a; color:#fff; font-size:12px; font-weight:bold; padding:5px 12px;" onclick="startWardBatchFetch('discharge_only')" title="処方情報を取得せず、退院ワードのみを高速抽出します">🏠 退院ワードのみ抽出</button>
+                                <button type="button" id="btn-ws-batch-karte-all" class="yr-btn" style="background:#1565c0; color:#fff; font-size:12px; font-weight:bold; padding:5px 12px;" onclick="startWardBatchKarteAllFetch()" title="選択中の取得期間で全患者のカルテを一括取得してキャッシュします">📋 カルテ一括取得</button>
                                 <button type="button" id="btn-ws-batch-stop" class="yr-btn" style="background:#c62828; color:#fff; font-size:12px; font-weight:bold; padding:5px 12px; display:none;" onclick="stopWardBatchFetch()">⏹ 中断</button>
                                 <button type="button" id="btn-ws-batch-copy" class="yr-btn" style="background:#546e7a; color:#fff; font-size:12px; font-weight:bold; padding:5px 12px;" onclick="copyWardBatchMorningMemo()">📋 病棟サマリをコピー</button>
                             </div>
@@ -10807,7 +10820,7 @@ function updateMyDisplayNameMain() {
                 ipt.value = val || '';
             }
             if (val && typeof fetchWardSummaryData === 'function') {
-                fetchWardSummaryData();
+                fetchWardSummaryData(false);
             }
         }
         function onSummaryPatientDropdownChange(val) {
@@ -16795,6 +16808,14 @@ var wardSummaryState = {
     jisanAdjustments: {}
 };
 
+var wardSummaryCache = {
+    rx: {},
+    karte: {},
+    karteAllFetching: false,
+    karteAllStopRequested: false,
+    karteAllToken: 0
+};
+
 function switchWardSummarySubTab(tab) {
     var btnRx = document.getElementById("btn-ws-subtab-rx");
     var btnKarte = document.getElementById("btn-ws-subtab-karte");
@@ -16873,8 +16894,186 @@ function resetWardSummaryJisanAdj() {
     renderWardSummaryPanels();
 }
 
-function fetchWardSummaryData() {
-    if (wardSummaryState.isFetching) {
+function navigateWardSummaryPatient(delta) {
+    var sel = document.getElementById("sel-ward-summary-patient-dropdown");
+    if (!sel || !sel.options || sel.options.length <= 1) {
+        yrShowAlert("患者一覧が読み込まれていません。", "info");
+        return;
+    }
+    var validIds = [];
+    for (var i = 0; i < sel.options.length; i++) {
+        if (sel.options[i].value) validIds.push(sel.options[i].value);
+    }
+    if (validIds.length === 0) return;
+
+    var curId = sel.value || "";
+    var idx = -1;
+    for (var j = 0; j < validIds.length; j++) {
+        if (String(validIds[j]) === String(curId)) {
+            idx = j;
+            break;
+        }
+    }
+    var nextIdx = (idx === -1) ? (delta > 0 ? 0 : validIds.length - 1) : (idx + delta);
+    if (nextIdx < 0) {
+        yrShowAlert("先頭の患者です。", "info");
+        return;
+    }
+    if (nextIdx >= validIds.length) {
+        yrShowAlert("最後の患者です。", "info");
+        return;
+    }
+    var nextId = validIds[nextIdx];
+    sel.value = nextId;
+    var ipt = document.getElementById("ipt-ward-summary-patient-search");
+    if (ipt) ipt.value = nextId;
+    fetchWardSummaryData(false);
+}
+
+function getWardKarteDaysBack() {
+    var sel = document.getElementById("sel-ws-karte-range");
+    var v = sel ? parseInt(sel.value, 10) : 7;
+    return isNaN(v) ? 7 : v;
+}
+
+function buildWardKarteNotesUrl(rawId, userId, todayStr, daysBack) {
+    var dBack = (typeof daysBack === "number" && !isNaN(daysBack)) ? daysBack : 7;
+    var startStr = addSummaryDaysStr(todayStr, -dBack);
+    var rangeDays = dBack + 1;
+    return "http://10.5.171.42:8082/karte/karte.php"
+        + "?disp_flgs=1/0/1/0/0/0/1/0/0/1/0/0/0/0/0"
+        + "&kanja_id=" + encodeURIComponent(rawId)
+        + "&user_id=" + encodeURIComponent(userId)
+        + "&start_date=" + startStr
+        + "&end_date=" + todayStr
+        + "&hakkou_date=" + startStr
+        + "&kijun_date=" + todayStr
+        + "&range_date=" + rangeDays + "/7/1/1"
+        + "&disp_selectsection="
+        + "&disp_selectukind=1,2,3,91"
+        + "&disp_usection_code=0"
+        + "&disp_ukind_code=2122"
+        + "&no_log_flg=1&disp_zoom=100"
+        + "&_t=" + new Date().getTime();
+}
+
+function onWardKarteRangeChange() {
+    onWardKartePrefChange();
+    var stEl = document.getElementById("ws-karte-all-status");
+    if (stEl) stEl.innerText = "";
+    if (wardSummaryState.patient && !wardSummaryState.isFetching && !wardSummaryCache.karteAllFetching) {
+        fetchWardSummaryData(false);
+    }
+}
+
+function stopWardBatchKarteAllFetch() {
+    wardSummaryCache.karteAllStopRequested = true;
+    var st = document.getElementById("ws-karte-all-status");
+    if (st) st.innerText = "⏹ 中断中...";
+}
+
+function startWardBatchKarteAllFetch() {
+    if (wardSummaryCache.karteAllFetching) {
+        yrShowAlert("現在、全患者カルテ一括取得を実行中です。", "info");
+        return;
+    }
+    var list = [];
+    if (typeof getCurrentPatientsList === "function") {
+        try { list = getCurrentPatientsList() || []; } catch(e) {}
+    }
+    if (!list || list.length === 0) {
+        yrShowAlert("現在の病棟に患者が見つかりません。", "error");
+        return;
+    }
+    list = list.slice();
+    list.sort(function(a, b) {
+        var nA = parseInt(String(a.id || "").replace(/\D/g, ""), 10);
+        var nB = parseInt(String(b.id || "").replace(/\D/g, ""), 10);
+        if (!isNaN(nA) && !isNaN(nB) && nA !== nB) return nA - nB;
+        return String(a.id || "").localeCompare(String(b.id || ""));
+    });
+
+    var myToken = new Date().getTime();
+    wardSummaryCache.karteAllToken = myToken;
+    wardSummaryCache.karteAllFetching = true;
+    wardSummaryCache.karteAllStopRequested = false;
+
+    var btnSingle = document.getElementById("btn-ws-single-karte-all");
+    var btnStop = document.getElementById("btn-ws-single-karte-stop");
+    var btnBatch = document.getElementById("btn-ws-batch-karte-all");
+    var stEl = document.getElementById("ws-karte-all-status");
+
+    if (btnSingle) btnSingle.style.display = "none";
+    if (btnStop) btnStop.style.display = "inline-block";
+    if (btnBatch) btnBatch.disabled = true;
+
+    var today = new Date();
+    var todayStr = ("000" + today.getFullYear()).slice(-4) + "/" + ("0" + (today.getMonth() + 1)).slice(-2) + "/" + ("0" + today.getDate()).slice(-2);
+    var daysBack = getWardKarteDaysBack();
+    var userId = (typeof currentSystemId !== "undefined" && currentSystemId) ? currentSystemId : "pharmacy";
+
+    var total = list.length;
+    var idx = 0;
+
+    function finishAll(stopped) {
+        wardSummaryCache.karteAllFetching = false;
+        if (btnSingle) btnSingle.style.display = "inline-block";
+        if (btnStop) btnStop.style.display = "none";
+        if (btnBatch) btnBatch.disabled = false;
+        if (stEl) {
+            stEl.innerHTML = stopped
+                ? ('<span style="color:#e65100;">⏹ 中断 (' + idx + '/' + total + '名)</span>')
+                : ('<span style="color:#2e7d32;">✔ カルテ一括取得完了 (' + total + '名)</span>');
+        }
+        yrShowAlert(stopped ? "カルテ一括取得を中断しました。" : ("全" + total + "名のカルテをキャッシュしました！"), "info");
+    }
+
+    function nextPatient() {
+        if (myToken !== wardSummaryCache.karteAllToken) return;
+        if (wardSummaryCache.karteAllStopRequested || idx >= total) {
+            finishAll(wardSummaryCache.karteAllStopRequested);
+            return;
+        }
+        var pObj = list[idx];
+        var rawId = String(pObj.id || "");
+        if (stEl) stEl.innerHTML = '<span style="color:#1565c0;">⏳ 取得中 ' + (idx + 1) + '/' + total + '名 (' + escapeHtml(pObj.name || rawId) + ')</span>';
+
+        var notesUrl = buildWardKarteNotesUrl(rawId, userId, todayStr, daysBack);
+
+        fetchSummaryHtmlViaIframe(notesUrl, 25000, function(bodyNotes, errNotes) {
+            if (myToken !== wardSummaryCache.karteAllToken) return;
+            var parsedRecs = (!errNotes && bodyNotes) ? parseWardSummaryKarteRecords(bodyNotes) : [];
+            var plainNotes = [];
+            for (var pi = 0; pi < parsedRecs.length; pi++) {
+                if (parsedRecs[pi].body) plainNotes.push(parsedRecs[pi].body);
+            }
+            wardSummaryCache.karte[rawId] = {
+                karteRecords: parsedRecs,
+                karteNotes: plainNotes,
+                daysBack: daysBack,
+                fetchedAt: new Date().getTime()
+            };
+
+            // 現在単体画面で選択中の患者なら即反映
+            if (wardSummaryState.patient && String(wardSummaryState.patient.id) === rawId) {
+                wardSummaryState.karteRecords = parsedRecs;
+                wardSummaryState.karteNotes = plainNotes;
+                var badgeKCount = document.getElementById("badge-ws-karte-count");
+                if (badgeKCount) badgeKCount.innerText = parsedRecs.length + "件";
+                renderWardSummaryKarteList();
+                renderWardSummaryPanels(todayStr);
+            }
+
+            idx++;
+            setTimeout(nextPatient, 30);
+        });
+    }
+
+    nextPatient();
+}
+
+function fetchWardSummaryData(forceRefresh) {
+    if (wardSummaryState.isFetching && forceRefresh) {
         yrShowAlert("現在データ収集中です。完了までお待ちください。", "info");
         return;
     }
@@ -16894,20 +17093,57 @@ function fetchWardSummaryData() {
     }
     wardSummaryState.patient = pObj;
 
+    var today = new Date();
+    var todayStr = ("000" + today.getFullYear()).slice(-4) + "/" + ("0" + (today.getMonth() + 1)).slice(-2) + "/" + ("0" + today.getDate()).slice(-2);
+    var displayName = pObj && pObj.name ? pObj.name : ("ID:" + rawId);
+    var badge = document.getElementById("ward-summary-status-badge");
+    var badgeKCount = document.getElementById("badge-ws-karte-count");
+
+    var daysBack = getWardKarteDaysBack();
+    var cachedRx = (!forceRefresh && wardSummaryCache.rx[rawId]) ? wardSummaryCache.rx[rawId] : null;
+    var rawCachedK = (!forceRefresh && wardSummaryCache.karte[rawId]) ? wardSummaryCache.karte[rawId] : null;
+    var cachedKarte = (rawCachedK && rawCachedK.daysBack === daysBack) ? rawCachedK : null;
+
+    // 1. 両方キャッシュがある場合：通信ゼロで即座に表示
+    if (cachedRx && cachedKarte) {
+        wardSummaryState.fetchToken = new Date().getTime();
+        wardSummaryState.isFetching = false;
+        wardSummaryState.shohoOrders = cachedRx.shohoOrders || [];
+        wardSummaryState.chushaOrders = cachedRx.chushaOrders || [];
+        wardSummaryState.karteRecords = cachedKarte.karteRecords || [];
+        wardSummaryState.karteNotes = cachedKarte.karteNotes || [];
+        if (badgeKCount) badgeKCount.innerText = wardSummaryState.karteRecords.length + "件";
+        if (badge) {
+            var cDiag = "処方:" + wardSummaryState.shohoOrders.length + "件, 注射:" + wardSummaryState.chushaOrders.length + "件, 記事:" + wardSummaryState.karteRecords.length + "件";
+            badge.innerHTML = '<span style="color:#1565c0;">⚡ キャッシュ表示 (' + escapeHtml(displayName) + ')</span> <span style="font-size:10px; color:#666;">[' + cDiag + ']</span>';
+        }
+        renderWardSummaryPanels(todayStr);
+        renderWardSummaryKarteList();
+        return;
+    }
+
+    // 2. カルテのみキャッシュがある場合は先にカルテを即座に表示（待ち時間ゼロ）
+    if (cachedKarte) {
+        wardSummaryState.karteRecords = cachedKarte.karteRecords || [];
+        wardSummaryState.karteNotes = cachedKarte.karteNotes || [];
+        if (badgeKCount) badgeKCount.innerText = wardSummaryState.karteRecords.length + "件";
+        renderWardSummaryKarteList();
+        // カルテ一括取得が走っている間はカルテのみ即表示で止めて競合・待機を防ぐ
+        if (wardSummaryCache.karteAllFetching) {
+            if (badge) badge.innerHTML = '<span style="color:#1565c0;">⚡ カルテキャッシュ表示 (' + escapeHtml(displayName) + ')</span> <span style="font-size:10px; color:#666;">[記事:' + wardSummaryState.karteRecords.length + '件 / 処方は「最新再取得」で取得可]</span>';
+            return;
+        }
+    }
+
     var userId = (typeof currentSystemId !== "undefined" && currentSystemId) ? currentSystemId : "pharmacy";
     var myToken = new Date().getTime();
     wardSummaryState.fetchToken = myToken;
     wardSummaryState.isFetching = true;
 
-    var badge = document.getElementById("ward-summary-status-badge");
     if (badge) badge.innerHTML = '<span style="color:#0288d1;">⏳ データ収集中...</span>';
     var btn = document.getElementById("btn-ward-summary-fetch");
     if (btn) btn.disabled = true;
 
-    var today = new Date();
-    var todayStr = ("000" + today.getFullYear()).slice(-4) + "/" + ("0" + (today.getMonth() + 1)).slice(-2) + "/" + ("0" + today.getDate()).slice(-2);
-    
-    // 入院開始日の算出（持参薬を拾うために入院初期から検索）
     var hospDays = parseInt(pObj.daysInHosp, 10);
     var rDays = (!isNaN(hospDays) && hospDays > 0) ? Math.min(550, Math.max(hospDays + 14, 60)) : 90;
     var fetchStart = addSummaryDaysStr(todayStr, -rDays);
@@ -16919,9 +17155,7 @@ function fetchWardSummaryData() {
         }
     }
     var fetchEnd = addSummaryDaysStr(todayStr, 14);
-    var yesterdayStr = addSummaryDaysStr(todayStr, -1);
 
-    // 処方・持参薬URL (0011) - サマリ自動生成と完全一致
     var shohoUrl = "http://10.5.171.42:8082/karte/karte.php"
         + "?disp_flgs=0/0/2/0/0/0/1/0/0/1/0/0/0/0/0"
         + "&kanja_id=" + encodeURIComponent(rawId)
@@ -16940,7 +17174,6 @@ function fetchWardSummaryData() {
         + "&no_log_flg=1&nyugai_kind=&min_date=&max_date=&disp_zoom=100"
         + "&_t=" + new Date().getTime();
 
-    // 注射URL (0031) - サマリ自動生成と完全一致
     var chushaUrl = "http://10.5.171.42:8082/karte/karte.php"
         + "?disp_flgs=0/0/2/0/0/0/1/0/0/1/0/0/0/0/0"
         + "&kanja_id=" + encodeURIComponent(rawId)
@@ -16959,64 +17192,70 @@ function fetchWardSummaryData() {
         + "&no_log_flg=1&nyugai_kind=&min_date=&max_date=&disp_zoom=100"
         + "&_t=" + new Date().getTime();
 
-    // 直近1週間カルテ記事・文書画像URL (7日前〜本日: disp_flgs第1=1[記事], 第3=1[全オーダ=文書作成含む])
-    var weekAgoStr = addSummaryDaysStr(todayStr, -7);
-    var notesUrl = "http://10.5.171.42:8082/karte/karte.php"
-        + "?disp_flgs=1/0/1/0/0/0/1/0/0/1/0/0/0/0/0"
-        + "&kanja_id=" + encodeURIComponent(rawId)
-        + "&user_id=" + encodeURIComponent(userId)
-        + "&start_date=" + weekAgoStr
-        + "&end_date=" + todayStr
-        + "&hakkou_date=" + weekAgoStr
-        + "&kijun_date=" + todayStr
-        + "&range_date=8/7/1/1"
-        + "&disp_selectsection="
-        + "&disp_selectukind=1,2,3,91"
-        + "&disp_usection_code=0"
-        + "&disp_ukind_code=2122"
-        + "&no_log_flg=1&disp_zoom=100"
-        + "&_t=" + new Date().getTime();
+    var notesUrl = buildWardKarteNotesUrl(rawId, userId, todayStr, daysBack);
 
-    // 逐次フェッチ実行 (処方 -> 注射 -> カルテ記事)
+    function finalizeSingleFetch() {
+        wardSummaryState.isFetching = false;
+        if (btn) btn.disabled = false;
+        var diagTxt = "処方:" + wardSummaryState.shohoOrders.length + "件, 注射:" + wardSummaryState.chushaOrders.length + "件, 記事・文書:" + wardSummaryState.karteRecords.length + "件";
+        if (badge) {
+            badge.innerHTML = '<span style="color:#2e7d32;">✔ 取得完了 (' + escapeHtml(displayName) + ')</span> <span style="font-size:10px; color:#666;">[' + diagTxt + ']</span>';
+        }
+        if (badgeKCount) badgeKCount.innerText = wardSummaryState.karteRecords.length + "件";
+        renderWardSummaryPanels(todayStr);
+        renderWardSummaryKarteList();
+    }
+
+    function stepFetchKarte() {
+        if (cachedKarte) {
+            wardSummaryState.karteRecords = cachedKarte.karteRecords || [];
+            wardSummaryState.karteNotes = cachedKarte.karteNotes || [];
+            finalizeSingleFetch();
+            return;
+        }
+        fetchSummaryHtmlViaIframe(notesUrl, 30000, function(bodyNotes, errNotes) {
+            if (myToken !== wardSummaryState.fetchToken) return;
+            var parsedRecs = (!errNotes && bodyNotes) ? parseWardSummaryKarteRecords(bodyNotes) : [];
+            var plainNotes = [];
+            for (var pi = 0; pi < parsedRecs.length; pi++) {
+                if (parsedRecs[pi].body) plainNotes.push(parsedRecs[pi].body);
+            }
+            wardSummaryState.karteRecords = parsedRecs;
+            wardSummaryState.karteNotes = plainNotes;
+            wardSummaryCache.karte[rawId] = {
+                karteRecords: parsedRecs,
+                karteNotes: plainNotes,
+                daysBack: daysBack,
+                fetchedAt: new Date().getTime()
+            };
+            finalizeSingleFetch();
+        });
+    }
+
+    if (cachedRx) {
+        wardSummaryState.shohoOrders = cachedRx.shohoOrders || [];
+        wardSummaryState.chushaOrders = cachedRx.chushaOrders || [];
+        stepFetchKarte();
+        return;
+    }
+
     fetchSummaryHtmlViaIframe(shohoUrl, 30000, function(bodyShoho, errShoho) {
         if (myToken !== wardSummaryState.fetchToken) return;
-        var shohoLen = bodyShoho ? bodyShoho.length : 0;
         var parsedShoho = (!errShoho && bodyShoho) ? parseSummaryKarteOrders(bodyShoho, "0011") : { orders: [] };
         wardSummaryState.shohoOrders = parsedShoho.orders || [];
 
         fetchSummaryHtmlViaIframe(chushaUrl, 30000, function(bodyChusha, errChusha) {
             if (myToken !== wardSummaryState.fetchToken) return;
-            var chushaLen = bodyChusha ? bodyChusha.length : 0;
             var parsedChusha = (!errChusha && bodyChusha) ? parseSummaryKarteOrders(bodyChusha, "0031") : { orders: [] };
             wardSummaryState.chushaOrders = parsedChusha.orders || [];
 
-            fetchSummaryHtmlViaIframe(notesUrl, 30000, function(bodyNotes, errNotes) {
-                if (myToken !== wardSummaryState.fetchToken) return;
-                var notesLen = bodyNotes ? bodyNotes.length : 0;
-                var parsedRecs = (!errNotes && bodyNotes) ? parseWardSummaryKarteRecords(bodyNotes) : [];
-                wardSummaryState.karteRecords = parsedRecs;
+            wardSummaryCache.rx[rawId] = {
+                shohoOrders: wardSummaryState.shohoOrders,
+                chushaOrders: wardSummaryState.chushaOrders,
+                fetchedAt: new Date().getTime()
+            };
 
-                // 退院ワード抽出用にテキスト配列を構築
-                var plainNotes = [];
-                for (var pi = 0; pi < parsedRecs.length; pi++) {
-                    if (parsedRecs[pi].body) plainNotes.push(parsedRecs[pi].body);
-                }
-                wardSummaryState.karteNotes = plainNotes;
-
-                wardSummaryState.isFetching = false;
-                if (btn) btn.disabled = false;
-                var displayName = pObj && pObj.name ? pObj.name : ("ID:" + rawId);
-                var diagTxt = "処方:" + wardSummaryState.shohoOrders.length + "件(" + shohoLen + "B), 注射:" + wardSummaryState.chushaOrders.length + "件(" + chushaLen + "B), 記事・文書:" + parsedRecs.length + "件";
-                if (badge) {
-                    badge.innerHTML = '<span style="color:#2e7d32;">✔ 取得完了 (' + escapeHtml(displayName) + ')</span> <span style="font-size:10px; color:#666;">[' + diagTxt + ']</span>';
-                }
-
-                var badgeKCount = document.getElementById("badge-ws-karte-count");
-                if (badgeKCount) badgeKCount.innerText = parsedRecs.length + "件";
-
-                renderWardSummaryPanels(todayStr);
-                renderWardSummaryKarteList();
-            });
+            stepFetchKarte();
         });
     });
 }
@@ -17049,6 +17288,10 @@ function loadWardKartePrefs() {
             var selSort = document.getElementById("sel-ws-karte-sort");
             if (selSort) selSort.value = prefs.sortOrder;
         }
+        if (typeof prefs.karteDays !== "undefined") {
+            var selRange = document.getElementById("sel-ws-karte-range");
+            if (selRange) selRange.value = String(prefs.karteDays);
+        }
         if (prefs.roles) {
             var rKeys = ["doctor", "nurse", "pharm", "rehab", "other"];
             for (var i = 0; i < rKeys.length; i++) {
@@ -17070,6 +17313,7 @@ function onWardKartePrefChange() {
             var prefs = {
                 imgSize: sel ? sel.value : "large",
                 sortOrder: selSort ? selSort.value : "desc",
+                karteDays: getWardKarteDaysBack(),
                 roles: {
                     doctor: (document.getElementById("chk-ws-role-doctor") || { checked: true }).checked,
                     nurse:  (document.getElementById("chk-ws-role-nurse")  || { checked: true }).checked,
@@ -18084,6 +18328,13 @@ function startWardBatchFetch(fetchMode) {
 
         function finalizePatient(shohoOrders, chushaOrders, karteRecs) {
             if (myToken !== wardBatchState.runToken) return;
+            if (!isDischargeOnly && typeof wardSummaryCache !== "undefined") {
+                wardSummaryCache.rx[String(pObj.id)] = {
+                    shohoOrders: shohoOrders || [],
+                    chushaOrders: chushaOrders || [],
+                    fetchedAt: new Date().getTime()
+                };
+            }
             var analyzed = analyzeSinglePatientForBatch(pObj, shohoOrders, chushaOrders, karteRecs, todayStr, todayDateObj, thisMon, thisSun, lastMon, lastSun);
             wardBatchState.results.push(analyzed);
 
@@ -18654,7 +18905,7 @@ function jumpToWardSummaryDetail(pId) {
     if (ipt) ipt.value = pId;
     var sel = document.getElementById("sel-ward-summary-patient-dropdown");
     if (sel) sel.value = pId;
-    fetchWardSummaryData();
+    fetchWardSummaryData(false);
 }
 
 function switchWardBatchView(viewName) {
