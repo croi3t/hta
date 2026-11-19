@@ -1726,7 +1726,7 @@ function generateAbbreviation() {}
                 <!-- モード切替バー (単体患者 vs 病棟一括) -->
                 <div style="display:flex; gap:8px; margin-bottom:12px; border-bottom:2px solid #1b5e20; padding-bottom:6px;">
                     <button type="button" id="btn-ws-mode-single" onclick="switchWardSummaryMainMode('single')" style="padding:6px 16px; font-size:13px; font-weight:bold; border:1px solid #1b5e20; background:#1b5e20; color:#fff; border-radius:4px; cursor:pointer;">👤 単体患者サマリ (処方比較 ＆ 1週間カルテ)</button>
-                    <button type="button" id="btn-ws-mode-batch" onclick="switchWardSummaryMainMode('batch')" style="padding:6px 16px; font-size:13px; font-weight:bold; border:1px solid #ccc; background:#f8f9fa; color:#333; border-radius:4px; cursor:pointer;">🏥 病棟一括チェック (朝の一括確認)</button>
+                    <button type="button" id="btn-ws-mode-batch" onclick="switchWardSummaryMainMode('batch')" style="padding:6px 16px; font-size:13px; font-weight:bold; border:1px solid #ccc; background:#f8f9fa; color:#333; border-radius:4px; cursor:pointer;">🏥 病棟一括チェック</button>
                 </div>
 
                 <!-- モード1: 単体患者サマリ -->
@@ -1863,6 +1863,13 @@ function generateAbbreviation() {}
                                 <button type="button" id="btn-ws-kfilter-note" onclick="filterWardSummaryKarte('note')" style="padding:3px 10px; font-size:11px; font-weight:bold; border:1px solid #ccc; background:#fff; color:#333; border-radius:4px; cursor:pointer;">📝 経過記事のみ</button>
                             </div>
                             <div style="display:flex; gap:10px; align-items:center;">
+                                <label style="font-size:11px; font-weight:bold; color:#333; margin:0;">
+                                    ↕ 並び順:
+                                    <select id="sel-ws-karte-sort" onchange="onWardKartePrefChange()" style="font-size:11px; padding:2px 6px; border:1px solid #ccc; border-radius:3px;">
+                                        <option value="desc">新しい順</option>
+                                        <option value="asc">古い順</option>
+                                    </select>
+                                </label>
                                 <label style="font-size:11px; font-weight:bold; color:#333; margin:0;">
                                     🖼 画像表示:
                                     <select id="sel-ws-karte-imgsize" onchange="onWardKartePrefChange()" style="font-size:11px; padding:2px 6px; border:1px solid #ccc; border-radius:3px;">
@@ -17038,6 +17045,10 @@ function loadWardKartePrefs() {
             var sel = document.getElementById("sel-ws-karte-imgsize");
             if (sel) sel.value = prefs.imgSize;
         }
+        if (prefs.sortOrder) {
+            var selSort = document.getElementById("sel-ws-karte-sort");
+            if (selSort) selSort.value = prefs.sortOrder;
+        }
         if (prefs.roles) {
             var rKeys = ["doctor", "nurse", "pharm", "rehab", "other"];
             for (var i = 0; i < rKeys.length; i++) {
@@ -17055,8 +17066,10 @@ function onWardKartePrefChange() {
     try {
         if (typeof localStorage !== "undefined") {
             var sel = document.getElementById("sel-ws-karte-imgsize");
+            var selSort = document.getElementById("sel-ws-karte-sort");
             var prefs = {
                 imgSize: sel ? sel.value : "large",
+                sortOrder: selSort ? selSort.value : "desc",
                 roles: {
                     doctor: (document.getElementById("chk-ws-role-doctor") || { checked: true }).checked,
                     nurse:  (document.getElementById("chk-ws-role-nurse")  || { checked: true }).checked,
@@ -17254,10 +17267,13 @@ function renderWardSummaryKarteList() {
         return;
     }
 
-    // 新しい順（逆順）で表示
+    var sortSel = document.getElementById("sel-ws-karte-sort");
+    var sortOrder = sortSel ? sortSel.value : "desc";
+    var ordered = (sortOrder === "asc") ? filtered : filtered.slice().reverse();
+
     var html = "";
-    for (var j = filtered.length - 1; j >= 0; j--) {
-        var item = filtered[j];
+    for (var j = 0; j < ordered.length; j++) {
+        var item = ordered[j];
         var isDoc = (item.images && item.images.length > 0) || item.orderCode === "0502";
         var borderCol = isDoc ? "#f57c00" : "#1976d2";
         var badgeBg = isDoc ? "#fff3e0" : "#e3f2fd";
@@ -18789,6 +18805,17 @@ function buildWardBatchSummaryText() {
     return memo;
 }
 
+function toggleWardRichSummarySections(openFlag) {
+    var container = document.getElementById("ws-batch-rich-summary");
+    if (!container) return;
+    var detailsList = container.getElementsByTagName("details");
+    for (var i = 0; i < detailsList.length; i++) {
+        if (detailsList[i].className && detailsList[i].className.indexOf("ws-rich-section") !== -1) {
+            detailsList[i].open = !!openFlag;
+        }
+    }
+}
+
 function renderWardBatchRichSummary() {
     var container = document.getElementById("ws-batch-rich-summary");
     if (!container) return;
@@ -18833,30 +18860,40 @@ function renderWardBatchRichSummary() {
     }
 
     function buildSectionCard(titleHtml, count, headerBg, borderColor, badgeBg, badgeColor, bodyHtml) {
-        return '<div style="background:#fff; border:1px solid ' + borderColor + '; border-radius:6px; margin-bottom:14px; box-shadow:0 1px 2px rgba(0,0,0,0.03);">' +
-            '<div style="background:' + headerBg + '; padding:8px 14px; border-bottom:1px solid ' + borderColor + '; border-radius:6px 6px 0 0; display:flex; justify-content:space-between; align-items:center;">' +
-            '<span style="font-size:13px; font-weight:bold; color:' + badgeColor + ';">' + titleHtml + '</span>' +
+        return '<details open class="ws-rich-section" style="background:#fff; border:1px solid ' + borderColor + '; border-radius:6px; margin-bottom:14px; box-shadow:0 1px 2px rgba(0,0,0,0.03);">' +
+            '<summary style="background:' + headerBg + '; padding:8px 14px; border-bottom:1px solid ' + borderColor + '; border-radius:6px 6px 0 0; cursor:pointer; display:flex; justify-content:space-between; align-items:center; list-style:none;">' +
+            '<span style="font-size:13px; font-weight:bold; color:' + badgeColor + ';">▼ ' + titleHtml + '</span>' +
             '<span style="font-size:11px; font-weight:bold; background:' + badgeBg + '; color:' + badgeColor + '; border:1px solid ' + borderColor + '; padding:2px 9px; border-radius:10px;">' + count + '名</span>' +
-            '</div>' +
+            '</summary>' +
             '<div style="padding:10px 12px;">' + bodyHtml + '</div>' +
-            '</div>';
+            '</details>';
+    }
+
+    function formatRxCell(item, isStoppedStyle) {
+        if (!item) return '<span style="color:#aaa;">(なし)</span>';
+        var cls = isStoppedStyle ? 'ws-text-stopped' : '';
+        var tag = item.isChusha ? '<span style="background:#e0f2f1; color:#00695c; font-size:10px; padding:0 4px; border-radius:3px; margin-right:3px;">注</span>' : '';
+        return '<div class="' + cls + '">' + tag + '<b>' + escapeHtml(item.name) + '</b><br>' +
+            '<span style="font-size:10px; color:#555;">' + escapeHtml(item.usage || "") + (item.duration ? ' (' + escapeHtml(item.duration) + ')' : '') + '</span></div>';
     }
 
     var html = "";
 
-    // サマリヘッダ概要バー
+    // サマリヘッダ概要バー + 一括折りたたみ操作
     html += '<div style="background:#fff; border:1px solid #c8e6c9; border-radius:6px; padding:10px 14px; margin-bottom:14px; display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center; gap:8px;">' +
         '<div>' +
         '<span style="font-size:13px; font-weight:bold; color:#1b5e20;">🏥 ' + escapeHtml(wardName) + '</span>' +
         (todayStr ? '<span style="font-size:11px; color:#555; margin-left:8px;">(' + escapeHtml(todayStr) + ' 時点 / 対象 ' + allRes.length + '名)</span>' : '') +
         '</div>' +
-        '<div style="display:flex; flex-wrap:wrap; gap:6px; font-size:11px;">' +
-        '<span style="background:#f3e5f5; color:#4a148c; padding:2px 8px; border-radius:10px; font-weight:bold;">🏠 退院ワード: ' + discItems.length + '名</span>' +
-        (isDiscOnly ? '<span style="background:#eceff1; color:#546e7a; padding:2px 8px; border-radius:10px;">※ 退院ワードのみ抽出モード</span>' : (
-            '<span style="background:#ffebee; color:#c62828; padding:2px 8px; border-radius:10px; font-weight:bold;">📋 定期未発行: ' + missingTeikiItems.length + '名</span>' +
-            '<span style="background:#fff3e0; color:#e65100; padding:2px 8px; border-radius:10px; font-weight:bold;">🔄 処方変更: ' + rxChangeItems.length + '名</span>' +
-            '<span style="background:#fce4ec; color:#ad1457; padding:2px 8px; border-radius:10px; font-weight:bold;">⏳ 持参/定期切れ: ' + alertItems.length + '名</span>'
+        '<div style="display:flex; flex-wrap:wrap; align-items:center; gap:6px; font-size:11px;">' +
+        '<span style="background:#f3e5f5; color:#4a148c; padding:2px 8px; border-radius:10px; font-weight:bold;">🏠 退院: ' + discItems.length + '名</span>' +
+        (isDiscOnly ? '<span style="background:#eceff1; color:#546e7a; padding:2px 8px; border-radius:10px;">※ 退院ワードのみ</span>' : (
+            '<span style="background:#ffebee; color:#c62828; padding:2px 8px; border-radius:10px; font-weight:bold;">📋 定期未: ' + missingTeikiItems.length + '名</span>' +
+            '<span style="background:#fff3e0; color:#e65100; padding:2px 8px; border-radius:10px; font-weight:bold;">🔄 変更: ' + rxChangeItems.length + '名</span>' +
+            '<span style="background:#fce4ec; color:#ad1457; padding:2px 8px; border-radius:10px; font-weight:bold;">⏳ 持参/定期切: ' + alertItems.length + '名</span>'
         )) +
+        '<button type="button" onclick="toggleWardRichSummarySections(true)" style="margin-left:6px; padding:2px 7px; font-size:10px; background:#fff; border:1px solid #bbb; border-radius:3px; cursor:pointer;">📂 すべて開く</button>' +
+        '<button type="button" onclick="toggleWardRichSummarySections(false)" style="padding:2px 7px; font-size:10px; background:#fff; border:1px solid #bbb; border-radius:3px; cursor:pointer;">📁 すべて閉じる</button>' +
         '</div></div>';
 
     // 1. 退院・転院ワード
@@ -18890,8 +18927,8 @@ function renderWardBatchRichSummary() {
                     '</div>';
             }
             discBody += '<tr style="border-bottom:1px solid #f0e6f5;">' +
-                '<td style="width:22%; padding:7px 8px; vertical-align:top; background:#faf5fc; border:1px solid #eee;">' + buildPatientCell(dp) + '</td>' +
-                '<td style="width:70%; padding:7px 10px; vertical-align:top; border:1px solid #eee;">' + dmHtml + '</td>' +
+                '<td style="width:20%; padding:7px 8px; vertical-align:top; background:#faf5fc; border:1px solid #eee;">' + buildPatientCell(dp) + '</td>' +
+                '<td style="width:72%; padding:7px 10px; vertical-align:top; border:1px solid #eee;">' + dmHtml + '</td>' +
                 '<td style="width:8%; padding:7px 6px; text-align:center; vertical-align:middle; border:1px solid #eee;">' + buildKarteBtn(dp) + '</td>' +
                 '</tr>';
         }
@@ -18910,8 +18947,8 @@ function renderWardBatchRichSummary() {
                 var mr = missingTeikiItems[mi];
                 var mp = mr.patient;
                 mtBody += '<tr>' +
-                    '<td style="width:22%; padding:7px 8px; vertical-align:middle; background:#fffafa; border:1px solid #eee;">' + buildPatientCell(mp) + '</td>' +
-                    '<td style="width:70%; padding:7px 10px; vertical-align:middle; border:1px solid #eee;"><span class="ws-badge ws-badge-stopped">🔴 先週定期あり → 今週未発行</span></td>' +
+                    '<td style="width:20%; padding:7px 8px; vertical-align:middle; background:#fffafa; border:1px solid #eee;">' + buildPatientCell(mp) + '</td>' +
+                    '<td style="width:72%; padding:7px 10px; vertical-align:middle; border:1px solid #eee;"><span class="ws-badge ws-badge-stopped">🔴 先週定期あり → 今週未発行</span></td>' +
                     '<td style="width:8%; padding:7px 6px; text-align:center; vertical-align:middle; border:1px solid #eee;">' + buildKarteBtn(mp) + '</td>' +
                     '</tr>';
             }
@@ -18919,7 +18956,7 @@ function renderWardBatchRichSummary() {
         }
         html += buildSectionCard("📋 今週定期処方 未発行", missingTeikiItems.length, "#ffebee", "#ffcdd2", "#fff", "#c62828", mtBody);
 
-        // 3. 処方・注射変更
+        // 3. 処方・注射変更（整列された前後比較テーブル形式）
         var rxBody = "";
         if (rxChangeItems.length === 0) {
             rxBody = '<div style="color:#888; font-size:12px; padding:4px 2px;">変更・追加・中止のあった患者はいません</div>';
@@ -18928,26 +18965,64 @@ function renderWardBatchRichSummary() {
             for (var ri = 0; ri < rxChangeItems.length; ri++) {
                 var rr = rxChangeItems[ri];
                 var rp = rr.patient;
-                var chHtml = "";
-                for (var c = 0; c < rr.compareChanges.length; c++) {
-                    var ch = rr.compareChanges[c];
-                    var bCls = "ws-badge-changed";
-                    var icon = "🔄";
-                    if (ch.type === "added") { bCls = "ws-badge-added"; icon = "🆕"; }
-                    else if (ch.type === "stopped") { bCls = "ws-badge-stopped"; icon = "🔴"; }
-                    chHtml += '<span class="ws-badge ' + bCls + '" style="margin:2px 4px 2px 0;">' + icon + ' ' + escapeHtml(ch.text) + '</span>';
+                var crows = rr.compareRows || [];
+                var changedRows = [];
+                var unchangedRows = [];
+                for (var crIdx = 0; crIdx < crows.length; crIdx++) {
+                    if (crows[crIdx].status !== "unchanged") changedRows.push(crows[crIdx]);
+                    else unchangedRows.push(crows[crIdx]);
                 }
-                rxBody += '<tr>' +
-                    '<td style="width:22%; padding:7px 8px; vertical-align:top; background:#fffdf9; border:1px solid #eee;">' + buildPatientCell(rp) + '</td>' +
-                    '<td style="width:70%; padding:7px 10px; vertical-align:top; border:1px solid #eee; line-height:1.7;">' + chHtml + '</td>' +
+
+                var subTbl = '<table style="width:100%; border-collapse:collapse; font-size:11px; margin-bottom:4px;">' +
+                    '<thead><tr style="background:#fff8f0; color:#e65100;">' +
+                    '<th style="width:34%; padding:4px 6px; text-align:left; border:1px solid #ffe0b2;">◀ 先週の処方</th>' +
+                    '<th style="width:16%; padding:4px 6px; text-align:center; border:1px solid #ffe0b2;">判定</th>' +
+                    '<th style="width:34%; padding:4px 6px; text-align:left; border:1px solid #ffe0b2;">▶ 今週の処方</th>' +
+                    '<th style="width:16%; padding:4px 6px; text-align:center; border:1px solid #ffe0b2;">詳細・期間</th>' +
+                    '</tr></thead><tbody>';
+
+                for (var chIdx = 0; chIdx < changedRows.length; chIdx++) {
+                    var cro = changedRows[chIdx];
+                    var stCls = "ws-badge-changed";
+                    if (cro.status === "added") stCls = "ws-badge-added";
+                    else if (cro.status === "stopped") stCls = "ws-badge-stopped";
+                    var rowBg = (cro.status === "added") ? "#f4fbff" : ((cro.status === "stopped") ? "#fffafa" : "#fffaf0");
+                    subTbl += '<tr style="background:' + rowBg + ';">' +
+                        '<td style="padding:4px 6px; border:1px solid #eee; vertical-align:top;">' + formatRxCell(cro.prev, cro.status === "stopped") + '</td>' +
+                        '<td style="padding:4px 6px; border:1px solid #eee; text-align:center; vertical-align:middle;"><span class="ws-badge ' + stCls + '">' + escapeHtml(cro.statusLabel) + '</span></td>' +
+                        '<td style="padding:4px 6px; border:1px solid #eee; vertical-align:top;">' + formatRxCell(cro.curr, false) + '</td>' +
+                        '<td style="padding:4px 6px; border:1px solid #eee; text-align:center; vertical-align:middle; font-size:10px; color:#555;">' + escapeHtml(cro.note || "") + '</td>' +
+                        '</tr>';
+                }
+                subTbl += '</tbody></table>';
+
+                if (unchangedRows.length > 0) {
+                    subTbl += '<details style="margin-top:4px;">' +
+                        '<summary style="font-size:10px; color:#2e7d32; cursor:pointer; font-weight:bold;">▶ 変更なし（継続中 ' + unchangedRows.length + '件）も含めて全処方を表示</summary>' +
+                        '<table style="width:100%; border-collapse:collapse; font-size:11px; margin-top:4px;"><tbody>';
+                    for (var uIdx = 0; uIdx < unchangedRows.length; uIdx++) {
+                        var uro = unchangedRows[uIdx];
+                        subTbl += '<tr style="background:#fafafa;">' +
+                            '<td style="width:34%; padding:4px 6px; border:1px solid #eee; vertical-align:top;">' + formatRxCell(uro.prev, false) + '</td>' +
+                            '<td style="width:16%; padding:4px 6px; border:1px solid #eee; text-align:center; vertical-align:middle;"><span class="ws-badge ws-badge-unchanged">' + escapeHtml(uro.statusLabel) + '</span></td>' +
+                            '<td style="width:34%; padding:4px 6px; border:1px solid #eee; vertical-align:top;">' + formatRxCell(uro.curr, false) + '</td>' +
+                            '<td style="width:16%; padding:4px 6px; border:1px solid #eee; text-align:center; vertical-align:middle; font-size:10px; color:#555;">' + escapeHtml(uro.note || "") + '</td>' +
+                            '</tr>';
+                    }
+                    subTbl += '</tbody></table></details>';
+                }
+
+                rxBody += '<tr style="border-bottom:2px solid #ffe0b2;">' +
+                    '<td style="width:20%; padding:7px 8px; vertical-align:top; background:#fffdf9; border:1px solid #eee;">' + buildPatientCell(rp) + '</td>' +
+                    '<td style="width:72%; padding:7px 8px; vertical-align:top; border:1px solid #eee;">' + subTbl + '</td>' +
                     '<td style="width:8%; padding:7px 6px; text-align:center; vertical-align:middle; border:1px solid #eee;">' + buildKarteBtn(rp) + '</td>' +
                     '</tr>';
             }
             rxBody += '</table>';
         }
-        html += buildSectionCard("🔄 処方・注射変更", rxChangeItems.length, "#fff3e0", "#ffe0b2", "#fff", "#e65100", rxBody);
+        html += buildSectionCard("🔄 処方・注射変更（前後比較）", rxChangeItems.length, "#fff3e0", "#ffe0b2", "#fff", "#e65100", rxBody);
 
-        // 4. 持参薬・定期切れ注意
+        // 4. 持参薬・定期切れ注意（1薬剤1行の整列テーブル形式）
         var alBody = "";
         if (alertItems.length === 0) {
             alBody = '<div style="color:#888; font-size:12px; padding:4px 2px;">該当する患者はいません</div>';
@@ -18956,22 +19031,67 @@ function renderWardBatchRichSummary() {
             for (var ai = 0; ai < alertItems.length; ai++) {
                 var ar = alertItems[ai];
                 var ap = ar.patient;
-                var aHtml = "";
+
+                var alSubTbl = '<table style="width:100%; border-collapse:collapse; font-size:11px;">' +
+                    '<thead><tr style="background:#fff5f8; color:#ad1457;">' +
+                    '<th style="width:14%; padding:4px 6px; text-align:center; border:1px solid #f8bbd0;">区分</th>' +
+                    '<th style="width:36%; padding:4px 6px; text-align:left; border:1px solid #f8bbd0;">薬品名</th>' +
+                    '<th style="width:30%; padding:4px 6px; text-align:left; border:1px solid #f8bbd0;">用法・期間 / 終了予定</th>' +
+                    '<th style="width:20%; padding:4px 6px; text-align:center; border:1px solid #f8bbd0;">残日数</th>' +
+                    '</tr></thead><tbody>';
+
                 for (var ja = 0; ja < ar.jisanAlerts.length; ja++) {
                     var jItem = ar.jisanAlerts[ja];
                     var jCls = (jItem.remDays <= 0) ? "ws-rem-danger" : "ws-rem-warning";
-                    var jTxt = (jItem.remDays < 0) ? ("終了済(" + Math.abs(jItem.remDays) + "日超過)") : ("残" + jItem.remDays + "日");
-                    aHtml += '<span class="' + jCls + '" style="display:inline-block; margin:2px 4px 2px 0; font-size:11px;">💊 持参: ' + escapeHtml(jItem.name) + ' (' + jTxt + ')</span>';
+                    var jTxt = (jItem.remDays < 0) ? ("終了済(" + Math.abs(jItem.remDays) + "日超過)") : ("残 " + jItem.remDays + " 日");
+                    var jSpan = (jItem.startDate ? escapeHtml(jItem.startDate) : "") + " 〜 " + (jItem.endDate ? escapeHtml(jItem.endDate) : "");
+                    alSubTbl += '<tr>' +
+                        '<td style="padding:4px 6px; border:1px solid #eee; text-align:center;"><span style="background:#fce4ec; color:#ad1457; font-size:10px; font-weight:bold; padding:1px 5px; border-radius:3px;">💊 持参</span></td>' +
+                        '<td style="padding:4px 6px; border:1px solid #eee;"><b>' + escapeHtml(jItem.name) + '</b></td>' +
+                        '<td style="padding:4px 6px; border:1px solid #eee; font-size:10px; color:#555;">' + escapeHtml(jItem.inst || "") + '<br>' + jSpan + '</td>' +
+                        '<td style="padding:4px 6px; border:1px solid #eee; text-align:center;"><span class="' + jCls + '">' + jTxt + '</span></td>' +
+                        '</tr>';
                 }
                 for (var ta = 0; ta < ar.teikiAlerts.length; ta++) {
                     var tItem = ar.teikiAlerts[ta];
                     var tCls = (tItem.diff <= 0) ? "ws-rem-danger" : "ws-rem-warning";
-                    var tTxt = (tItem.diff === 0) ? "本日終了" : ("あと" + tItem.diff + "日");
-                    aHtml += '<span class="' + tCls + '" style="display:inline-block; margin:2px 4px 2px 0; font-size:11px;">⏳ 定期: ' + escapeHtml(tItem.name) + ' (' + tTxt + (tItem.endDate ? '・' + escapeHtml(tItem.endDate) : '') + ')</span>';
+                    var tTxt = (tItem.diff === 0) ? "本日終了" : (tItem.diff < 0 ? ("終了済(" + Math.abs(tItem.diff) + "日超過)") : ("あと " + tItem.diff + " 日"));
+                    alSubTbl += '<tr>' +
+                        '<td style="padding:4px 6px; border:1px solid #eee; text-align:center;"><span style="background:#fff3e0; color:#e65100; font-size:10px; font-weight:bold; padding:1px 5px; border-radius:3px;">⏳ 定期</span></td>' +
+                        '<td style="padding:4px 6px; border:1px solid #eee;"><b>' + escapeHtml(tItem.name) + '</b></td>' +
+                        '<td style="padding:4px 6px; border:1px solid #eee; font-size:10px; color:#555;">終了予定: ' + escapeHtml(tItem.endDate || "-") + '</td>' +
+                        '<td style="padding:4px 6px; border:1px solid #eee; text-align:center;"><span class="' + tCls + '">' + tTxt + '</span></td>' +
+                        '</tr>';
                 }
-                alBody += '<tr>' +
-                    '<td style="width:22%; padding:7px 8px; vertical-align:top; background:#fff9fb; border:1px solid #eee;">' + buildPatientCell(ap) + '</td>' +
-                    '<td style="width:70%; padding:7px 10px; vertical-align:top; border:1px solid #eee; line-height:1.7;">' + aHtml + '</td>' +
+                alSubTbl += '</tbody></table>';
+
+                // その他継続中の持参薬（残4日以上・外用）がある場合は折りたたみで確認可能に
+                var otherJisan = [];
+                var jListAll = ar.jisanList || [];
+                for (var oj = 0; oj < jListAll.length; oj++) {
+                    if (jListAll[oj].isGaiyo || jListAll[oj].remDays > 3) otherJisan.push(jListAll[oj]);
+                }
+                if (otherJisan.length > 0) {
+                    alSubTbl += '<details style="margin-top:4px;">' +
+                        '<summary style="font-size:10px; color:#2e7d32; cursor:pointer; font-weight:bold;">▶ 継続中のその他持参薬も表示 (' + otherJisan.length + '件)</summary>' +
+                        '<table style="width:100%; border-collapse:collapse; font-size:11px; margin-top:4px;"><tbody>';
+                    for (var oji = 0; oji < otherJisan.length; oji++) {
+                        var oItem = otherJisan[oji];
+                        var oTxt = oItem.isGaiyo ? ("継続 " + oItem.elapsedDays + "日目") : ("残り " + oItem.remDays + " 日");
+                        var oSpan = oItem.isGaiyo ? (escapeHtml(oItem.startDate) + " 〜 (外用継続)") : (escapeHtml(oItem.startDate) + " 〜 " + escapeHtml(oItem.endDate));
+                        alSubTbl += '<tr style="background:#fafafa;">' +
+                            '<td style="width:14%; padding:4px 6px; border:1px solid #eee; text-align:center;"><span style="background:#e8f5e9; color:#2e7d32; font-size:10px; padding:1px 5px; border-radius:3px;">💊 持参</span></td>' +
+                            '<td style="width:36%; padding:4px 6px; border:1px solid #eee;"><b>' + escapeHtml(oItem.name) + '</b></td>' +
+                            '<td style="width:30%; padding:4px 6px; border:1px solid #eee; font-size:10px; color:#555;">' + escapeHtml(oItem.inst || "") + '<br>' + oSpan + '</td>' +
+                            '<td style="width:20%; padding:4px 6px; border:1px solid #eee; text-align:center;"><span class="ws-rem-safe">' + oTxt + '</span></td>' +
+                            '</tr>';
+                    }
+                    alSubTbl += '</tbody></table></details>';
+                }
+
+                alBody += '<tr style="border-bottom:2px solid #f8bbd0;">' +
+                    '<td style="width:20%; padding:7px 8px; vertical-align:top; background:#fff9fb; border:1px solid #eee;">' + buildPatientCell(ap) + '</td>' +
+                    '<td style="width:72%; padding:7px 8px; vertical-align:top; border:1px solid #eee;">' + alSubTbl + '</td>' +
                     '<td style="width:8%; padding:7px 6px; text-align:center; vertical-align:middle; border:1px solid #eee;">' + buildKarteBtn(ap) + '</td>' +
                     '</tr>';
             }
