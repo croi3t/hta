@@ -1082,7 +1082,7 @@ function generateAbbreviation() {}
                             <button type="button" class="yr-btn" style="background:#fff; color:#2e7d32; border:1px solid #a5d6a7; font-size:11px; font-weight:bold; padding:4px 8px;" onclick="navigateWardSummaryPatient(1)" title="次の患者へ">次へ ▶</button>
                             <input type="text" id="ipt-ward-summary-patient-search" class="yr-form-control" style="width:100px; font-size:12px; height:28px;" placeholder="患者ID直接入力" onkeypress="if(event.keyCode===13) fetchWardSummaryData(true)">
                             <button id="btn-ward-summary-fetch" class="yr-btn" style="background:#2e7d32; color:#fff; font-size:12px; font-weight:bold; padding:4px 12px;" onclick="fetchWardSummaryData(true)" title="最新の処方・カルテを再取得します">⚡ 最新再取得</button>
-                            <select id="sel-ws-karte-range" class="yr-form-control" style="width:125px; font-size:11px; height:28px;" onchange="onWardKarteRangeChange()" title="カルテ記事・文書画像の取得期間">
+                            <select id="sel-ws-karte-range" class="yr-form-control" style="width:125px; font-size:11px; height:28px;" onchange="onWardKarteRangeChange(this.value)" title="カルテ記事・文書画像の取得期間">
                                 <option value="0">本日のみ (1日)</option>
                                 <option value="1">昨日〜本日 (2日間)</option>
                                 <option value="2">直近3日間</option>
@@ -1258,7 +1258,14 @@ function generateAbbreviation() {}
                                 </label>
                                 <button type="button" id="btn-ws-batch-start" class="yr-btn" style="background:#2e7d32; color:#fff; font-size:12px; font-weight:bold; padding:5px 12px;" onclick="startWardBatchFetch('full')">⚡ 病棟一括チェック</button>
                                 <button type="button" id="btn-ws-batch-disc-only" class="yr-btn" style="background:#6a1b9a; color:#fff; font-size:12px; font-weight:bold; padding:5px 12px;" onclick="startWardBatchFetch('discharge_only')" title="処方情報を取得せず、退院ワードのみを高速抽出します">🏠 退院ワードのみ抽出</button>
-                                <button type="button" id="btn-ws-batch-karte-all" class="yr-btn" style="background:#1565c0; color:#fff; font-size:12px; font-weight:bold; padding:5px 12px;" onclick="startWardBatchKarteAllFetch()" title="選択中の取得期間で全患者のカルテを一括取得してキャッシュします">📋 カルテ一括取得</button>
+                                <select id="sel-ws-batch-karte-range" class="yr-form-control" style="width:125px; font-size:11px; height:28px;" onchange="onWardKarteRangeChange(this.value)" title="カルテ記事・文書画像の取得期間">
+                                    <option value="0">本日のみ (1日)</option>
+                                    <option value="1">昨日〜本日 (2日間)</option>
+                                    <option value="2">直近3日間</option>
+                                    <option value="7" selected>直近1週間</option>
+                                    <option value="14">直近2週間</option>
+                                </select>
+                                <button type="button" id="btn-ws-batch-karte-all" class="yr-btn" style="background:#1565c0; color:#fff; font-size:12px; font-weight:bold; padding:5px 12px;" onclick="startWardBatchKarteAllFetch()" title="選択中の取得期間で全患者のカルテを一括取得して一覧表示します">📋 カルテ一括取得</button>
                                 <button type="button" id="btn-ws-batch-karte-stop" class="yr-btn" style="background:#c62828; color:#fff; font-size:12px; font-weight:bold; padding:5px 12px; display:none;" onclick="stopWardBatchKarteAllFetch()">⏹ カルテ中断</button>
                                 <button type="button" id="btn-ws-batch-stop" class="yr-btn" style="background:#c62828; color:#fff; font-size:12px; font-weight:bold; padding:5px 12px; display:none;" onclick="stopWardBatchFetch()">⏹ 中断</button>
                                 <button type="button" id="btn-ws-batch-copy" class="yr-btn" style="background:#546e7a; color:#fff; font-size:12px; font-weight:bold; padding:5px 12px;" onclick="copyWardBatchMorningMemo()">📋 病棟サマリをコピー</button>
@@ -1326,10 +1333,11 @@ function generateAbbreviation() {}
 
                     <!-- 表示ビュー切り替え＆並び替えバー -->
                     <div style="display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center; gap:6px; margin-bottom:10px;">
-                        <div style="display:flex; gap:6px;">
+                        <div style="display:flex; flex-wrap:wrap; gap:6px;">
                             <button type="button" id="btn-ws-bview-table" onclick="switchWardBatchView('table')" style="padding:5px 14px; font-size:12px; font-weight:bold; border:1px solid #1976d2; background:#1976d2; color:#fff; border-radius:4px; cursor:pointer;">📋 全体一覧テーブル</button>
                             <button type="button" id="btn-ws-bview-discharge" onclick="switchWardBatchView('discharge')" style="padding:5px 14px; font-size:12px; font-weight:bold; border:1px solid #ccc; background:#fff; color:#333; border-radius:4px; cursor:pointer;">🏠 退院ワード一覧のみ (処方なし)</button>
                             <button type="button" id="btn-ws-bview-text" onclick="switchWardBatchView('text')" style="padding:5px 14px; font-size:12px; font-weight:bold; border:1px solid #ccc; background:#fff; color:#333; border-radius:4px; cursor:pointer;">📄 病棟サマリ表示</button>
+                            <button type="button" id="btn-ws-bview-karte" onclick="switchWardBatchView('karte')" style="padding:5px 14px; font-size:12px; font-weight:bold; border:1px solid #ccc; background:#fff; color:#333; border-radius:4px; cursor:pointer;">📚 一括カルテ閲覧 <span id="badge-ws-bview-karte-cnt" style="background:#e3f2fd; color:#1565c0; padding:1px 6px; border-radius:10px; font-size:10px; margin-left:3px;">0名</span></button>
                         </div>
                         <div style="display:flex; align-items:center; gap:6px;">
                             <span style="font-size:11px; font-weight:bold; color:#555;">並び順:</span>
@@ -1402,14 +1410,70 @@ function generateAbbreviation() {}
                                 「⚡ 病棟一括チェック」または「🏠 退院ワードのみ抽出」を実行すると、ここに病棟サマリが表示されます
                             </div>
                         </div>
-                        <details style="margin-top:14px; background:#fff; border:1px solid #cfd8dc; border-radius:6px;">
-                            <summary style="padding:8px 12px; cursor:pointer; font-size:11px; font-weight:bold; color:#546e7a; background:#f1f5f9; border-radius:6px;">
-                                📝 コピー用テキストを確認・編集する
-                            </summary>
-                            <div style="padding:10px;">
+                        <div style="margin-top:14px; background:#fff; border:1px solid #cfd8dc; border-radius:6px;">
+                            <div id="btn-ws-copy-text-box" onclick="toggleWsInlineBlock('ws-copy-text-box', '📝 コピー用テキストを確認・編集する')" style="padding:8px 12px; cursor:pointer; font-size:11px; font-weight:bold; color:#546e7a; background:#f1f5f9; border-radius:6px;">
+                                ▶ 📝 コピー用テキストを確認・編集する
+                            </div>
+                            <div id="ws-copy-text-box" style="display:none; padding:10px;">
                                 <textarea id="txt-ws-batch-summary" class="yr-form-control" style="width:100%; min-height:220px; font-family:monospace; font-size:12px; line-height:1.5; box-sizing:border-box;" placeholder="一括チェックを実行すると、ここにコピー用テキストが自動生成されます"></textarea>
                             </div>
-                        </details>
+                        </div>
+                    </div>
+
+                    <!-- ビュー4: 一括カルテ閲覧 -->
+                    <div id="ws-batch-view-karte" style="display:none; background:#f8fafc; border:1px solid #cfd8dc; border-radius:6px; padding:12px;">
+                        <div style="background:#fff; border:1px solid #dee2e6; border-radius:6px; padding:10px 12px; margin-bottom:10px;">
+                            <div style="display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center; gap:8px; margin-bottom:8px;">
+                                <div style="display:flex; flex-wrap:wrap; gap:6px; align-items:center;">
+                                    <span style="font-size:12px; font-weight:bold; color:#1565c0;">📚 一括カルテ閲覧</span>
+                                    <span style="font-size:11px; color:#666; margin-left:4px;">種別:</span>
+                                    <button type="button" id="btn-ws-bkfilter-all" onclick="filterWardBatchKarte('all')" style="padding:3px 9px; font-size:11px; font-weight:bold; border:1px solid #1976d2; background:#1976d2; color:#fff; border-radius:4px; cursor:pointer;">すべて</button>
+                                    <button type="button" id="btn-ws-bkfilter-img" onclick="filterWardBatchKarte('img')" style="padding:3px 9px; font-size:11px; font-weight:bold; border:1px solid #ccc; background:#fff; color:#333; border-radius:4px; cursor:pointer;">🖼 文書・画像あり</button>
+                                    <button type="button" id="btn-ws-bkfilter-note" onclick="filterWardBatchKarte('note')" style="padding:3px 9px; font-size:11px; font-weight:bold; border:1px solid #ccc; background:#fff; color:#333; border-radius:4px; cursor:pointer;">📝 経過記事のみ</button>
+                                    <label style="font-size:11px; cursor:pointer; color:#333; margin:0 0 0 6px;">
+                                        <input type="checkbox" id="chk-ws-bkarte-hide-empty" checked onchange="renderWardBatchKarteView()"> 該当記事0件の患者を隠す
+                                    </label>
+                                </div>
+                                <div style="display:flex; flex-wrap:wrap; gap:8px; align-items:center;">
+                                    <input type="text" id="ipt-ws-bkarte-search" class="yr-form-control" style="width:190px; font-size:12px; height:26px;" placeholder="🔍 全患者カルテ検索 (例: 発熱)" onkeyup="renderWardBatchKarteView()">
+                                    <button type="button" onclick="toggleAllBatchKartePatients(true)" style="padding:3px 8px; font-size:11px; background:#fff; border:1px solid #bbb; border-radius:3px; cursor:pointer;">📂 全患者を開く</button>
+                                    <button type="button" onclick="toggleAllBatchKartePatients(false)" style="padding:3px 8px; font-size:11px; background:#fff; border:1px solid #bbb; border-radius:3px; cursor:pointer;">📁 全患者を閉じる</button>
+                                </div>
+                            </div>
+                            <div style="display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center; gap:10px; padding-top:6px; border-top:1px dashed #ddd; font-size:11px;">
+                                <div style="display:flex; flex-wrap:wrap; gap:10px; align-items:center;">
+                                    <span style="font-weight:bold; color:#555;">👤 職種フィルタ:</span>
+                                    <label style="cursor:pointer; margin:0;"><input type="checkbox" id="chk-ws-brole-doctor" checked onchange="onWardBatchKartePrefSync()"> 医師</label>
+                                    <label style="cursor:pointer; margin:0;"><input type="checkbox" id="chk-ws-brole-nurse" checked onchange="onWardBatchKartePrefSync()"> 看護師</label>
+                                    <label style="cursor:pointer; margin:0;"><input type="checkbox" id="chk-ws-brole-pharm" checked onchange="onWardBatchKartePrefSync()"> 薬剤師</label>
+                                    <label style="cursor:pointer; margin:0;"><input type="checkbox" id="chk-ws-brole-rehab" checked onchange="onWardBatchKartePrefSync()"> リハビリ(PT/OT/ST)</label>
+                                    <label style="cursor:pointer; margin:0;"><input type="checkbox" id="chk-ws-brole-other" checked onchange="onWardBatchKartePrefSync()"> その他(栄養/MSW等)</label>
+                                </div>
+                                <div style="display:flex; gap:10px; align-items:center;">
+                                    <label style="font-size:11px; font-weight:bold; color:#333; margin:0;">
+                                        ↕ 記録順:
+                                        <select id="sel-ws-bkarte-sort" onchange="onWardBatchKartePrefSync()" style="font-size:11px; padding:2px 6px; border:1px solid #ccc; border-radius:3px;">
+                                            <option value="desc">新しい順</option>
+                                            <option value="asc">古い順</option>
+                                        </select>
+                                    </label>
+                                    <label style="font-size:11px; font-weight:bold; color:#333; margin:0;">
+                                        🖼 画像:
+                                        <select id="sel-ws-bkarte-imgsize" onchange="onWardBatchKartePrefSync()" style="font-size:11px; padding:2px 6px; border:1px solid #ccc; border-radius:3px;">
+                                            <option value="large">大 (全幅表示)</option>
+                                            <option value="small">小 (サムネイル)</option>
+                                            <option value="link">リンクのみ</option>
+                                        </select>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                        <div id="ws-batch-karte-jumpbar" style="margin-bottom:10px;"></div>
+                        <div id="ws-batch-karte-container">
+                            <div style="color:#999; text-align:center; padding:30px; background:#fff; border:1px dashed #cfd8dc; border-radius:6px;">
+                                上部の「📋 カルテ一括取得」ボタンをクリックすると、全患者のカルテを取得してここに一覧表示します
+                            </div>
+                        </div>
                     </div>
                 </div> <!-- /ws-mainpane-batch -->
     </div>
@@ -16939,7 +17003,7 @@ function navigateWardSummaryPatient(delta) {
 }
 
 function getWardKarteDaysBack() {
-    var sel = document.getElementById("sel-ws-karte-range");
+    var sel = document.getElementById("sel-ws-karte-range") || document.getElementById("sel-ws-batch-karte-range");
     var v = sel ? parseInt(sel.value, 10) : 7;
     return isNaN(v) ? 7 : v;
 }
@@ -16965,7 +17029,15 @@ function buildWardKarteNotesUrl(rawId, userId, todayStr, daysBack) {
         + "&_t=" + new Date().getTime();
 }
 
-function onWardKarteRangeChange() {
+function onWardKarteRangeChange(newVal) {
+    var sel1 = document.getElementById("sel-ws-karte-range");
+    var sel2 = document.getElementById("sel-ws-batch-karte-range");
+    if (typeof newVal !== "undefined" && newVal !== null) {
+        if (sel1) sel1.value = String(newVal);
+        if (sel2) sel2.value = String(newVal);
+    } else if (sel1 && sel2) {
+        sel2.value = sel1.value;
+    }
     onWardKartePrefChange();
     var stEl = document.getElementById("ws-karte-all-status");
     if (stEl) stEl.innerText = "";
@@ -17010,6 +17082,14 @@ function startWardBatchKarteAllFetch() {
         if (ipt) ipt.value = String(list[0].id || "");
         var sel = document.getElementById("sel-ward-summary-patient-dropdown");
         if (sel) sel.value = String(list[0].id || "");
+    }
+
+    // 現在のメインモードに応じて自動的にカルテ閲覧画面へ切り替える
+    var batchPane = document.getElementById("ws-mainpane-batch");
+    if (batchPane && batchPane.style.display !== "none") {
+        switchWardBatchView("karte");
+    } else {
+        switchWardSummarySubTab("karte");
     }
 
     var myToken = new Date().getTime();
@@ -17095,6 +17175,11 @@ function startWardBatchKarteAllFetch() {
                 if (sBadge) sBadge.innerHTML = '<span style="color:#2e7d32;">✔ カルテ取得済み (' + escapeHtml(pObj.name || rawId) + ')</span> <span style="font-size:10px; color:#666;">[記事:' + parsedRecs.length + '件]</span>';
                 renderWardSummaryKarteList();
                 renderWardSummaryPanels(todayStr);
+            }
+
+            if (typeof updateBatchKarteCountBadge === "function") updateBatchKarteCountBadge();
+            if (wardBatchState.currentView === "karte" && typeof renderWardBatchKarteView === "function") {
+                renderWardBatchKarteView();
             }
 
             idx++;
@@ -17317,23 +17402,29 @@ function loadWardKartePrefs() {
         if (prefs.imgSize) {
             var sel = document.getElementById("sel-ws-karte-imgsize");
             if (sel) sel.value = prefs.imgSize;
+            var selB = document.getElementById("sel-ws-bkarte-imgsize");
+            if (selB) selB.value = prefs.imgSize;
         }
         if (prefs.sortOrder) {
             var selSort = document.getElementById("sel-ws-karte-sort");
             if (selSort) selSort.value = prefs.sortOrder;
+            var selSortB = document.getElementById("sel-ws-bkarte-sort");
+            if (selSortB) selSortB.value = prefs.sortOrder;
         }
         if (typeof prefs.karteDays !== "undefined") {
             var selRange = document.getElementById("sel-ws-karte-range");
             if (selRange) selRange.value = String(prefs.karteDays);
+            var selRangeB = document.getElementById("sel-ws-batch-karte-range");
+            if (selRangeB) selRangeB.value = String(prefs.karteDays);
         }
         if (prefs.roles) {
             var rKeys = ["doctor", "nurse", "pharm", "rehab", "other"];
             for (var i = 0; i < rKeys.length; i++) {
                 var k = rKeys[i];
                 var chk = document.getElementById("chk-ws-role-" + k);
-                if (chk && typeof prefs.roles[k] === "boolean") {
-                    chk.checked = prefs.roles[k];
-                }
+                if (chk && typeof prefs.roles[k] === "boolean") chk.checked = prefs.roles[k];
+                var chkB = document.getElementById("chk-ws-brole-" + k);
+                if (chkB && typeof prefs.roles[k] === "boolean") chkB.checked = prefs.roles[k];
             }
         }
     } catch(e) {}
@@ -17341,25 +17432,59 @@ function loadWardKartePrefs() {
 
 function onWardKartePrefChange() {
     try {
+        var sel = document.getElementById("sel-ws-karte-imgsize");
+        var selSort = document.getElementById("sel-ws-karte-sort");
+        var imgVal = sel ? sel.value : "large";
+        var sortVal = selSort ? selSort.value : "desc";
+        var rolesObj = {
+            doctor: (document.getElementById("chk-ws-role-doctor") || { checked: true }).checked,
+            nurse:  (document.getElementById("chk-ws-role-nurse")  || { checked: true }).checked,
+            pharm:  (document.getElementById("chk-ws-role-pharm")  || { checked: true }).checked,
+            rehab:  (document.getElementById("chk-ws-role-rehab")  || { checked: true }).checked,
+            other:  (document.getElementById("chk-ws-role-other")  || { checked: true }).checked
+        };
+        // 一括カルテ側のコントロールにも同期
+        var selB = document.getElementById("sel-ws-bkarte-imgsize"); if (selB) selB.value = imgVal;
+        var selSortB = document.getElementById("sel-ws-bkarte-sort"); if (selSortB) selSortB.value = sortVal;
+        var rKeys = ["doctor", "nurse", "pharm", "rehab", "other"];
+        for (var i = 0; i < rKeys.length; i++) {
+            var k = rKeys[i];
+            var chkB = document.getElementById("chk-ws-brole-" + k);
+            if (chkB) chkB.checked = rolesObj[k];
+        }
         if (typeof localStorage !== "undefined") {
-            var sel = document.getElementById("sel-ws-karte-imgsize");
-            var selSort = document.getElementById("sel-ws-karte-sort");
             var prefs = {
-                imgSize: sel ? sel.value : "large",
-                sortOrder: selSort ? selSort.value : "desc",
+                imgSize: imgVal,
+                sortOrder: sortVal,
                 karteDays: getWardKarteDaysBack(),
-                roles: {
-                    doctor: (document.getElementById("chk-ws-role-doctor") || { checked: true }).checked,
-                    nurse:  (document.getElementById("chk-ws-role-nurse")  || { checked: true }).checked,
-                    pharm:  (document.getElementById("chk-ws-role-pharm")  || { checked: true }).checked,
-                    rehab:  (document.getElementById("chk-ws-role-rehab")  || { checked: true }).checked,
-                    other:  (document.getElementById("chk-ws-role-other")  || { checked: true }).checked
-                }
+                roles: rolesObj
             };
             localStorage.setItem(getWardKartePrefsKey(), JSON.stringify(prefs));
         }
     } catch(e) {}
     renderWardSummaryKarteList();
+    if (typeof renderWardBatchKarteView === "function" && wardBatchState.currentView === "karte") {
+        renderWardBatchKarteView();
+    }
+}
+
+function onWardBatchKartePrefSync() {
+    try {
+        var selB = document.getElementById("sel-ws-bkarte-imgsize");
+        var selSortB = document.getElementById("sel-ws-bkarte-sort");
+        var sel = document.getElementById("sel-ws-karte-imgsize");
+        var selSort = document.getElementById("sel-ws-karte-sort");
+        if (sel && selB) sel.value = selB.value;
+        if (selSort && selSortB) selSort.value = selSortB.value;
+        var rKeys = ["doctor", "nurse", "pharm", "rehab", "other"];
+        for (var i = 0; i < rKeys.length; i++) {
+            var k = rKeys[i];
+            var chk = document.getElementById("chk-ws-role-" + k);
+            var chkB = document.getElementById("chk-ws-brole-" + k);
+            if (chk && chkB) chk.checked = chkB.checked;
+        }
+    } catch(e) {}
+    onWardKartePrefChange();
 }
 
 function parseWardSummaryKarteRecords(bodyHtml) {
@@ -18787,6 +18912,8 @@ function onWardBatchSortChange() {
         if (typeof renderWardBatchRichSummary === "function") renderWardBatchRichSummary();
         var txtEl = document.getElementById("txt-ws-batch-summary");
         if (txtEl) txtEl.value = buildWardBatchSummaryText();
+    } else if (wardBatchState.currentView === "karte") {
+        if (typeof renderWardBatchKarteView === "function") renderWardBatchKarteView();
     }
     if (typeof renderWardBatchDrugSearchResult === "function") renderWardBatchDrugSearchResult();
 }
@@ -18947,7 +19074,8 @@ function switchWardBatchView(viewName) {
     var vMap = {
         table:     { btn: "btn-ws-bview-table",     pane: "ws-batch-view-table" },
         discharge: { btn: "btn-ws-bview-discharge", pane: "ws-batch-view-discharge" },
-        text:      { btn: "btn-ws-bview-text",      pane: "ws-batch-view-text" }
+        text:      { btn: "btn-ws-bview-text",      pane: "ws-batch-view-text" },
+        karte:     { btn: "btn-ws-bview-karte",     pane: "ws-batch-view-karte" }
     };
     for (var k in vMap) {
         if (!vMap.hasOwnProperty(k)) continue;
@@ -18967,6 +19095,8 @@ function switchWardBatchView(viewName) {
         if (typeof renderWardBatchRichSummary === "function") renderWardBatchRichSummary();
         var txtEl = document.getElementById("txt-ws-batch-summary");
         if (txtEl) txtEl.value = buildWardBatchSummaryText();
+    } else if (wardBatchState.currentView === "karte") {
+        if (typeof renderWardBatchKarteView === "function") renderWardBatchKarteView();
     }
 }
 
@@ -19656,6 +19786,255 @@ function renderWardBatchDrugSearchResult() {
 
     resBox.style.display = "block";
     resBox.innerHTML = html;
+}
+
+function updateBatchKarteCountBadge() {
+    var badge = document.getElementById("badge-ws-bview-karte-cnt");
+    if (!badge) return;
+    var cnt = 0;
+    var cacheMap = (typeof wardSummaryCache !== "undefined" && wardSummaryCache.karte) ? wardSummaryCache.karte : {};
+    for (var k in cacheMap) {
+        if (cacheMap.hasOwnProperty(k)) cnt++;
+    }
+    badge.innerText = cnt + "名";
+}
+
+function filterWardBatchKarte(fType) {
+    wardBatchState.batchKarteFilter = fType || "all";
+    var btns = {
+        all:  document.getElementById("btn-ws-bkfilter-all"),
+        img:  document.getElementById("btn-ws-bkfilter-img"),
+        note: document.getElementById("btn-ws-bkfilter-note")
+    };
+    for (var k in btns) {
+        if (!btns.hasOwnProperty(k) || !btns[k]) continue;
+        if (k === wardBatchState.batchKarteFilter) {
+            btns[k].style.background = "#1976d2";
+            btns[k].style.color = "#fff";
+            btns[k].style.borderColor = "#1976d2";
+        } else {
+            btns[k].style.background = "#fff";
+            btns[k].style.color = "#333";
+            btns[k].style.borderColor = "#ccc";
+        }
+    }
+    renderWardBatchKarteView();
+}
+
+function toggleBatchKartePatient(pId) {
+    if (!wardBatchState.batchKarteCollapsed) wardBatchState.batchKarteCollapsed = {};
+    var bodyEl = document.getElementById("ws-bkarte-body-" + pId);
+    var arrowEl = document.getElementById("ws-bkarte-arrow-" + pId);
+    if (!bodyEl) return;
+    var isHidden = (bodyEl.style.display === "none");
+    bodyEl.style.display = isHidden ? "block" : "none";
+    wardBatchState.batchKarteCollapsed[pId] = !isHidden;
+    if (arrowEl) arrowEl.innerText = isHidden ? "▼" : "▶";
+}
+
+function toggleAllBatchKartePatients(openFlag) {
+    if (!wardBatchState.batchKarteCollapsed) wardBatchState.batchKarteCollapsed = {};
+    var container = document.getElementById("ws-batch-karte-container");
+    if (!container) return;
+    var divs = container.getElementsByTagName("div");
+    for (var i = 0; i < divs.length; i++) {
+        var el = divs[i];
+        if (el.id && el.id.indexOf("ws-bkarte-body-") === 0) {
+            var pId = el.id.replace("ws-bkarte-body-", "");
+            el.style.display = openFlag ? "block" : "none";
+            wardBatchState.batchKarteCollapsed[pId] = !openFlag;
+            var arrowEl = document.getElementById("ws-bkarte-arrow-" + pId);
+            if (arrowEl) arrowEl.innerText = openFlag ? "▼" : "▶";
+        }
+    }
+}
+
+function scrollToBatchKartePatient(pId) {
+    if (!wardBatchState.batchKarteCollapsed) wardBatchState.batchKarteCollapsed = {};
+    var cardEl = document.getElementById("ws-bkarte-card-" + pId);
+    var bodyEl = document.getElementById("ws-bkarte-body-" + pId);
+    var arrowEl = document.getElementById("ws-bkarte-arrow-" + pId);
+    if (bodyEl) {
+        bodyEl.style.display = "block";
+        wardBatchState.batchKarteCollapsed[pId] = false;
+    }
+    if (arrowEl) arrowEl.innerText = "▼";
+    if (cardEl && typeof cardEl.scrollIntoView === "function") {
+        cardEl.scrollIntoView(true);
+    }
+}
+
+function renderWardBatchKarteView() {
+    var container = document.getElementById("ws-batch-karte-container");
+    var jumpBar = document.getElementById("ws-batch-karte-jumpbar");
+    if (!container) return;
+
+    updateBatchKarteCountBadge();
+
+    var cacheMap = (typeof wardSummaryCache !== "undefined" && wardSummaryCache.karte) ? wardSummaryCache.karte : {};
+    var list = [];
+    if (typeof getCurrentPatientsList === "function") {
+        try { list = getCurrentPatientsList() || []; } catch(e) {}
+    }
+
+    var cachedPatients = [];
+    for (var i = 0; i < list.length; i++) {
+        var p = list[i];
+        var pid = String(p.id || "");
+        if (cacheMap[pid]) {
+            cachedPatients.push({ patient: p, cache: cacheMap[pid] });
+        }
+    }
+
+    if (cachedPatients.length === 0) {
+        if (jumpBar) jumpBar.innerHTML = "";
+        container.innerHTML = '<div style="color:#999; text-align:center; padding:30px; background:#fff; border:1px dashed #cfd8dc; border-radius:6px;">' +
+            (wardSummaryCache.karteAllFetching ? '⏳ カルテを一括取得しています。取得できた患者から順に表示されます...' : '上部の「📋 カルテ一括取得」ボタンをクリックすると、全患者のカルテを取得してここに一覧表示します') +
+            '</div>';
+        return;
+    }
+
+    var sortedItems = sortWardBatchResults(cachedPatients);
+
+    var filter = wardBatchState.batchKarteFilter || "all";
+    var searchIpt = document.getElementById("ipt-ws-bkarte-search");
+    var keyword = searchIpt ? trimSummaryStr(searchIpt.value).toLowerCase() : "";
+    var hideEmptyChk = document.getElementById("chk-ws-bkarte-hide-empty");
+    var hideEmpty = hideEmptyChk ? hideEmptyChk.checked : true;
+
+    var imgSel = document.getElementById("sel-ws-bkarte-imgsize") || document.getElementById("sel-ws-karte-imgsize");
+    var imgMode = imgSel ? imgSel.value : "large";
+    var sortSel = document.getElementById("sel-ws-bkarte-sort") || document.getElementById("sel-ws-karte-sort");
+    var sortOrder = sortSel ? sortSel.value : "desc";
+
+    var roleAllowed = {
+        doctor: (document.getElementById("chk-ws-brole-doctor") || document.getElementById("chk-ws-role-doctor") || { checked: true }).checked,
+        nurse:  (document.getElementById("chk-ws-brole-nurse")  || document.getElementById("chk-ws-role-nurse")  || { checked: true }).checked,
+        pharm:  (document.getElementById("chk-ws-brole-pharm")  || document.getElementById("chk-ws-role-pharm")  || { checked: true }).checked,
+        rehab:  (document.getElementById("chk-ws-brole-rehab")  || document.getElementById("chk-ws-role-rehab")  || { checked: true }).checked,
+        other:  (document.getElementById("chk-ws-brole-other")  || document.getElementById("chk-ws-role-other")  || { checked: true }).checked
+    };
+
+    if (!wardBatchState.batchKarteCollapsed) wardBatchState.batchKarteCollapsed = {};
+
+    var jumpHtml = '<div style="background:#fff; border:1px solid #e0e0e0; border-radius:6px; padding:8px 10px; display:flex; flex-wrap:wrap; align-items:center; gap:5px;">' +
+        '<span style="font-size:11px; font-weight:bold; color:#555; margin-right:4px;">👤 患者ジャンプ:</span>';
+    var cardsHtml = "";
+    var shownPatientCount = 0;
+
+    for (var pi = 0; pi < sortedItems.length; pi++) {
+        var entry = sortedItems[pi];
+        var pt = entry.patient;
+        var pIdStr = String(pt.id || "");
+        var pIdEsc = escapeHtml(pIdStr);
+        var recs = (entry.cache && entry.cache.karteRecords) ? entry.cache.karteRecords : [];
+
+        var filtered = [];
+        for (var r = 0; r < recs.length; r++) {
+            var rec = recs[r];
+            var rCat = rec.roleCat || "other";
+            if (!roleAllowed[rCat]) continue;
+            var hasImg = (rec.images && rec.images.length > 0) || (rec.orderCode === "0502");
+            if (filter === "img" && !hasImg) continue;
+            if (filter === "note" && hasImg) continue;
+            if (keyword) {
+                var hay = ((rec.date || "") + " " + (rec.kind || "") + " " + (rec.title || "") + " " + (rec.author || "") + " " + (rec.role || "") + " " + (rec.body || "")).toLowerCase();
+                if (hay.indexOf(keyword) === -1) continue;
+            }
+            filtered.push(rec);
+        }
+
+        if (hideEmpty && filtered.length === 0) continue;
+        shownPatientCount++;
+
+        var roomBadge = pt.room ? ('<span style="background:#fff; color:#37474f; border:1px solid #cfd8dc; padding:1px 6px; border-radius:3px; font-size:11px; font-weight:bold; margin-right:5px;">' + escapeHtml(pt.room) + '</span>') : "";
+        var pLabel = (pt.room ? pt.room + " " : "") + (pt.name || pIdStr);
+        jumpHtml += '<button type="button" onclick="scrollToBatchKartePatient(\'' + pIdEsc + '\')" style="font-size:11px; padding:2px 8px; background:#e3f2fd; border:1px solid #90caf9; color:#0d47a1; border-radius:12px; cursor:pointer; font-weight:bold;">' +
+            escapeHtml(pLabel) + ' <span style="font-size:10px; color:#1565c0;">(' + filtered.length + ')</span></button>';
+
+        var isCollapsed = !!wardBatchState.batchKarteCollapsed[pIdStr];
+        var ordered = (sortOrder === "asc") ? filtered : filtered.slice().reverse();
+
+        var recHtml = "";
+        if (ordered.length === 0) {
+            recHtml = '<div style="color:#999; font-size:12px; padding:8px;">条件に一致するカルテ記事はありません（全 ' + recs.length + '件）</div>';
+        } else {
+            for (var j = 0; j < ordered.length; j++) {
+                var item = ordered[j];
+                var isDoc = (item.images && item.images.length > 0) || item.orderCode === "0502";
+                var borderCol = isDoc ? "#f57c00" : "#1976d2";
+                var badgeBg = isDoc ? "#fff3e0" : "#e3f2fd";
+                var badgeCol = isDoc ? "#e65100" : "#0d47a1";
+
+                var bodyTxt = escapeHtml(item.body || "").replace(/\r?\n/g, "<br>");
+                if (keyword) {
+                    try {
+                        var escKw = escapeHtml(keyword).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+                        bodyTxt = bodyTxt.replace(new RegExp("(" + escKw + ")", "gi"), '<mark style="background:#fff59d; font-weight:bold;">$1</mark>');
+                    } catch(e) {}
+                }
+
+                var imgHtml = "";
+                if (item.images && item.images.length > 0) {
+                    imgHtml += '<div style="margin-top:6px; padding-top:6px; border-top:1px dashed #ddd;">';
+                    for (var m = 0; m < item.images.length; m++) {
+                        var imgSrc = escapeHtml(item.images[m]);
+                        var imgJs = imgSrc.replace(/\\/g, "\\\\");
+                        if (imgMode === "link") {
+                            imgHtml += '<div style="margin-bottom:4px;"><button type="button" onclick="window.open(\'' + imgJs + '\')" style="padding:3px 9px; font-size:11px; background:#fff; border:1px solid #1976d2; color:#1976d2; border-radius:4px; cursor:pointer; font-weight:bold;">🖼 画像' + (m + 1) + 'を別ウィンドウで開く</button></div>';
+                        } else {
+                            var imgSt = (imgMode === "small")
+                                ? "max-width:260px; max-height:180px; border:1px solid #ccc; border-radius:4px; cursor:pointer;"
+                                : "max-width:100%; border:1px solid #ccc; border-radius:4px; cursor:pointer;";
+                            imgHtml += '<div style="margin-bottom:6px;"><img src="' + imgSrc + '" style="' + imgSt + '" onclick="window.open(\'' + imgJs + '\')" title="クリックで拡大"></div>';
+                        }
+                    }
+                    imgHtml += '</div>';
+                }
+
+                recHtml += '<div style="background:#fff; border:1px solid #e0e0e0; border-left:4px solid ' + borderCol + '; border-radius:4px; padding:8px 12px; margin-bottom:8px;">' +
+                    '<div style="display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center; gap:6px; margin-bottom:4px; padding-bottom:4px; border-bottom:1px solid #f0f0f0;">' +
+                    '<div>' +
+                    '<span style="background:' + badgeBg + '; color:' + badgeCol + '; font-size:11px; font-weight:bold; padding:1px 7px; border-radius:10px; margin-right:6px;">' + escapeHtml(item.kind || "記事") + '</span>' +
+                    '<b style="font-size:12px; color:#333;">' + escapeHtml(item.title || "") + '</b>' +
+                    '</div>' +
+                    '<div style="font-size:11px; color:#555;">' +
+                    (item.date ? '<span style="margin-right:8px;">📅 ' + escapeHtml(item.date) + '</span>' : '') +
+                    (item.author ? '<span>👤 ' + escapeHtml(item.author) + (item.role ? ' &lt;' + escapeHtml(item.role) + '&gt;' : '') + '</span>' : '') +
+                    '</div></div>' +
+                    (bodyTxt ? '<div style="font-size:12px; color:#222; line-height:1.55; font-family:\'MS PGothic\',sans-serif;">' + bodyTxt + '</div>' : '') +
+                    imgHtml +
+                    '</div>';
+            }
+        }
+
+        cardsHtml += '<div id="ws-bkarte-card-' + pIdEsc + '" style="background:#fff; border:1px solid #90caf9; border-radius:6px; margin-bottom:14px; box-shadow:0 1px 2px rgba(0,0,0,0.04);">' +
+            '<div style="background:#e3f2fd; padding:8px 14px; border-bottom:1px solid #90caf9; border-radius:6px 6px 0 0; display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center; gap:8px;">' +
+            '<div onclick="toggleBatchKartePatient(\'' + pIdEsc + '\')" style="cursor:pointer; flex-grow:1;">' +
+            '<span id="ws-bkarte-arrow-' + pIdEsc + '" style="display:inline-block; width:14px; font-weight:bold; color:#0d47a1;">' + (isCollapsed ? "▶" : "▼") + '</span> ' +
+            roomBadge +
+            '<b style="font-size:13px; color:#0d47a1;">' + escapeHtml(pt.name || pIdStr) + '</b>' +
+            '<span style="font-size:11px; color:#555; margin-left:8px;">(ID:' + pIdEsc + (pt.daysInHosp ? ' / 在院' + escapeHtml(String(pt.daysInHosp)) + '日' : '') + ')</span>' +
+            '<span style="background:#fff; color:#1565c0; border:1px solid #90caf9; font-size:11px; font-weight:bold; padding:1px 8px; border-radius:10px; margin-left:8px;">記事 ' + filtered.length + '件' + (filtered.length !== recs.length ? ' / 全' + recs.length + '件' : '') + '</span>' +
+            '</div>' +
+            '<div style="display:flex; gap:6px;">' +
+            '<button type="button" class="yr-btn" style="background:#546e7a; color:#fff; font-size:11px; padding:3px 9px;" onclick="jumpToWardSummaryDetail(\'' + pIdEsc + '\')">👤 単体画面で開く</button>' +
+            '<button type="button" class="yr-btn" style="background:#1976d2; color:#fff; font-size:11px; padding:3px 9px;" onclick="openWardKarteRecord(\'' + pIdEsc + '\', \'\')">📄 カルテ本画面</button>' +
+            '</div></div>' +
+            '<div id="ws-bkarte-body-' + pIdEsc + '" style="padding:10px 12px; background:#fafcff; display:' + (isCollapsed ? "none" : "block") + ';">' +
+            recHtml +
+            '</div></div>';
+    }
+
+    jumpHtml += '</div>';
+
+    if (shownPatientCount === 0) {
+        if (jumpBar) jumpBar.innerHTML = "";
+        container.innerHTML = '<div style="color:#888; text-align:center; padding:30px; background:#fff; border:1px solid #e0e0e0; border-radius:6px;">条件に一致するカルテ記事を持つ患者がいません（職種フィルタ・検索キーワード・「該当記事0件の患者を隠す」設定をご確認ください）</div>';
+    } else {
+        if (jumpBar) jumpBar.innerHTML = jumpHtml;
+        container.innerHTML = cardsHtml;
+    }
 }
 
 </script>
