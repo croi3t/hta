@@ -683,6 +683,7 @@ function generateAbbreviation() {}
             <div class="tab" id="tab-btn-settings" onclick="switchTab('tab-settings')">⚙ 設定</div>
             <div class="tab" id="tab-btn-yakureki" onclick="switchTab('tab-yakureki')" style="background:#e3f2fd; color:#0d6efd;">📝 薬歴ツール</div>
             <div class="tab" id="tab-btn-kartelink" onclick="switchTab('tab-kartelink')" style="background:#fce4ec; color:#c62828;">🔗 カルテLink</div>
+            <div class="tab" id="tab-btn-ward-summary" onclick="switchTab('tab-ward-summary')" style="background:#e8f5e9; color:#1b5e20; font-weight:bold;">📊 病棟サマリ</div>
         </div>
     </div>
 </div>
@@ -1058,6 +1059,359 @@ function generateAbbreviation() {}
             </tbody>
         </table>
     </div>
+    <!-- 病棟サマリタブ -->
+    <div id="tab-ward-summary" class="tab-content" style="padding: 10px 14px;">
+        <div id="ws-alertArea" class="yr-alert-info" style="display: none; margin-bottom: 8px;"></div>
+                <!-- モード切替バー (単体患者 vs 病棟一括) -->
+                <div style="display:flex; gap:8px; margin-bottom:12px; border-bottom:2px solid #1b5e20; padding-bottom:6px;">
+                    <button type="button" id="btn-ws-mode-single" onclick="switchWardSummaryMainMode('single')" style="padding:6px 16px; font-size:13px; font-weight:bold; border:1px solid #1b5e20; background:#1b5e20; color:#fff; border-radius:4px; cursor:pointer;">👤 単体患者サマリ (処方比較 ＆ 1週間カルテ)</button>
+                    <button type="button" id="btn-ws-mode-batch" onclick="switchWardSummaryMainMode('batch')" style="padding:6px 16px; font-size:13px; font-weight:bold; border:1px solid #ccc; background:#f8f9fa; color:#333; border-radius:4px; cursor:pointer;">🏥 病棟一括チェック</button>
+                </div>
+
+                <!-- モード1: 単体患者サマリ -->
+                <div id="ws-mainpane-single">
+                <!-- 操作バー -->
+                <div style="background:#f1f8e9; border:1px solid #c5e1a5; border-radius:4px; padding:10px 14px; margin-bottom:12px;">
+                    <div style="display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center; gap:8px;">
+                        <div style="display:flex; flex-wrap:wrap; align-items:center; gap:6px;">
+                            <span style="font-size:13px; font-weight:bold; color:#2e7d32;">👤 患者選択:</span>
+                            <button type="button" class="yr-btn" style="background:#fff; color:#2e7d32; border:1px solid #a5d6a7; font-size:11px; font-weight:bold; padding:4px 8px;" onclick="navigateWardSummaryPatient(-1)" title="前の患者へ">◀ 前へ</button>
+                            <select id="sel-ward-summary-patient-dropdown" class="yr-form-control" style="width:220px; font-size:12px; height:28px;" onchange="onWardSummaryPatientDropdownChange(this.value)">
+                                <option value="">-- 患者一覧から選択 --</option>
+                            </select>
+                            <button type="button" class="yr-btn" style="background:#fff; color:#2e7d32; border:1px solid #a5d6a7; font-size:11px; font-weight:bold; padding:4px 8px;" onclick="navigateWardSummaryPatient(1)" title="次の患者へ">次へ ▶</button>
+                            <input type="text" id="ipt-ward-summary-patient-search" class="yr-form-control" style="width:100px; font-size:12px; height:28px;" placeholder="患者ID直接入力" onkeypress="if(event.keyCode===13) fetchWardSummaryData(true)">
+                            <button id="btn-ward-summary-fetch" class="yr-btn" style="background:#2e7d32; color:#fff; font-size:12px; font-weight:bold; padding:4px 12px;" onclick="fetchWardSummaryData(true)" title="最新の処方・カルテを再取得します">⚡ 最新再取得</button>
+                            <select id="sel-ws-karte-range" class="yr-form-control" style="width:125px; font-size:11px; height:28px;" onchange="onWardKarteRangeChange()" title="カルテ記事・文書画像の取得期間">
+                                <option value="0">本日のみ (1日)</option>
+                                <option value="1">昨日〜本日 (2日間)</option>
+                                <option value="2">直近3日間</option>
+                                <option value="7" selected>直近1週間</option>
+                                <option value="14">直近2週間</option>
+                            </select>
+                            <button type="button" id="btn-ws-single-karte-all" class="yr-btn" style="background:#1565c0; color:#fff; font-size:11px; font-weight:bold; padding:4px 10px;" onclick="startWardBatchKarteAllFetch()" title="選択中の取得期間で病棟全患者のカルテを一括取得してキャッシュします">📋 全患者カルテ一括取得</button>
+                            <button type="button" id="btn-ws-single-karte-stop" class="yr-btn" style="background:#c62828; color:#fff; font-size:11px; font-weight:bold; padding:4px 10px; display:none;" onclick="stopWardBatchKarteAllFetch()">⏹ 中断</button>
+                            <span id="ws-karte-all-status" style="font-size:11px; font-weight:bold; color:#1565c0;"></span>
+                        </div>
+                        <div id="ward-summary-status-badge" style="font-size:12px; font-weight:bold; color:#555;">
+                            待機中
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ⚠️ 注意書きバナー -->
+                <div style="background:#fff3e0; border-left:4px solid #ff9800; border-radius:3px; padding:8px 12px; margin-bottom:12px; font-size:11px; color:#e65100; line-height:1.4;">
+                    <b>⚠️ ご注意:</b> 電子カルテ『新薬歴』画面からの直接の中止・再開指示はオーダ情報に即時反映されない場合があります。最終的な変更・確定情報は必ずカルテ本画面でも併せてご確認ください。
+                </div>
+
+                <!-- サブビュー切り替えバー -->
+                <div style="display:flex; gap:6px; border-bottom:2px solid #2e7d32; margin-bottom:14px;">
+                    <button type="button" id="btn-ws-subtab-rx" onclick="switchWardSummarySubTab('rx')" style="padding:7px 16px; font-size:12px; font-weight:bold; border:1px solid #2e7d32; border-bottom:none; background:#2e7d32; color:#fff; border-radius:5px 5px 0 0; cursor:pointer;">💊 処方変更・持参薬サマリ</button>
+                    <button type="button" id="btn-ws-subtab-karte" onclick="switchWardSummarySubTab('karte')" style="padding:7px 16px; font-size:12px; font-weight:bold; border:1px solid #cfd8dc; border-bottom:none; background:#f1f3f4; color:#333; border-radius:5px 5px 0 0; cursor:pointer;">📋 直近1週間のカルテ・文書画像 <span id="badge-ws-karte-count" style="background:#fff; color:#2e7d32; padding:1px 6px; border-radius:10px; font-size:10px; margin-left:4px;">0件</span></button>
+                </div>
+
+                <!-- サブペイン1: 処方変更・持参薬サマリ -->
+                <div id="ws-subpane-rx">
+
+                <!-- 1. 処方変更サマリ (先週 vs 今週 左右比較テーブル) -->
+                <div style="background:#fff; border:1px solid #cfd8dc; border-radius:6px; margin-bottom:16px; box-shadow:0 1px 3px rgba(0,0,0,0.04); overflow:hidden;">
+                    <div style="background:#f8f9fa; padding:10px 16px; border-bottom:1px solid #e0e0e0; display:flex; justify-content:space-between; align-items:center;">
+                        <span style="font-size:13px; font-weight:bold; color:#0d47a1;">🔄 処方の変更サマリ（先週 vs 今週 左右比較）</span>
+                        <span id="badge-ward-summary-changes" style="font-size:11px; padding:2px 8px; border-radius:10px; font-weight:bold; background:#e3f2fd; color:#1565c0;">未取得</span>
+                    </div>
+                    <div style="padding:12px 14px; overflow-x:auto;">
+                        <table style="width:100%; border-collapse:collapse; font-size:12px;">
+                            <thead>
+                                <tr style="background:#f1f8e9;">
+                                    <th id="th-ward-summary-prev" style="width:38%; padding:8px 10px; text-align:left; border:1px solid #dcedc8; color:#2e7d32;">◀ 先週の処方内容 (月〜日)</th>
+                                    <th style="width:14%; padding:8px 10px; text-align:center; border:1px solid #dcedc8; color:#2e7d32;">判定・評価</th>
+                                    <th id="th-ward-summary-curr" style="width:38%; padding:8px 10px; text-align:left; border:1px solid #dcedc8; color:#2e7d32;">▶ 今週の処方内容 (月〜日)</th>
+                                    <th style="width:10%; padding:8px 10px; text-align:center; border:1px solid #dcedc8; color:#2e7d32;">詳細</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tbody-ward-summary-compare">
+                                <tr><td colspan="4" style="text-align:center; color:#999; padding:24px;">患者を選択して「⚡ データ取得・分析」を実行してください</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- 2. 持参薬の残日数・終了予定（処方要約の真下に配置） -->
+                <div style="background:#fff; border:1px solid #cfd8dc; border-radius:6px; margin-bottom:16px; box-shadow:0 1px 3px rgba(0,0,0,0.04); overflow:hidden;">
+                    <div style="background:#f8f9fa; padding:10px 16px; border-bottom:1px solid #e0e0e0; display:flex; justify-content:space-between; align-items:center;">
+                        <span style="font-size:13px; font-weight:bold; color:#1b5e20;">💊 持参薬の残日数・終了予定（※医師再開指示分）</span>
+                        <span id="badge-ward-summary-jisan" style="font-size:11px; padding:2px 8px; border-radius:10px; font-weight:bold; background:#e8f5e9; color:#2e7d32;">未取得</span>
+                    </div>
+                    <div style="padding:12px 14px; overflow-x:auto;">
+                        <div style="font-size:11px; color:#555; margin-bottom:8px; display:flex; justify-content:space-between; align-items:center;">
+                            <span>※ 入院時に医師から正式に再開指示が出た持参薬（<code>【持参薬】</code>ヘッダ）を対象に算出。新薬歴での修正等に合わせて手動で残日数を調整できます。</span>
+                            <button type="button" class="btn" style="font-size:10px; padding:2px 8px; background:#607d8b;" onclick="resetWardSummaryJisanAdj()">↺ 調整をリセット</button>
+                        </div>
+                        <table style="width:100%; border-collapse:collapse; font-size:12px;">
+                            <thead>
+                                <tr style="background:#f5f5f5;">
+                                    <th style="width:30%; padding:8px 10px; text-align:left; border:1px solid #e0e0e0; color:#424242;">薬品名</th>
+                                    <th style="width:22%; padding:8px 10px; text-align:left; border:1px solid #e0e0e0; color:#424242;">用法</th>
+                                    <th style="width:10%; padding:8px 10px; text-align:center; border:1px solid #e0e0e0; color:#424242;">処方日数</th>
+                                    <th style="width:11%; padding:8px 10px; text-align:center; border:1px solid #e0e0e0; color:#424242;">開始日</th>
+                                    <th style="width:11%; padding:8px 10px; text-align:center; border:1px solid #e0e0e0; color:#424242;">終了予定日</th>
+                                    <th style="width:16%; padding:8px 10px; text-align:center; border:1px solid #e0e0e0; color:#424242;">残日数 (手動調整)</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tbody-ward-summary-jisan">
+                                <tr><td colspan="6" style="text-align:center; color:#999; padding:20px;">患者を選択して「⚡ データ取得・分析」を実行してください</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- 3. 定期処方の更新・切れアラート -->
+                <div style="background:#fff; border:1px solid #cfd8dc; border-radius:6px; margin-bottom:16px; box-shadow:0 1px 3px rgba(0,0,0,0.04); overflow:hidden;">
+                    <div style="background:#f8f9fa; padding:10px 16px; border-bottom:1px solid #e0e0e0; display:flex; justify-content:space-between; align-items:center;">
+                        <span style="font-size:13px; font-weight:bold; color:#e65100;">⏳ 定期処方の更新・切れアラート（直近3日以内）</span>
+                        <span id="badge-ward-summary-teiki" style="font-size:11px; padding:2px 8px; border-radius:10px; font-weight:bold; background:#fff3e0; color:#ef6c00;">未取得</span>
+                    </div>
+                    <div id="content-ward-summary-teiki" style="padding:12px 14px;">
+                        <div style="color:#999; text-align:center; padding:10px 0;">患者を選択して「⚡ データ取得・分析」を実行してください</div>
+                    </div>
+                </div>
+
+                <!-- 4. 退院キーワード検出 (病棟全体向け機能のため、単体画面では折りたたみ表示) -->
+                <details style="margin-top:10px; border:1px solid #e0e0e0; border-radius:6px; background:#fff; margin-bottom:16px;">
+                    <summary style="padding:10px 16px; cursor:pointer; font-size:13px; font-weight:bold; background:#f3e5f5; color:#4a148c; border-radius:6px; display:flex; justify-content:space-between; align-items:center;">
+                        <span>🏠 直近カルテ記事・退院キーワード抽出結果 (任意確認用)</span>
+                        <span id="badge-ward-summary-discharge" style="font-size:11px; background:#fff; color:#4a148c; padding:2px 8px; border-radius:10px;">未取得</span>
+                    </summary>
+                    <div style="padding:12px 16px;">
+                        <div style="font-size:11px; color:#666; margin-bottom:8px;">
+                            ※ 昨日〜本日のカルテ記事から「退院」「転院」「退院調整」を含む記述を抽出しています。
+                        </div>
+                        <div id="content-ward-summary-discharge">
+                            <div style="color:#999; text-align:center; padding:10px 0;">患者を選択して「⚡ データ取得・分析」を実行してください</div>
+                        </div>
+                    </div>
+                </details>
+
+                <!-- 5. 取得オーダ解析結果一覧（デバッグ・確認用） -->
+                <details style="margin-top:8px; border:1px solid #cfd8dc; border-radius:6px; background:#fafafa; margin-bottom:16px;">
+                    <summary style="padding:7px 14px; cursor:pointer; font-size:11px; font-weight:bold; color:#546e7a;">
+                        🔍 取得した処方・注射オーダ解析一覧 (検証・確認用)
+                    </summary>
+                    <div id="content-ward-summary-debug" style="padding:10px 14px; font-size:11px; font-family:monospace; max-height:220px; overflow-y:auto; color:#333;">
+                        未取得
+                    </div>
+                </details>
+                </div> <!-- /ws-subpane-rx -->
+
+                <!-- サブペイン2: 直近1週間のカルテ記事・文書画像 -->
+                <div id="ws-subpane-karte" style="display:none;">
+                    <div style="background:#f8f9fa; border:1px solid #dee2e6; border-radius:4px; padding:8px 12px; margin-bottom:12px;">
+                        <div style="display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center; gap:8px; margin-bottom:8px;">
+                            <div style="display:flex; gap:6px; align-items:center;">
+                                <span style="font-size:12px; font-weight:bold; color:#333;">種別:</span>
+                                <button type="button" id="btn-ws-kfilter-all" onclick="filterWardSummaryKarte('all')" style="padding:3px 10px; font-size:11px; font-weight:bold; border:1px solid #1976d2; background:#1976d2; color:#fff; border-radius:4px; cursor:pointer;">すべて</button>
+                                <button type="button" id="btn-ws-kfilter-img" onclick="filterWardSummaryKarte('img')" style="padding:3px 10px; font-size:11px; font-weight:bold; border:1px solid #ccc; background:#fff; color:#333; border-radius:4px; cursor:pointer;">🖼 文書・画像あり</button>
+                                <button type="button" id="btn-ws-kfilter-note" onclick="filterWardSummaryKarte('note')" style="padding:3px 10px; font-size:11px; font-weight:bold; border:1px solid #ccc; background:#fff; color:#333; border-radius:4px; cursor:pointer;">📝 経過記事のみ</button>
+                            </div>
+                            <div style="display:flex; gap:10px; align-items:center;">
+                                <label style="font-size:11px; font-weight:bold; color:#333; margin:0;">
+                                    ↕ 並び順:
+                                    <select id="sel-ws-karte-sort" onchange="onWardKartePrefChange()" style="font-size:11px; padding:2px 6px; border:1px solid #ccc; border-radius:3px;">
+                                        <option value="desc">新しい順</option>
+                                        <option value="asc">古い順</option>
+                                    </select>
+                                </label>
+                                <label style="font-size:11px; font-weight:bold; color:#333; margin:0;">
+                                    🖼 画像表示:
+                                    <select id="sel-ws-karte-imgsize" onchange="onWardKartePrefChange()" style="font-size:11px; padding:2px 6px; border:1px solid #ccc; border-radius:3px;">
+                                        <option value="large">大 (全幅表示)</option>
+                                        <option value="small">小 (サムネイル)</option>
+                                        <option value="link">リンクのみ</option>
+                                    </select>
+                                </label>
+                                <input type="text" id="ipt-ws-karte-search" class="yr-form-control" style="width:170px; font-size:12px; height:26px;" placeholder="キーワード検索 (例: 透析)" onkeyup="renderWardSummaryKarteList()">
+                            </div>
+                        </div>
+                        <div style="display:flex; flex-wrap:wrap; gap:10px; align-items:center; padding-top:6px; border-top:1px dashed #ddd; font-size:11px;">
+                            <span style="font-weight:bold; color:#555;">👤 職種フィルタ <span style="font-weight:normal; color:#888;">(ユーザー別自動保存)</span>:</span>
+                            <label style="cursor:pointer; margin:0;"><input type="checkbox" id="chk-ws-role-doctor" checked onchange="onWardKartePrefChange()"> 医師</label>
+                            <label style="cursor:pointer; margin:0;"><input type="checkbox" id="chk-ws-role-nurse" checked onchange="onWardKartePrefChange()"> 看護師</label>
+                            <label style="cursor:pointer; margin:0;"><input type="checkbox" id="chk-ws-role-pharm" checked onchange="onWardKartePrefChange()"> 薬剤師</label>
+                            <label style="cursor:pointer; margin:0;"><input type="checkbox" id="chk-ws-role-rehab" checked onchange="onWardKartePrefChange()"> リハビリ(PT/OT/ST)</label>
+                            <label style="cursor:pointer; margin:0;"><input type="checkbox" id="chk-ws-role-other" checked onchange="onWardKartePrefChange()"> その他(栄養/MSW等)</label>
+                        </div>
+                    </div>
+                    <div id="content-ward-summary-karte-notes" style="max-height:600px; overflow-y:auto;">
+                        <div style="color:#999; text-align:center; padding:30px;">患者を選択して「⚡ データ取得・分析」を実行してください</div>
+                    </div>
+                </div> <!-- /ws-subpane-karte -->
+                </div> <!-- /ws-mainpane-single -->
+
+                <!-- モード2: 病棟一括チェック -->
+                <div id="ws-mainpane-batch" style="display:none;">
+                    <div style="background:#e8f5e9; border:1px solid #c8e6c9; border-radius:4px; padding:10px 14px; margin-bottom:12px;">
+                        <div style="display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center; gap:8px;">
+                            <div style="display:flex; flex-wrap:wrap; align-items:center; gap:10px;">
+                                <span style="font-size:13px; font-weight:bold; color:#1b5e20;">🏥 対象: <span id="ws-batch-ward-label">現在の病棟</span></span>
+                                <label style="font-size:12px; cursor:pointer; color:#333; margin:0;" title="OFFにすると処方・注射のみ収集するためさらに高速になります">
+                                    <input type="checkbox" id="chk-ws-batch-include-discharge" checked> 🏠 直近2日の退院ワードも抽出
+                                </label>
+                                <button type="button" id="btn-ws-batch-start" class="yr-btn" style="background:#2e7d32; color:#fff; font-size:12px; font-weight:bold; padding:5px 12px;" onclick="startWardBatchFetch('full')">⚡ 病棟一括チェック</button>
+                                <button type="button" id="btn-ws-batch-disc-only" class="yr-btn" style="background:#6a1b9a; color:#fff; font-size:12px; font-weight:bold; padding:5px 12px;" onclick="startWardBatchFetch('discharge_only')" title="処方情報を取得せず、退院ワードのみを高速抽出します">🏠 退院ワードのみ抽出</button>
+                                <button type="button" id="btn-ws-batch-karte-all" class="yr-btn" style="background:#1565c0; color:#fff; font-size:12px; font-weight:bold; padding:5px 12px;" onclick="startWardBatchKarteAllFetch()" title="選択中の取得期間で全患者のカルテを一括取得してキャッシュします">📋 カルテ一括取得</button>
+                                <button type="button" id="btn-ws-batch-stop" class="yr-btn" style="background:#c62828; color:#fff; font-size:12px; font-weight:bold; padding:5px 12px; display:none;" onclick="stopWardBatchFetch()">⏹ 中断</button>
+                                <button type="button" id="btn-ws-batch-copy" class="yr-btn" style="background:#546e7a; color:#fff; font-size:12px; font-weight:bold; padding:5px 12px;" onclick="copyWardBatchMorningMemo()">📋 病棟サマリをコピー</button>
+                            </div>
+                            <div id="ws-batch-status-badge" style="font-size:12px; font-weight:bold; color:#555;">
+                                待機中
+                            </div>
+                        </div>
+                        <div id="ws-batch-progress-wrap" style="display:none; margin-top:8px;">
+                            <div style="background:#c8e6c9; border-radius:4px; height:8px; width:100%; overflow:hidden;">
+                                <div id="ws-batch-progress-bar" style="background:#2e7d32; height:100%; width:0%; transition:width 0.2s;"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- KPIサマリフィルターバー -->
+                    <div style="display:flex; flex-wrap:wrap; gap:8px; margin-bottom:12px;">
+                        <div id="ws-kpi-all" onclick="filterWardBatchList('all')" style="flex:1 1 100px; background:#e3f2fd; border:2px solid #1976d2; border-radius:6px; padding:6px 10px; text-align:center; cursor:pointer;">
+                            <div style="font-size:16px; font-weight:bold; color:#1976d2;" id="ws-kpi-val-all">0</div>
+                            <div style="font-size:11px; color:#333;">全患者</div>
+                        </div>
+                        <div id="ws-kpi-action" onclick="filterWardBatchList('action')" style="flex:1 1 100px; background:#fff; border:1px solid #cfd8dc; border-radius:6px; padding:6px 10px; text-align:center; cursor:pointer;">
+                            <div style="font-size:16px; font-weight:bold; color:#c62828;" id="ws-kpi-val-action">0</div>
+                            <div style="font-size:11px; color:#333;">⚠️ 要対応</div>
+                        </div>
+                        <div id="ws-kpi-discharge" onclick="filterWardBatchList('discharge')" style="flex:1 1 100px; background:#fff; border:1px solid #cfd8dc; border-radius:6px; padding:6px 10px; text-align:center; cursor:pointer;">
+                            <div style="font-size:16px; font-weight:bold; color:#6a1b9a;" id="ws-kpi-val-discharge">0</div>
+                            <div style="font-size:11px; color:#333;">🏠 退院ワード</div>
+                        </div>
+                        <div id="ws-kpi-rxchange" onclick="filterWardBatchList('rxchange')" style="flex:1 1 100px; background:#fff; border:1px solid #cfd8dc; border-radius:6px; padding:6px 10px; text-align:center; cursor:pointer;">
+                            <div style="font-size:16px; font-weight:bold; color:#e65100;" id="ws-kpi-val-rxchange">0</div>
+                            <div style="font-size:11px; color:#333;">🔄 処方変更</div>
+                        </div>
+                        <div id="ws-kpi-nocurrteiki" onclick="filterWardBatchList('nocurrteiki')" style="flex:1 1 100px; background:#fff; border:1px solid #cfd8dc; border-radius:6px; padding:6px 10px; text-align:center; cursor:pointer;">
+                            <div style="font-size:16px; font-weight:bold; color:#b71c1c;" id="ws-kpi-val-nocurrteiki">0</div>
+                            <div style="font-size:11px; color:#333;">📋 今週定期未</div>
+                        </div>
+                        <div id="ws-kpi-teiki" onclick="filterWardBatchList('teiki')" style="flex:1 1 100px; background:#fff; border:1px solid #cfd8dc; border-radius:6px; padding:6px 10px; text-align:center; cursor:pointer;">
+                            <div style="font-size:16px; font-weight:bold; color:#ef6c00;" id="ws-kpi-val-teiki">0</div>
+                            <div style="font-size:11px; color:#333;">⏳ 定期切れ</div>
+                        </div>
+                        <div id="ws-kpi-jisan" onclick="filterWardBatchList('jisan')" style="flex:1 1 100px; background:#fff; border:1px solid #cfd8dc; border-radius:6px; padding:6px 10px; text-align:center; cursor:pointer;">
+                            <div style="font-size:16px; font-weight:bold; color:#ad1457;" id="ws-kpi-val-jisan">0</div>
+                            <div style="font-size:11px; color:#333;">💊 持参薬注意</div>
+                        </div>
+                        <div id="ws-kpi-stable" onclick="filterWardBatchList('stable')" style="flex:1 1 100px; background:#fff; border:1px solid #cfd8dc; border-radius:6px; padding:6px 10px; text-align:center; cursor:pointer;">
+                            <div style="font-size:16px; font-weight:bold; color:#2e7d32;" id="ws-kpi-val-stable">0</div>
+                            <div style="font-size:11px; color:#333;">🟢 安定継続</div>
+                        </div>
+                    </div>
+
+                    <!-- 薬剤一括検索バー -->
+                    <div style="background:#fff; border:1px solid #90caf9; border-radius:6px; padding:8px 12px; margin-bottom:10px; display:flex; flex-wrap:wrap; align-items:center; gap:8px;">
+                        <span style="font-size:12px; font-weight:bold; color:#0d47a1;">🔍 薬剤一括検索:</span>
+                        <input type="text" id="ipt-ws-batch-drug-search" class="yr-form-control" style="width:260px; font-size:12px; height:28px;" placeholder="薬剤名を入力 (「/」や「,」でOR検索可)" onkeyup="onWardBatchDrugSearchChange()">
+                        <button type="button" class="yr-btn" style="background:#1976d2; color:#fff; font-size:11px; padding:4px 10px;" onclick="onWardBatchDrugSearchChange()">検索</button>
+                        <button type="button" class="yr-btn" style="background:#78909c; color:#fff; font-size:11px; padding:4px 10px;" onclick="clearWardBatchDrugSearch()">✕ クリア</button>
+                        <label style="font-size:11px; cursor:pointer; color:#333; margin:0 0 0 4px;" title="OFFにすると今週処方・持参薬のみを検索対象にします">
+                            <input type="checkbox" id="chk-ws-batch-drug-include-prev" checked onchange="onWardBatchDrugSearchChange()"> 先週処方も含める
+                        </label>
+                        <span id="ws-batch-drug-search-badge" style="font-size:11px; font-weight:bold; color:#0d47a1; margin-left:auto;"></span>
+                    </div>
+                    <!-- 薬剤一括検索結果パネル -->
+                    <div id="ws-batch-drug-search-result" style="display:none; background:#fff; border:2px solid #1976d2; border-radius:6px; margin-bottom:12px; overflow:hidden;"></div>
+
+                    <!-- 表示ビュー切り替え＆並び替えバー -->
+                    <div style="display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center; gap:6px; margin-bottom:10px;">
+                        <div style="display:flex; gap:6px;">
+                            <button type="button" id="btn-ws-bview-table" onclick="switchWardBatchView('table')" style="padding:5px 14px; font-size:12px; font-weight:bold; border:1px solid #1976d2; background:#1976d2; color:#fff; border-radius:4px; cursor:pointer;">📋 全体一覧テーブル</button>
+                            <button type="button" id="btn-ws-bview-discharge" onclick="switchWardBatchView('discharge')" style="padding:5px 14px; font-size:12px; font-weight:bold; border:1px solid #ccc; background:#fff; color:#333; border-radius:4px; cursor:pointer;">🏠 退院ワード一覧のみ (処方なし)</button>
+                            <button type="button" id="btn-ws-bview-text" onclick="switchWardBatchView('text')" style="padding:5px 14px; font-size:12px; font-weight:bold; border:1px solid #ccc; background:#fff; color:#333; border-radius:4px; cursor:pointer;">📄 病棟サマリ表示</button>
+                        </div>
+                        <div style="display:flex; align-items:center; gap:6px;">
+                            <span style="font-size:11px; font-weight:bold; color:#555;">並び順:</span>
+                            <select id="sel-ws-batch-sort" onchange="onWardBatchSortChange()" style="font-size:11px; padding:3px 6px; border:1px solid #ccc; border-radius:4px; background:#fff;">
+                                <option value="id_asc">患者ID (昇順)</option>
+                                <option value="id_desc">患者ID (降順)</option>
+                                <option value="room_asc">病室 (昇順)</option>
+                                <option value="room_desc">病室 (降順)</option>
+                                <option value="name_asc">患者名 (昇順)</option>
+                                <option value="days_desc">在院日数 (長い順)</option>
+                                <option value="days_asc">在院日数 (短い順)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- ビュー1: 全体一覧テーブル -->
+                    <div id="ws-batch-view-table" style="background:#fff; border:1px solid #cfd8dc; border-radius:6px; overflow-x:auto;">
+                        <div style="background:#f8f9fa; padding:6px 12px; border-bottom:1px solid #e0e0e0; display:flex; justify-content:space-between; align-items:center;">
+                            <span style="font-size:11px; color:#555;">💡 各行の <b>[▼ 比較展開]</b> をクリックすると、画面移動なしでその場に左右前後比較表が開きます</span>
+                            <div style="display:flex; gap:6px;">
+                                <button type="button" onclick="toggleAllBatchDetails(true)" style="padding:2px 8px; font-size:11px; background:#fff; border:1px solid #bbb; border-radius:3px; cursor:pointer;">📂 すべて展開</button>
+                                <button type="button" onclick="toggleAllBatchDetails(false)" style="padding:2px 8px; font-size:11px; background:#fff; border:1px solid #bbb; border-radius:3px; cursor:pointer;">📁 すべて閉じる</button>
+                            </div>
+                        </div>
+                        <table style="width:100%; border-collapse:collapse; font-size:12px;">
+                            <thead>
+                                <tr style="background:#eceff1; color:#37474f;">
+                                    <th style="width:16%; padding:8px 10px; text-align:left; border:1px solid #cfd8dc;">病室 / 患者名</th>
+                                    <th style="width:14%; padding:8px 10px; text-align:center; border:1px solid #cfd8dc;">📋 今週定期処方</th>
+                                    <th style="width:20%; padding:8px 10px; text-align:center; border:1px solid #cfd8dc;">🔄 処方変化サマリ</th>
+                                    <th style="width:20%; padding:8px 10px; text-align:left; border:1px solid #cfd8dc;">💊 持参 / ⏳ 定期切れ</th>
+                                    <th style="width:16%; padding:8px 10px; text-align:left; border:1px solid #cfd8dc;">🏠 退院ワード</th>
+                                    <th style="width:14%; padding:8px 10px; text-align:center; border:1px solid #cfd8dc;">操作</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tbody-ws-batch-list">
+                                <tr><td colspan="6" style="text-align:center; color:#999; padding:30px;">「⚡ 病棟一括チェック」または「🏠 退院ワードのみ抽出」をクリックしてください</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- ビュー2: 退院ワード一覧のみ (処方なし) -->
+                    <div id="ws-batch-view-discharge" style="display:none; background:#fff; border:1px solid #cfd8dc; border-radius:6px; overflow-x:auto;">
+                        <table style="width:100%; border-collapse:collapse; font-size:12px;">
+                            <thead>
+                                <tr style="background:#f3e5f5; color:#4a148c;">
+                                    <th style="width:18%; padding:8px 10px; text-align:left; border:1px solid #e1bee7;">病室 / 患者名</th>
+                                    <th style="width:24%; padding:8px 10px; text-align:left; border:1px solid #e1bee7;">記録日時 / 投稿者・職種</th>
+                                    <th style="width:50%; padding:8px 10px; text-align:left; border:1px solid #e1bee7;">🏠 抽出された退院・転院関連記述</th>
+                                    <th style="width:8%; padding:8px 10px; text-align:center; border:1px solid #e1bee7;">カルテ</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tbody-ws-batch-discharge-only">
+                                <tr><td colspan="4" style="text-align:center; color:#999; padding:30px;">まだ取得されていません</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- ビュー3: 病棟サマリ表示 (構造化カードレイアウト) -->
+                    <div id="ws-batch-view-text" style="display:none; background:#f8fafc; border:1px solid #cfd8dc; border-radius:6px; padding:14px;">
+                        <div style="display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center; gap:8px; margin-bottom:12px; padding-bottom:8px; border-bottom:2px solid #2e7d32;">
+                            <div>
+                                <span style="font-size:14px; font-weight:bold; color:#1b5e20;">📊 病棟サマリ（全体俯瞰レイアウト）</span>
+                                <span style="font-size:11px; color:#666; margin-left:8px;">※ 該当項目ごとに全患者を一覧表示しています</span>
+                            </div>
+                            <button type="button" class="yr-btn" style="background:#2e7d32; color:#fff; font-size:11px; font-weight:bold; padding:4px 12px;" onclick="copyWardBatchMorningMemo()">📋 テキスト形式でコピー</button>
+                        </div>
+                        <div id="ws-batch-rich-summary">
+                            <div style="color:#999; text-align:center; padding:30px; background:#fff; border:1px dashed #cfd8dc; border-radius:6px;">
+                                「⚡ 病棟一括チェック」または「🏠 退院ワードのみ抽出」を実行すると、ここに病棟サマリが表示されます
+                            </div>
+                        </div>
+                        <details style="margin-top:14px; background:#fff; border:1px solid #cfd8dc; border-radius:6px;">
+                            <summary style="padding:8px 12px; cursor:pointer; font-size:11px; font-weight:bold; color:#546e7a; background:#f1f5f9; border-radius:6px;">
+                                📝 コピー用テキストを確認・編集する
+                            </summary>
+                            <div style="padding:10px;">
+                                <textarea id="txt-ws-batch-summary" class="yr-form-control" style="width:100%; min-height:220px; font-family:monospace; font-size:12px; line-height:1.5; box-sizing:border-box;" placeholder="一括チェックを実行すると、ここにコピー用テキストが自動生成されます"></textarea>
+                            </div>
+                        </details>
+                    </div>
+                </div> <!-- /ws-mainpane-batch -->
+    </div>
     <!-- 薬歴ツールタブ (直接埋め込み) -->
     <div id="tab-yakureki" class="tab-content" style="padding: 2px 12px 10px 12px;">
         <div class="yr-container" style="padding: 0;">
@@ -1071,7 +1425,6 @@ function generateAbbreviation() {}
                     <li id="yr-tab-med-adj-btn" style="display:none;"><a class="yr-nav-link" onclick="yrSwitchTab('yr-tab-med-adj', this)" style="background-color:#fce4ec; border-color:#f8bbd0; color:#c2185b;">薬剤調整加算</a></li>
                     <li id="yr-tab-med-adj-2026-btn"><a class="yr-nav-link" onclick="yrSwitchTab('yr-tab-med-adj-2026', this)" style="background-color:#fce4ec; border-color:#f8bbd0; color:#c2185b; font-weight:bold;">✨ 薬剤調整加算(26年改定版)</a></li>
                     <li id="yr-tab-summary-btn"><a class="yr-nav-link" onclick="yrSwitchTab('yr-tab-summary', this)" style="background-color:#e0f7fa; border-color:#b2ebf2; color:#006064; font-weight:bold;">📄 サマリ自動生成</a></li>
-                    <li id="yr-tab-ward-summary-btn"><a class="yr-nav-link" onclick="yrSwitchTab('yr-tab-ward-summary', this)" style="background-color:#e8f5e9; border-color:#c8e6c9; color:#1b5e20; font-weight:bold;">📊 病棟サマリ</a></li>
                     <li><a class="yr-nav-link" onclick="yrSwitchTab('yr-tab-settings', this)">ツール設定</a></li>
                 </ul>
             </div>
@@ -1721,358 +2074,7 @@ function generateAbbreviation() {}
                     </div>
                 </div>
             </div>
-            <!-- タブ⑧: 病棟サマリ (単体患者の詳細検証 ＆ 病棟一括チェック) -->
-            <div id="yr-tab-ward-summary" class="yr-tab-pane">
-                <!-- モード切替バー (単体患者 vs 病棟一括) -->
-                <div style="display:flex; gap:8px; margin-bottom:12px; border-bottom:2px solid #1b5e20; padding-bottom:6px;">
-                    <button type="button" id="btn-ws-mode-single" onclick="switchWardSummaryMainMode('single')" style="padding:6px 16px; font-size:13px; font-weight:bold; border:1px solid #1b5e20; background:#1b5e20; color:#fff; border-radius:4px; cursor:pointer;">👤 単体患者サマリ (処方比較 ＆ 1週間カルテ)</button>
-                    <button type="button" id="btn-ws-mode-batch" onclick="switchWardSummaryMainMode('batch')" style="padding:6px 16px; font-size:13px; font-weight:bold; border:1px solid #ccc; background:#f8f9fa; color:#333; border-radius:4px; cursor:pointer;">🏥 病棟一括チェック</button>
-                </div>
 
-                <!-- モード1: 単体患者サマリ -->
-                <div id="ws-mainpane-single">
-                <!-- 操作バー -->
-                <div style="background:#f1f8e9; border:1px solid #c5e1a5; border-radius:4px; padding:10px 14px; margin-bottom:12px;">
-                    <div style="display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center; gap:8px;">
-                        <div style="display:flex; flex-wrap:wrap; align-items:center; gap:6px;">
-                            <span style="font-size:13px; font-weight:bold; color:#2e7d32;">👤 患者選択:</span>
-                            <button type="button" class="yr-btn" style="background:#fff; color:#2e7d32; border:1px solid #a5d6a7; font-size:11px; font-weight:bold; padding:4px 8px;" onclick="navigateWardSummaryPatient(-1)" title="前の患者へ">◀ 前へ</button>
-                            <select id="sel-ward-summary-patient-dropdown" class="yr-form-control" style="width:220px; font-size:12px; height:28px;" onchange="onWardSummaryPatientDropdownChange(this.value)">
-                                <option value="">-- 患者一覧から選択 --</option>
-                            </select>
-                            <button type="button" class="yr-btn" style="background:#fff; color:#2e7d32; border:1px solid #a5d6a7; font-size:11px; font-weight:bold; padding:4px 8px;" onclick="navigateWardSummaryPatient(1)" title="次の患者へ">次へ ▶</button>
-                            <input type="text" id="ipt-ward-summary-patient-search" class="yr-form-control" style="width:100px; font-size:12px; height:28px;" placeholder="患者ID直接入力" onkeypress="if(event.keyCode===13) fetchWardSummaryData(true)">
-                            <button id="btn-ward-summary-fetch" class="yr-btn" style="background:#2e7d32; color:#fff; font-size:12px; font-weight:bold; padding:4px 12px;" onclick="fetchWardSummaryData(true)" title="最新の処方・カルテを再取得します">⚡ 最新再取得</button>
-                            <select id="sel-ws-karte-range" class="yr-form-control" style="width:125px; font-size:11px; height:28px;" onchange="onWardKarteRangeChange()" title="カルテ記事・文書画像の取得期間">
-                                <option value="0">本日のみ (1日)</option>
-                                <option value="1">昨日〜本日 (2日間)</option>
-                                <option value="2">直近3日間</option>
-                                <option value="7" selected>直近1週間</option>
-                                <option value="14">直近2週間</option>
-                            </select>
-                            <button type="button" id="btn-ws-single-karte-all" class="yr-btn" style="background:#1565c0; color:#fff; font-size:11px; font-weight:bold; padding:4px 10px;" onclick="startWardBatchKarteAllFetch()" title="選択中の取得期間で病棟全患者のカルテを一括取得してキャッシュします">📋 全患者カルテ一括取得</button>
-                            <button type="button" id="btn-ws-single-karte-stop" class="yr-btn" style="background:#c62828; color:#fff; font-size:11px; font-weight:bold; padding:4px 10px; display:none;" onclick="stopWardBatchKarteAllFetch()">⏹ 中断</button>
-                            <span id="ws-karte-all-status" style="font-size:11px; font-weight:bold; color:#1565c0;"></span>
-                        </div>
-                        <div id="ward-summary-status-badge" style="font-size:12px; font-weight:bold; color:#555;">
-                            待機中
-                        </div>
-                    </div>
-                </div>
-
-                <!-- ⚠️ 注意書きバナー -->
-                <div style="background:#fff3e0; border-left:4px solid #ff9800; border-radius:3px; padding:8px 12px; margin-bottom:12px; font-size:11px; color:#e65100; line-height:1.4;">
-                    <b>⚠️ ご注意:</b> 電子カルテ『新薬歴』画面からの直接の中止・再開指示はオーダ情報に即時反映されない場合があります。最終的な変更・確定情報は必ずカルテ本画面でも併せてご確認ください。
-                </div>
-
-                <!-- サブビュー切り替えバー -->
-                <div style="display:flex; gap:6px; border-bottom:2px solid #2e7d32; margin-bottom:14px;">
-                    <button type="button" id="btn-ws-subtab-rx" onclick="switchWardSummarySubTab('rx')" style="padding:7px 16px; font-size:12px; font-weight:bold; border:1px solid #2e7d32; border-bottom:none; background:#2e7d32; color:#fff; border-radius:5px 5px 0 0; cursor:pointer;">💊 処方変更・持参薬サマリ</button>
-                    <button type="button" id="btn-ws-subtab-karte" onclick="switchWardSummarySubTab('karte')" style="padding:7px 16px; font-size:12px; font-weight:bold; border:1px solid #cfd8dc; border-bottom:none; background:#f1f3f4; color:#333; border-radius:5px 5px 0 0; cursor:pointer;">📋 直近1週間のカルテ・文書画像 <span id="badge-ws-karte-count" style="background:#fff; color:#2e7d32; padding:1px 6px; border-radius:10px; font-size:10px; margin-left:4px;">0件</span></button>
-                </div>
-
-                <!-- サブペイン1: 処方変更・持参薬サマリ -->
-                <div id="ws-subpane-rx">
-
-                <!-- 1. 処方変更サマリ (先週 vs 今週 左右比較テーブル) -->
-                <div style="background:#fff; border:1px solid #cfd8dc; border-radius:6px; margin-bottom:16px; box-shadow:0 1px 3px rgba(0,0,0,0.04); overflow:hidden;">
-                    <div style="background:#f8f9fa; padding:10px 16px; border-bottom:1px solid #e0e0e0; display:flex; justify-content:space-between; align-items:center;">
-                        <span style="font-size:13px; font-weight:bold; color:#0d47a1;">🔄 処方の変更サマリ（先週 vs 今週 左右比較）</span>
-                        <span id="badge-ward-summary-changes" style="font-size:11px; padding:2px 8px; border-radius:10px; font-weight:bold; background:#e3f2fd; color:#1565c0;">未取得</span>
-                    </div>
-                    <div style="padding:12px 14px; overflow-x:auto;">
-                        <table style="width:100%; border-collapse:collapse; font-size:12px;">
-                            <thead>
-                                <tr style="background:#f1f8e9;">
-                                    <th id="th-ward-summary-prev" style="width:38%; padding:8px 10px; text-align:left; border:1px solid #dcedc8; color:#2e7d32;">◀ 先週の処方内容 (月〜日)</th>
-                                    <th style="width:14%; padding:8px 10px; text-align:center; border:1px solid #dcedc8; color:#2e7d32;">判定・評価</th>
-                                    <th id="th-ward-summary-curr" style="width:38%; padding:8px 10px; text-align:left; border:1px solid #dcedc8; color:#2e7d32;">▶ 今週の処方内容 (月〜日)</th>
-                                    <th style="width:10%; padding:8px 10px; text-align:center; border:1px solid #dcedc8; color:#2e7d32;">詳細</th>
-                                </tr>
-                            </thead>
-                            <tbody id="tbody-ward-summary-compare">
-                                <tr><td colspan="4" style="text-align:center; color:#999; padding:24px;">患者を選択して「⚡ データ取得・分析」を実行してください</td></tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-
-                <!-- 2. 持参薬の残日数・終了予定（処方要約の真下に配置） -->
-                <div style="background:#fff; border:1px solid #cfd8dc; border-radius:6px; margin-bottom:16px; box-shadow:0 1px 3px rgba(0,0,0,0.04); overflow:hidden;">
-                    <div style="background:#f8f9fa; padding:10px 16px; border-bottom:1px solid #e0e0e0; display:flex; justify-content:space-between; align-items:center;">
-                        <span style="font-size:13px; font-weight:bold; color:#1b5e20;">💊 持参薬の残日数・終了予定（※医師再開指示分）</span>
-                        <span id="badge-ward-summary-jisan" style="font-size:11px; padding:2px 8px; border-radius:10px; font-weight:bold; background:#e8f5e9; color:#2e7d32;">未取得</span>
-                    </div>
-                    <div style="padding:12px 14px; overflow-x:auto;">
-                        <div style="font-size:11px; color:#555; margin-bottom:8px; display:flex; justify-content:space-between; align-items:center;">
-                            <span>※ 入院時に医師から正式に再開指示が出た持参薬（<code>【持参薬】</code>ヘッダ）を対象に算出。新薬歴での修正等に合わせて手動で残日数を調整できます。</span>
-                            <button type="button" class="btn" style="font-size:10px; padding:2px 8px; background:#607d8b;" onclick="resetWardSummaryJisanAdj()">↺ 調整をリセット</button>
-                        </div>
-                        <table style="width:100%; border-collapse:collapse; font-size:12px;">
-                            <thead>
-                                <tr style="background:#f5f5f5;">
-                                    <th style="width:30%; padding:8px 10px; text-align:left; border:1px solid #e0e0e0; color:#424242;">薬品名</th>
-                                    <th style="width:22%; padding:8px 10px; text-align:left; border:1px solid #e0e0e0; color:#424242;">用法</th>
-                                    <th style="width:10%; padding:8px 10px; text-align:center; border:1px solid #e0e0e0; color:#424242;">処方日数</th>
-                                    <th style="width:11%; padding:8px 10px; text-align:center; border:1px solid #e0e0e0; color:#424242;">開始日</th>
-                                    <th style="width:11%; padding:8px 10px; text-align:center; border:1px solid #e0e0e0; color:#424242;">終了予定日</th>
-                                    <th style="width:16%; padding:8px 10px; text-align:center; border:1px solid #e0e0e0; color:#424242;">残日数 (手動調整)</th>
-                                </tr>
-                            </thead>
-                            <tbody id="tbody-ward-summary-jisan">
-                                <tr><td colspan="6" style="text-align:center; color:#999; padding:20px;">患者を選択して「⚡ データ取得・分析」を実行してください</td></tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-
-                <!-- 3. 定期処方の更新・切れアラート -->
-                <div style="background:#fff; border:1px solid #cfd8dc; border-radius:6px; margin-bottom:16px; box-shadow:0 1px 3px rgba(0,0,0,0.04); overflow:hidden;">
-                    <div style="background:#f8f9fa; padding:10px 16px; border-bottom:1px solid #e0e0e0; display:flex; justify-content:space-between; align-items:center;">
-                        <span style="font-size:13px; font-weight:bold; color:#e65100;">⏳ 定期処方の更新・切れアラート（直近3日以内）</span>
-                        <span id="badge-ward-summary-teiki" style="font-size:11px; padding:2px 8px; border-radius:10px; font-weight:bold; background:#fff3e0; color:#ef6c00;">未取得</span>
-                    </div>
-                    <div id="content-ward-summary-teiki" style="padding:12px 14px;">
-                        <div style="color:#999; text-align:center; padding:10px 0;">患者を選択して「⚡ データ取得・分析」を実行してください</div>
-                    </div>
-                </div>
-
-                <!-- 4. 退院キーワード検出 (病棟全体向け機能のため、単体画面では折りたたみ表示) -->
-                <details style="margin-top:10px; border:1px solid #e0e0e0; border-radius:6px; background:#fff; margin-bottom:16px;">
-                    <summary style="padding:10px 16px; cursor:pointer; font-size:13px; font-weight:bold; background:#f3e5f5; color:#4a148c; border-radius:6px; display:flex; justify-content:space-between; align-items:center;">
-                        <span>🏠 直近カルテ記事・退院キーワード抽出結果 (任意確認用)</span>
-                        <span id="badge-ward-summary-discharge" style="font-size:11px; background:#fff; color:#4a148c; padding:2px 8px; border-radius:10px;">未取得</span>
-                    </summary>
-                    <div style="padding:12px 16px;">
-                        <div style="font-size:11px; color:#666; margin-bottom:8px;">
-                            ※ 昨日〜本日のカルテ記事から「退院」「転院」「退院調整」を含む記述を抽出しています。
-                        </div>
-                        <div id="content-ward-summary-discharge">
-                            <div style="color:#999; text-align:center; padding:10px 0;">患者を選択して「⚡ データ取得・分析」を実行してください</div>
-                        </div>
-                    </div>
-                </details>
-
-                <!-- 5. 取得オーダ解析結果一覧（デバッグ・確認用） -->
-                <details style="margin-top:8px; border:1px solid #cfd8dc; border-radius:6px; background:#fafafa; margin-bottom:16px;">
-                    <summary style="padding:7px 14px; cursor:pointer; font-size:11px; font-weight:bold; color:#546e7a;">
-                        🔍 取得した処方・注射オーダ解析一覧 (検証・確認用)
-                    </summary>
-                    <div id="content-ward-summary-debug" style="padding:10px 14px; font-size:11px; font-family:monospace; max-height:220px; overflow-y:auto; color:#333;">
-                        未取得
-                    </div>
-                </details>
-                </div> <!-- /ws-subpane-rx -->
-
-                <!-- サブペイン2: 直近1週間のカルテ記事・文書画像 -->
-                <div id="ws-subpane-karte" style="display:none;">
-                    <div style="background:#f8f9fa; border:1px solid #dee2e6; border-radius:4px; padding:8px 12px; margin-bottom:12px;">
-                        <div style="display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center; gap:8px; margin-bottom:8px;">
-                            <div style="display:flex; gap:6px; align-items:center;">
-                                <span style="font-size:12px; font-weight:bold; color:#333;">種別:</span>
-                                <button type="button" id="btn-ws-kfilter-all" onclick="filterWardSummaryKarte('all')" style="padding:3px 10px; font-size:11px; font-weight:bold; border:1px solid #1976d2; background:#1976d2; color:#fff; border-radius:4px; cursor:pointer;">すべて</button>
-                                <button type="button" id="btn-ws-kfilter-img" onclick="filterWardSummaryKarte('img')" style="padding:3px 10px; font-size:11px; font-weight:bold; border:1px solid #ccc; background:#fff; color:#333; border-radius:4px; cursor:pointer;">🖼 文書・画像あり</button>
-                                <button type="button" id="btn-ws-kfilter-note" onclick="filterWardSummaryKarte('note')" style="padding:3px 10px; font-size:11px; font-weight:bold; border:1px solid #ccc; background:#fff; color:#333; border-radius:4px; cursor:pointer;">📝 経過記事のみ</button>
-                            </div>
-                            <div style="display:flex; gap:10px; align-items:center;">
-                                <label style="font-size:11px; font-weight:bold; color:#333; margin:0;">
-                                    ↕ 並び順:
-                                    <select id="sel-ws-karte-sort" onchange="onWardKartePrefChange()" style="font-size:11px; padding:2px 6px; border:1px solid #ccc; border-radius:3px;">
-                                        <option value="desc">新しい順</option>
-                                        <option value="asc">古い順</option>
-                                    </select>
-                                </label>
-                                <label style="font-size:11px; font-weight:bold; color:#333; margin:0;">
-                                    🖼 画像表示:
-                                    <select id="sel-ws-karte-imgsize" onchange="onWardKartePrefChange()" style="font-size:11px; padding:2px 6px; border:1px solid #ccc; border-radius:3px;">
-                                        <option value="large">大 (全幅表示)</option>
-                                        <option value="small">小 (サムネイル)</option>
-                                        <option value="link">リンクのみ</option>
-                                    </select>
-                                </label>
-                                <input type="text" id="ipt-ws-karte-search" class="yr-form-control" style="width:170px; font-size:12px; height:26px;" placeholder="キーワード検索 (例: 透析)" onkeyup="renderWardSummaryKarteList()">
-                            </div>
-                        </div>
-                        <div style="display:flex; flex-wrap:wrap; gap:10px; align-items:center; padding-top:6px; border-top:1px dashed #ddd; font-size:11px;">
-                            <span style="font-weight:bold; color:#555;">👤 職種フィルタ <span style="font-weight:normal; color:#888;">(ユーザー別自動保存)</span>:</span>
-                            <label style="cursor:pointer; margin:0;"><input type="checkbox" id="chk-ws-role-doctor" checked onchange="onWardKartePrefChange()"> 医師</label>
-                            <label style="cursor:pointer; margin:0;"><input type="checkbox" id="chk-ws-role-nurse" checked onchange="onWardKartePrefChange()"> 看護師</label>
-                            <label style="cursor:pointer; margin:0;"><input type="checkbox" id="chk-ws-role-pharm" checked onchange="onWardKartePrefChange()"> 薬剤師</label>
-                            <label style="cursor:pointer; margin:0;"><input type="checkbox" id="chk-ws-role-rehab" checked onchange="onWardKartePrefChange()"> リハビリ(PT/OT/ST)</label>
-                            <label style="cursor:pointer; margin:0;"><input type="checkbox" id="chk-ws-role-other" checked onchange="onWardKartePrefChange()"> その他(栄養/MSW等)</label>
-                        </div>
-                    </div>
-                    <div id="content-ward-summary-karte-notes" style="max-height:600px; overflow-y:auto;">
-                        <div style="color:#999; text-align:center; padding:30px;">患者を選択して「⚡ データ取得・分析」を実行してください</div>
-                    </div>
-                </div> <!-- /ws-subpane-karte -->
-                </div> <!-- /ws-mainpane-single -->
-
-                <!-- モード2: 病棟一括チェック -->
-                <div id="ws-mainpane-batch" style="display:none;">
-                    <div style="background:#e8f5e9; border:1px solid #c8e6c9; border-radius:4px; padding:10px 14px; margin-bottom:12px;">
-                        <div style="display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center; gap:8px;">
-                            <div style="display:flex; flex-wrap:wrap; align-items:center; gap:10px;">
-                                <span style="font-size:13px; font-weight:bold; color:#1b5e20;">🏥 対象: <span id="ws-batch-ward-label">現在の病棟</span></span>
-                                <label style="font-size:12px; cursor:pointer; color:#333; margin:0;" title="OFFにすると処方・注射のみ収集するためさらに高速になります">
-                                    <input type="checkbox" id="chk-ws-batch-include-discharge" checked> 🏠 直近2日の退院ワードも抽出
-                                </label>
-                                <button type="button" id="btn-ws-batch-start" class="yr-btn" style="background:#2e7d32; color:#fff; font-size:12px; font-weight:bold; padding:5px 12px;" onclick="startWardBatchFetch('full')">⚡ 病棟一括チェック</button>
-                                <button type="button" id="btn-ws-batch-disc-only" class="yr-btn" style="background:#6a1b9a; color:#fff; font-size:12px; font-weight:bold; padding:5px 12px;" onclick="startWardBatchFetch('discharge_only')" title="処方情報を取得せず、退院ワードのみを高速抽出します">🏠 退院ワードのみ抽出</button>
-                                <button type="button" id="btn-ws-batch-karte-all" class="yr-btn" style="background:#1565c0; color:#fff; font-size:12px; font-weight:bold; padding:5px 12px;" onclick="startWardBatchKarteAllFetch()" title="選択中の取得期間で全患者のカルテを一括取得してキャッシュします">📋 カルテ一括取得</button>
-                                <button type="button" id="btn-ws-batch-stop" class="yr-btn" style="background:#c62828; color:#fff; font-size:12px; font-weight:bold; padding:5px 12px; display:none;" onclick="stopWardBatchFetch()">⏹ 中断</button>
-                                <button type="button" id="btn-ws-batch-copy" class="yr-btn" style="background:#546e7a; color:#fff; font-size:12px; font-weight:bold; padding:5px 12px;" onclick="copyWardBatchMorningMemo()">📋 病棟サマリをコピー</button>
-                            </div>
-                            <div id="ws-batch-status-badge" style="font-size:12px; font-weight:bold; color:#555;">
-                                待機中
-                            </div>
-                        </div>
-                        <div id="ws-batch-progress-wrap" style="display:none; margin-top:8px;">
-                            <div style="background:#c8e6c9; border-radius:4px; height:8px; width:100%; overflow:hidden;">
-                                <div id="ws-batch-progress-bar" style="background:#2e7d32; height:100%; width:0%; transition:width 0.2s;"></div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- KPIサマリフィルターバー -->
-                    <div style="display:flex; flex-wrap:wrap; gap:8px; margin-bottom:12px;">
-                        <div id="ws-kpi-all" onclick="filterWardBatchList('all')" style="flex:1 1 100px; background:#e3f2fd; border:2px solid #1976d2; border-radius:6px; padding:6px 10px; text-align:center; cursor:pointer;">
-                            <div style="font-size:16px; font-weight:bold; color:#1976d2;" id="ws-kpi-val-all">0</div>
-                            <div style="font-size:11px; color:#333;">全患者</div>
-                        </div>
-                        <div id="ws-kpi-action" onclick="filterWardBatchList('action')" style="flex:1 1 100px; background:#fff; border:1px solid #cfd8dc; border-radius:6px; padding:6px 10px; text-align:center; cursor:pointer;">
-                            <div style="font-size:16px; font-weight:bold; color:#c62828;" id="ws-kpi-val-action">0</div>
-                            <div style="font-size:11px; color:#333;">⚠️ 要対応</div>
-                        </div>
-                        <div id="ws-kpi-discharge" onclick="filterWardBatchList('discharge')" style="flex:1 1 100px; background:#fff; border:1px solid #cfd8dc; border-radius:6px; padding:6px 10px; text-align:center; cursor:pointer;">
-                            <div style="font-size:16px; font-weight:bold; color:#6a1b9a;" id="ws-kpi-val-discharge">0</div>
-                            <div style="font-size:11px; color:#333;">🏠 退院ワード</div>
-                        </div>
-                        <div id="ws-kpi-rxchange" onclick="filterWardBatchList('rxchange')" style="flex:1 1 100px; background:#fff; border:1px solid #cfd8dc; border-radius:6px; padding:6px 10px; text-align:center; cursor:pointer;">
-                            <div style="font-size:16px; font-weight:bold; color:#e65100;" id="ws-kpi-val-rxchange">0</div>
-                            <div style="font-size:11px; color:#333;">🔄 処方変更</div>
-                        </div>
-                        <div id="ws-kpi-nocurrteiki" onclick="filterWardBatchList('nocurrteiki')" style="flex:1 1 100px; background:#fff; border:1px solid #cfd8dc; border-radius:6px; padding:6px 10px; text-align:center; cursor:pointer;">
-                            <div style="font-size:16px; font-weight:bold; color:#b71c1c;" id="ws-kpi-val-nocurrteiki">0</div>
-                            <div style="font-size:11px; color:#333;">📋 今週定期未</div>
-                        </div>
-                        <div id="ws-kpi-teiki" onclick="filterWardBatchList('teiki')" style="flex:1 1 100px; background:#fff; border:1px solid #cfd8dc; border-radius:6px; padding:6px 10px; text-align:center; cursor:pointer;">
-                            <div style="font-size:16px; font-weight:bold; color:#ef6c00;" id="ws-kpi-val-teiki">0</div>
-                            <div style="font-size:11px; color:#333;">⏳ 定期切れ</div>
-                        </div>
-                        <div id="ws-kpi-jisan" onclick="filterWardBatchList('jisan')" style="flex:1 1 100px; background:#fff; border:1px solid #cfd8dc; border-radius:6px; padding:6px 10px; text-align:center; cursor:pointer;">
-                            <div style="font-size:16px; font-weight:bold; color:#ad1457;" id="ws-kpi-val-jisan">0</div>
-                            <div style="font-size:11px; color:#333;">💊 持参薬注意</div>
-                        </div>
-                        <div id="ws-kpi-stable" onclick="filterWardBatchList('stable')" style="flex:1 1 100px; background:#fff; border:1px solid #cfd8dc; border-radius:6px; padding:6px 10px; text-align:center; cursor:pointer;">
-                            <div style="font-size:16px; font-weight:bold; color:#2e7d32;" id="ws-kpi-val-stable">0</div>
-                            <div style="font-size:11px; color:#333;">🟢 安定継続</div>
-                        </div>
-                    </div>
-
-                    <!-- 薬剤一括検索バー -->
-                    <div style="background:#fff; border:1px solid #90caf9; border-radius:6px; padding:8px 12px; margin-bottom:10px; display:flex; flex-wrap:wrap; align-items:center; gap:8px;">
-                        <span style="font-size:12px; font-weight:bold; color:#0d47a1;">🔍 薬剤一括検索:</span>
-                        <input type="text" id="ipt-ws-batch-drug-search" class="yr-form-control" style="width:260px; font-size:12px; height:28px;" placeholder="薬剤名を入力 (「/」や「,」でOR検索可)" onkeyup="onWardBatchDrugSearchChange()">
-                        <button type="button" class="yr-btn" style="background:#1976d2; color:#fff; font-size:11px; padding:4px 10px;" onclick="onWardBatchDrugSearchChange()">検索</button>
-                        <button type="button" class="yr-btn" style="background:#78909c; color:#fff; font-size:11px; padding:4px 10px;" onclick="clearWardBatchDrugSearch()">✕ クリア</button>
-                        <label style="font-size:11px; cursor:pointer; color:#333; margin:0 0 0 4px;" title="OFFにすると今週処方・持参薬のみを検索対象にします">
-                            <input type="checkbox" id="chk-ws-batch-drug-include-prev" checked onchange="onWardBatchDrugSearchChange()"> 先週処方も含める
-                        </label>
-                        <span id="ws-batch-drug-search-badge" style="font-size:11px; font-weight:bold; color:#0d47a1; margin-left:auto;"></span>
-                    </div>
-                    <!-- 薬剤一括検索結果パネル -->
-                    <div id="ws-batch-drug-search-result" style="display:none; background:#fff; border:2px solid #1976d2; border-radius:6px; margin-bottom:12px; overflow:hidden;"></div>
-
-                    <!-- 表示ビュー切り替え＆並び替えバー -->
-                    <div style="display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center; gap:6px; margin-bottom:10px;">
-                        <div style="display:flex; gap:6px;">
-                            <button type="button" id="btn-ws-bview-table" onclick="switchWardBatchView('table')" style="padding:5px 14px; font-size:12px; font-weight:bold; border:1px solid #1976d2; background:#1976d2; color:#fff; border-radius:4px; cursor:pointer;">📋 全体一覧テーブル</button>
-                            <button type="button" id="btn-ws-bview-discharge" onclick="switchWardBatchView('discharge')" style="padding:5px 14px; font-size:12px; font-weight:bold; border:1px solid #ccc; background:#fff; color:#333; border-radius:4px; cursor:pointer;">🏠 退院ワード一覧のみ (処方なし)</button>
-                            <button type="button" id="btn-ws-bview-text" onclick="switchWardBatchView('text')" style="padding:5px 14px; font-size:12px; font-weight:bold; border:1px solid #ccc; background:#fff; color:#333; border-radius:4px; cursor:pointer;">📄 病棟サマリ表示</button>
-                        </div>
-                        <div style="display:flex; align-items:center; gap:6px;">
-                            <span style="font-size:11px; font-weight:bold; color:#555;">並び順:</span>
-                            <select id="sel-ws-batch-sort" onchange="onWardBatchSortChange()" style="font-size:11px; padding:3px 6px; border:1px solid #ccc; border-radius:4px; background:#fff;">
-                                <option value="id_asc">患者ID (昇順)</option>
-                                <option value="id_desc">患者ID (降順)</option>
-                                <option value="room_asc">病室 (昇順)</option>
-                                <option value="room_desc">病室 (降順)</option>
-                                <option value="name_asc">患者名 (昇順)</option>
-                                <option value="days_desc">在院日数 (長い順)</option>
-                                <option value="days_asc">在院日数 (短い順)</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <!-- ビュー1: 全体一覧テーブル -->
-                    <div id="ws-batch-view-table" style="background:#fff; border:1px solid #cfd8dc; border-radius:6px; overflow-x:auto;">
-                        <div style="background:#f8f9fa; padding:6px 12px; border-bottom:1px solid #e0e0e0; display:flex; justify-content:space-between; align-items:center;">
-                            <span style="font-size:11px; color:#555;">💡 各行の <b>[▼ 比較展開]</b> をクリックすると、画面移動なしでその場に左右前後比較表が開きます</span>
-                            <div style="display:flex; gap:6px;">
-                                <button type="button" onclick="toggleAllBatchDetails(true)" style="padding:2px 8px; font-size:11px; background:#fff; border:1px solid #bbb; border-radius:3px; cursor:pointer;">📂 すべて展開</button>
-                                <button type="button" onclick="toggleAllBatchDetails(false)" style="padding:2px 8px; font-size:11px; background:#fff; border:1px solid #bbb; border-radius:3px; cursor:pointer;">📁 すべて閉じる</button>
-                            </div>
-                        </div>
-                        <table style="width:100%; border-collapse:collapse; font-size:12px;">
-                            <thead>
-                                <tr style="background:#eceff1; color:#37474f;">
-                                    <th style="width:16%; padding:8px 10px; text-align:left; border:1px solid #cfd8dc;">病室 / 患者名</th>
-                                    <th style="width:14%; padding:8px 10px; text-align:center; border:1px solid #cfd8dc;">📋 今週定期処方</th>
-                                    <th style="width:20%; padding:8px 10px; text-align:center; border:1px solid #cfd8dc;">🔄 処方変化サマリ</th>
-                                    <th style="width:20%; padding:8px 10px; text-align:left; border:1px solid #cfd8dc;">💊 持参 / ⏳ 定期切れ</th>
-                                    <th style="width:16%; padding:8px 10px; text-align:left; border:1px solid #cfd8dc;">🏠 退院ワード</th>
-                                    <th style="width:14%; padding:8px 10px; text-align:center; border:1px solid #cfd8dc;">操作</th>
-                                </tr>
-                            </thead>
-                            <tbody id="tbody-ws-batch-list">
-                                <tr><td colspan="6" style="text-align:center; color:#999; padding:30px;">「⚡ 病棟一括チェック」または「🏠 退院ワードのみ抽出」をクリックしてください</td></tr>
-                            </tbody>
-                        </table>
-                    </div>
-
-                    <!-- ビュー2: 退院ワード一覧のみ (処方なし) -->
-                    <div id="ws-batch-view-discharge" style="display:none; background:#fff; border:1px solid #cfd8dc; border-radius:6px; overflow-x:auto;">
-                        <table style="width:100%; border-collapse:collapse; font-size:12px;">
-                            <thead>
-                                <tr style="background:#f3e5f5; color:#4a148c;">
-                                    <th style="width:18%; padding:8px 10px; text-align:left; border:1px solid #e1bee7;">病室 / 患者名</th>
-                                    <th style="width:24%; padding:8px 10px; text-align:left; border:1px solid #e1bee7;">記録日時 / 投稿者・職種</th>
-                                    <th style="width:50%; padding:8px 10px; text-align:left; border:1px solid #e1bee7;">🏠 抽出された退院・転院関連記述</th>
-                                    <th style="width:8%; padding:8px 10px; text-align:center; border:1px solid #e1bee7;">カルテ</th>
-                                </tr>
-                            </thead>
-                            <tbody id="tbody-ws-batch-discharge-only">
-                                <tr><td colspan="4" style="text-align:center; color:#999; padding:30px;">まだ取得されていません</td></tr>
-                            </tbody>
-                        </table>
-                    </div>
-
-                    <!-- ビュー3: 病棟サマリ表示 (構造化カードレイアウト) -->
-                    <div id="ws-batch-view-text" style="display:none; background:#f8fafc; border:1px solid #cfd8dc; border-radius:6px; padding:14px;">
-                        <div style="display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center; gap:8px; margin-bottom:12px; padding-bottom:8px; border-bottom:2px solid #2e7d32;">
-                            <div>
-                                <span style="font-size:14px; font-weight:bold; color:#1b5e20;">📊 病棟サマリ（全体俯瞰レイアウト）</span>
-                                <span style="font-size:11px; color:#666; margin-left:8px;">※ 該当項目ごとに全患者を一覧表示しています</span>
-                            </div>
-                            <button type="button" class="yr-btn" style="background:#2e7d32; color:#fff; font-size:11px; font-weight:bold; padding:4px 12px;" onclick="copyWardBatchMorningMemo()">📋 テキスト形式でコピー</button>
-                        </div>
-                        <div id="ws-batch-rich-summary">
-                            <div style="color:#999; text-align:center; padding:30px; background:#fff; border:1px dashed #cfd8dc; border-radius:6px;">
-                                「⚡ 病棟一括チェック」または「🏠 退院ワードのみ抽出」を実行すると、ここに病棟サマリが表示されます
-                            </div>
-                        </div>
-                        <details style="margin-top:14px; background:#fff; border:1px solid #cfd8dc; border-radius:6px;">
-                            <summary style="padding:8px 12px; cursor:pointer; font-size:11px; font-weight:bold; color:#546e7a; background:#f1f5f9; border-radius:6px;">
-                                📝 コピー用テキストを確認・編集する
-                            </summary>
-                            <div style="padding:10px;">
-                                <textarea id="txt-ws-batch-summary" class="yr-form-control" style="width:100%; min-height:220px; font-family:monospace; font-size:12px; line-height:1.5; box-sizing:border-box;" placeholder="一括チェックを実行すると、ここにコピー用テキストが自動生成されます"></textarea>
-                            </div>
-                        </details>
-                    </div>
-                </div> <!-- /ws-mainpane-batch -->
-            </div>
             </div> <!-- /yr-scroll-area -->
         </div>
     </div>
@@ -8564,6 +8566,10 @@ function switchTab(tabId) {
     if(tabId === 'tab-history') renderHistory();
     if(tabId === 'tab-notes') renderNotes();
     if(tabId === 'tab-kartelink') renderKarteLinks();
+    if(tabId === 'tab-ward-summary') {
+        if (typeof updatePatientDropdowns === 'function') updatePatientDropdowns();
+        if (typeof loadWardKartePrefs === 'function') loadWardKartePrefs();
+    }
     if(tabId === 'tab-settings') {
         if (typeof renderWardSettingButtons === "function") renderWardSettingButtons();
     }
@@ -11267,18 +11273,15 @@ function updateMyDisplayNameMain() {
             var targetPane = document.getElementById(tabId);
             addClass(targetPane, 'yr-show');
             addClass(targetPane, 'yr-active');
-            if (tabId === 'yr-tab-macro' || tabId === 'yr-tab-settings' || tabId === 'yr-tab-abbr' || tabId === 'yr-tab-med-adj' || tabId === 'yr-tab-med-adj-2026' || tabId === 'yr-tab-summary' || tabId === 'yr-tab-ward-summary') {
+            if (tabId === 'yr-tab-macro' || tabId === 'yr-tab-settings' || tabId === 'yr-tab-abbr' || tabId === 'yr-tab-med-adj' || tabId === 'yr-tab-med-adj-2026' || tabId === 'yr-tab-summary') {
                 document.getElementById('yr-main-controls').style.display = 'none';
             } else {
                 document.getElementById('yr-main-controls').style.display = 'flex';
             }
-            if (tabId === 'yr-tab-summary' || tabId === 'yr-tab-med-adj-2026' || tabId === 'yr-tab-ward-summary') {
+            if (tabId === 'yr-tab-summary' || tabId === 'yr-tab-med-adj-2026') {
                 if (typeof updatePatientDropdowns === 'function') {
                     updatePatientDropdowns();
                 }
-            }
-            if (tabId === 'yr-tab-ward-summary' && typeof loadWardKartePrefs === 'function') {
-                loadWardKartePrefs();
             }
             if (tabId === 'yr-tab-med-adj-2026') {
                 var adjIpt = document.getElementById('ipt-med-adj-patient-search-2026');
@@ -11295,7 +11298,11 @@ function updateMyDisplayNameMain() {
         }
         function yrShowAlert(msg, type) {
             if (type === undefined) type = 'info';
-            var alertArea = document.getElementById('yr-alertArea');
+            var wsTab = document.getElementById('tab-ward-summary');
+            var useWs = (wsTab && wsTab.className && wsTab.className.indexOf('active') !== -1);
+            var alertArea = useWs ? document.getElementById('ws-alertArea') : document.getElementById('yr-alertArea');
+            if (!alertArea) alertArea = document.getElementById('yr-alertArea');
+            if (!alertArea) return;
             alertArea.style.display = 'block';
             alertArea.style.backgroundColor = type === 'error' ? '#f8d7da' : '#cff4fc';
             alertArea.style.color = type === 'error' ? '#842029' : '#055160';
