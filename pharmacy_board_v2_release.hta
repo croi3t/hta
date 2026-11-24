@@ -1172,35 +1172,57 @@ function generateAbbreviation() {}
                         <span id="badge-ward-summary-teiki" style="font-size:11px; padding:2px 8px; border-radius:10px; font-weight:bold; background:#fff3e0; color:#ef6c00;">未取得</span>
                     </div>
                     <div id="content-ward-summary-teiki" style="padding:12px 14px;">
-                        <div style="color:#999; text-align:center; padding:10px 0;">患者を選択して「⚡ データ取得・分析」を実行してください</div>
+                        <div style="color:#999; text-align:center; padding:10px 0;">患者を選択して「⚡ 最新再取得」を実行してください</div>
                     </div>
                 </div>
 
-                <!-- 4. 退院キーワード検出 (病棟全体向け機能のため、単体画面では折りたたみ表示) -->
-                <details style="margin-top:10px; border:1px solid #e0e0e0; border-radius:6px; background:#fff; margin-bottom:16px;">
-                    <summary style="padding:10px 16px; cursor:pointer; font-size:13px; font-weight:bold; background:#f3e5f5; color:#4a148c; border-radius:6px; display:flex; justify-content:space-between; align-items:center;">
-                        <span>🏠 直近カルテ記事・退院キーワード抽出結果 (任意確認用)</span>
+                <!-- 4. 直近1週間の採血異常値（パニック値P・主要項目H/L・外注検査） -->
+                <div style="background:#fff; border:1px solid #ef9a9a; border-radius:6px; margin-bottom:16px; box-shadow:0 1px 3px rgba(0,0,0,0.04); overflow:hidden;">
+                    <div style="background:#ffebee; padding:10px 16px; border-bottom:1px solid #ef9a9a; display:flex; justify-content:space-between; align-items:center;">
+                        <span style="font-size:13px; font-weight:bold; color:#b71c1c;">🩸 直近1週間の採血異常値（パニック値P・主要項目）＆ 外注検査</span>
+                        <span id="badge-ward-summary-lab" style="font-size:11px; padding:2px 8px; border-radius:10px; font-weight:bold; background:#fff; color:#b71c1c;">未取得</span>
+                    </div>
+                    <div id="content-ward-summary-lab" style="padding:12px 14px;">
+                        <div style="color:#999; text-align:center; padding:10px 0;">患者を選択して「⚡ 最新再取得」を実行してください</div>
+                    </div>
+                </div>
+
+                <!-- 5. バイタル・観察項目（排便/食止/体重/SpO2/手術日）＆ 入院指示 -->
+                <div style="background:#fff; border:1px solid #ffe082; border-radius:6px; margin-bottom:16px; box-shadow:0 1px 3px rgba(0,0,0,0.04); overflow:hidden;">
+                    <div style="background:#fff8e1; padding:10px 16px; border-bottom:1px solid #ffe082; display:flex; justify-content:space-between; align-items:center;">
+                        <span style="font-size:13px; font-weight:bold; color:#e65100;">📋 バイタル・観察項目（3日排便なし/下痢/食止/手術日）＆ 入院指示（内服/退院/Dr→Ns/ケア）</span>
+                        <span id="badge-ward-summary-vital" style="font-size:11px; padding:2px 8px; border-radius:10px; font-weight:bold; background:#fff; color:#e65100;">未取得</span>
+                    </div>
+                    <div id="content-ward-summary-vital" style="padding:12px 14px;">
+                        <div style="color:#999; text-align:center; padding:10px 0;">患者を選択して「⚡ 最新再取得」を実行してください</div>
+                    </div>
+                </div>
+
+                <!-- 6. 退院キーワード検出 (IE11互換 折りたたみ表示) -->
+                <div style="margin-top:10px; border:1px solid #e1bee7; border-radius:6px; background:#fff; margin-bottom:16px; overflow:hidden;">
+                    <div onclick="toggleWsSectionCard('single_disc')" style="padding:10px 16px; cursor:pointer; font-size:13px; font-weight:bold; background:#f3e5f5; color:#4a148c; display:flex; justify-content:space-between; align-items:center;">
+                        <span><span id="ws-sec-arrow-single_disc" style="display:inline-block; width:14px;">▶</span> 🏠 直近カルテ記事・入院指示 退院キーワード抽出結果</span>
                         <span id="badge-ward-summary-discharge" style="font-size:11px; background:#fff; color:#4a148c; padding:2px 8px; border-radius:10px;">未取得</span>
-                    </summary>
-                    <div style="padding:12px 16px;">
+                    </div>
+                    <div id="ws-sec-body-single_disc" style="display:none; padding:12px 16px; border-top:1px solid #e1bee7;">
                         <div style="font-size:11px; color:#666; margin-bottom:8px;">
-                            ※ 昨日〜本日のカルテ記事から「退院」「転院」「退院調整」を含む記述を抽出しています。
+                            ※ 直近のカルテ記事およびバイタル画面「入院指示［退院］」から退院・転院予定に関する記述を抽出しています。
                         </div>
                         <div id="content-ward-summary-discharge">
-                            <div style="color:#999; text-align:center; padding:10px 0;">患者を選択して「⚡ データ取得・分析」を実行してください</div>
+                            <div style="color:#999; text-align:center; padding:10px 0;">患者を選択して「⚡ 最新再取得」を実行してください</div>
                         </div>
                     </div>
-                </details>
+                </div>
 
-                <!-- 5. 取得オーダ解析結果一覧（デバッグ・確認用） -->
-                <details style="margin-top:8px; border:1px solid #cfd8dc; border-radius:6px; background:#fafafa; margin-bottom:16px;">
-                    <summary style="padding:7px 14px; cursor:pointer; font-size:11px; font-weight:bold; color:#546e7a;">
-                        🔍 取得した処方・注射オーダ解析一覧 (検証・確認用)
-                    </summary>
-                    <div id="content-ward-summary-debug" style="padding:10px 14px; font-size:11px; font-family:monospace; max-height:220px; overflow-y:auto; color:#333;">
-                        未取得
+                <!-- 7. 取得オーダ解析結果一覧（デバッグ・確認用: IE11互換 折りたたみ） -->
+                <div style="margin-top:8px; border:1px solid #cfd8dc; border-radius:6px; background:#fafafa; margin-bottom:16px; overflow:hidden;">
+                    <div onclick="toggleWsSectionCard('single_debug')" style="padding:7px 14px; cursor:pointer; font-size:11px; font-weight:bold; color:#546e7a;">
+                        <span id="ws-sec-arrow-single_debug" style="display:inline-block; width:14px;">▶</span> 🔍 取得した処方・注射オーダ解析一覧 (検証・確認用)
                     </div>
-                </details>
+                    <div id="ws-sec-body-single_debug" style="display:none; padding:10px 14px; font-size:11px; font-family:monospace; max-height:220px; overflow-y:auto; color:#333; border-top:1px solid #cfd8dc;">
+                        <div id="content-ward-summary-debug">未取得</div>
+                    </div>
+                </div>
                 </div> <!-- /ws-subpane-rx -->
 
                 <!-- サブペイン2: 直近1週間のカルテ記事・文書画像 -->
@@ -1251,21 +1273,22 @@ function generateAbbreviation() {}
                 <div id="ws-mainpane-batch" style="display:none;">
                     <div style="background:#e8f5e9; border:1px solid #c8e6c9; border-radius:4px; padding:10px 14px; margin-bottom:12px;">
                         <div style="display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center; gap:8px;">
-                            <div style="display:flex; flex-wrap:wrap; align-items:center; gap:10px;">
+                            <div style="display:flex; flex-wrap:wrap; align-items:center; gap:8px;">
                                 <span style="font-size:13px; font-weight:bold; color:#1b5e20;">🏥 対象: <span id="ws-batch-ward-label">現在の病棟</span></span>
-                                <label style="font-size:12px; cursor:pointer; color:#333; margin:0;" title="OFFにすると処方・注射のみ収集するためさらに高速になります">
-                                    <input type="checkbox" id="chk-ws-batch-include-discharge" checked> 🏠 直近2日の退院ワードも抽出
-                                </label>
-                                <button type="button" id="btn-ws-batch-start" class="yr-btn" style="background:#2e7d32; color:#fff; font-size:12px; font-weight:bold; padding:5px 12px;" onclick="startWardBatchFetch('full')">⚡ 病棟一括チェック</button>
-                                <button type="button" id="btn-ws-batch-disc-only" class="yr-btn" style="background:#6a1b9a; color:#fff; font-size:12px; font-weight:bold; padding:5px 12px;" onclick="startWardBatchFetch('discharge_only')" title="処方情報を取得せず、退院ワードのみを高速抽出します">🏠 退院ワードのみ抽出</button>
-                                <select id="sel-ws-batch-karte-range" class="yr-form-control" style="width:125px; font-size:11px; height:28px;" onchange="onWardKarteRangeChange(this.value)" title="カルテ記事・文書画像の取得期間">
-                                    <option value="0">本日のみ (1日)</option>
-                                    <option value="1">昨日〜本日 (2日間)</option>
-                                    <option value="2">直近3日間</option>
-                                    <option value="7" selected>直近1週間</option>
-                                    <option value="14">直近2週間</option>
-                                </select>
-                                <button type="button" id="btn-ws-batch-karte-all" class="yr-btn" style="background:#1565c0; color:#fff; font-size:12px; font-weight:bold; padding:5px 12px;" onclick="startWardBatchKarteAllFetch()" title="選択中の取得期間で全患者のカルテを一括取得して一覧表示します">📋 カルテ一括取得</button>
+                                <button type="button" id="btn-ws-batch-start" class="yr-btn" style="background:#2e7d32; color:#fff; font-size:12px; font-weight:bold; padding:5px 12px;" onclick="startWardBatchFetch('full')" title="処方・注射・退院ワード・カルテ・採血(直近1週間/外注)・バイタル/入院指示をすべて一括収集します（朝の始業時におすすめ）">⚡ 一括チェック</button>
+                                <button type="button" id="btn-ws-batch-rx-only" class="yr-btn" style="background:#00796b; color:#fff; font-size:12px; font-weight:bold; padding:5px 12px;" onclick="startWardBatchFetch('rx_only')" title="処方・注射・持参薬のみを高速チェックします（日中の処方変更確認におすすめ）">💊 処方チェック</button>
+                                <button type="button" id="btn-ws-batch-disc-only" class="yr-btn" style="background:#6a1b9a; color:#fff; font-size:12px; font-weight:bold; padding:5px 12px;" onclick="startWardBatchFetch('discharge_only')" title="退院・転院ワードのみを高速抽出します">🏠 退院ワードのみ抽出</button>
+                                <button type="button" id="btn-ws-batch-lv-only" class="yr-btn" style="background:#c62828; color:#fff; font-size:12px; font-weight:bold; padding:5px 12px;" onclick="startWardBatchFetch('lab_vital_only')" title="直近1週間の採血異常値・外注検査・バイタル(3日排便なし/食止/手術日)・入院指示のみを抽出します">🩸 採血・バイタルのみ抽出</button>
+                                <span style="display:inline-flex; align-items:center; gap:4px; background:#fff; padding:2px 6px; border:1px solid #90caf9; border-radius:4px;">
+                                    <select id="sel-ws-batch-karte-range" class="yr-form-control" style="width:120px; font-size:11px; height:24px; border:none;" onchange="onWardKarteRangeChange(this.value)" title="カルテ記事・文書画像の取得期間">
+                                        <option value="0">本日のみ (1日)</option>
+                                        <option value="1">昨日〜本日 (2日間)</option>
+                                        <option value="2">直近3日間</option>
+                                        <option value="7" selected>直近1週間</option>
+                                        <option value="14">直近2週間</option>
+                                    </select>
+                                    <button type="button" id="btn-ws-batch-karte-all" class="yr-btn" style="background:#1565c0; color:#fff; font-size:12px; font-weight:bold; padding:4px 10px;" onclick="startWardBatchKarteAllFetch()" title="選択中の取得期間で全患者のカルテのみを一括抽出します">📋 カルテのみ抽出</button>
+                                </span>
                                 <button type="button" id="btn-ws-batch-karte-stop" class="yr-btn" style="background:#c62828; color:#fff; font-size:12px; font-weight:bold; padding:5px 12px; display:none;" onclick="stopWardBatchKarteAllFetch()">⏹ カルテ中断</button>
                                 <button type="button" id="btn-ws-batch-stop" class="yr-btn" style="background:#c62828; color:#fff; font-size:12px; font-weight:bold; padding:5px 12px; display:none;" onclick="stopWardBatchFetch()">⏹ 中断</button>
                                 <button type="button" id="btn-ws-batch-copy" class="yr-btn" style="background:#546e7a; color:#fff; font-size:12px; font-weight:bold; padding:5px 12px;" onclick="copyWardBatchMorningMemo()">📋 病棟サマリをコピー</button>
@@ -1282,36 +1305,44 @@ function generateAbbreviation() {}
                     </div>
 
                     <!-- KPIサマリフィルターバー -->
-                    <div style="display:flex; flex-wrap:wrap; gap:8px; margin-bottom:12px;">
-                        <div id="ws-kpi-all" onclick="filterWardBatchList('all')" style="flex:1 1 100px; background:#e3f2fd; border:2px solid #1976d2; border-radius:6px; padding:6px 10px; text-align:center; cursor:pointer;">
+                    <div style="display:flex; flex-wrap:wrap; gap:6px; margin-bottom:12px;">
+                        <div id="ws-kpi-all" onclick="filterWardBatchList('all')" style="flex:1 1 85px; background:#e3f2fd; border:2px solid #1976d2; border-radius:6px; padding:6px 8px; text-align:center; cursor:pointer;">
                             <div style="font-size:16px; font-weight:bold; color:#1976d2;" id="ws-kpi-val-all">0</div>
                             <div style="font-size:11px; color:#333;">全患者</div>
                         </div>
-                        <div id="ws-kpi-action" onclick="filterWardBatchList('action')" style="flex:1 1 100px; background:#fff; border:1px solid #cfd8dc; border-radius:6px; padding:6px 10px; text-align:center; cursor:pointer;">
+                        <div id="ws-kpi-action" onclick="filterWardBatchList('action')" style="flex:1 1 85px; background:#fff; border:1px solid #cfd8dc; border-radius:6px; padding:6px 8px; text-align:center; cursor:pointer;">
                             <div style="font-size:16px; font-weight:bold; color:#c62828;" id="ws-kpi-val-action">0</div>
                             <div style="font-size:11px; color:#333;">⚠️ 要対応</div>
                         </div>
-                        <div id="ws-kpi-discharge" onclick="filterWardBatchList('discharge')" style="flex:1 1 100px; background:#fff; border:1px solid #cfd8dc; border-radius:6px; padding:6px 10px; text-align:center; cursor:pointer;">
+                        <div id="ws-kpi-discharge" onclick="filterWardBatchList('discharge')" style="flex:1 1 85px; background:#fff; border:1px solid #cfd8dc; border-radius:6px; padding:6px 8px; text-align:center; cursor:pointer;">
                             <div style="font-size:16px; font-weight:bold; color:#6a1b9a;" id="ws-kpi-val-discharge">0</div>
                             <div style="font-size:11px; color:#333;">🏠 退院ワード</div>
                         </div>
-                        <div id="ws-kpi-rxchange" onclick="filterWardBatchList('rxchange')" style="flex:1 1 100px; background:#fff; border:1px solid #cfd8dc; border-radius:6px; padding:6px 10px; text-align:center; cursor:pointer;">
+                        <div id="ws-kpi-lab" onclick="filterWardBatchList('lab')" style="flex:1 1 95px; background:#fff; border:1px solid #cfd8dc; border-radius:6px; padding:6px 8px; text-align:center; cursor:pointer;">
+                            <div style="font-size:16px; font-weight:bold; color:#d32f2f;" id="ws-kpi-val-lab">0</div>
+                            <div style="font-size:11px; color:#333;">🩸 採血異常/外注</div>
+                        </div>
+                        <div id="ws-kpi-vital" onclick="filterWardBatchList('vital')" style="flex:1 1 95px; background:#fff; border:1px solid #cfd8dc; border-radius:6px; padding:6px 8px; text-align:center; cursor:pointer;">
+                            <div style="font-size:16px; font-weight:bold; color:#f57c00;" id="ws-kpi-val-vital">0</div>
+                            <div style="font-size:11px; color:#333;">📋 バイタル/指示</div>
+                        </div>
+                        <div id="ws-kpi-rxchange" onclick="filterWardBatchList('rxchange')" style="flex:1 1 85px; background:#fff; border:1px solid #cfd8dc; border-radius:6px; padding:6px 8px; text-align:center; cursor:pointer;">
                             <div style="font-size:16px; font-weight:bold; color:#e65100;" id="ws-kpi-val-rxchange">0</div>
                             <div style="font-size:11px; color:#333;">🔄 処方変更</div>
                         </div>
-                        <div id="ws-kpi-nocurrteiki" onclick="filterWardBatchList('nocurrteiki')" style="flex:1 1 100px; background:#fff; border:1px solid #cfd8dc; border-radius:6px; padding:6px 10px; text-align:center; cursor:pointer;">
+                        <div id="ws-kpi-nocurrteiki" onclick="filterWardBatchList('nocurrteiki')" style="flex:1 1 85px; background:#fff; border:1px solid #cfd8dc; border-radius:6px; padding:6px 8px; text-align:center; cursor:pointer;">
                             <div style="font-size:16px; font-weight:bold; color:#b71c1c;" id="ws-kpi-val-nocurrteiki">0</div>
                             <div style="font-size:11px; color:#333;">📋 今週定期未</div>
                         </div>
-                        <div id="ws-kpi-teiki" onclick="filterWardBatchList('teiki')" style="flex:1 1 100px; background:#fff; border:1px solid #cfd8dc; border-radius:6px; padding:6px 10px; text-align:center; cursor:pointer;">
+                        <div id="ws-kpi-teiki" onclick="filterWardBatchList('teiki')" style="flex:1 1 85px; background:#fff; border:1px solid #cfd8dc; border-radius:6px; padding:6px 8px; text-align:center; cursor:pointer;">
                             <div style="font-size:16px; font-weight:bold; color:#ef6c00;" id="ws-kpi-val-teiki">0</div>
                             <div style="font-size:11px; color:#333;">⏳ 定期切れ</div>
                         </div>
-                        <div id="ws-kpi-jisan" onclick="filterWardBatchList('jisan')" style="flex:1 1 100px; background:#fff; border:1px solid #cfd8dc; border-radius:6px; padding:6px 10px; text-align:center; cursor:pointer;">
+                        <div id="ws-kpi-jisan" onclick="filterWardBatchList('jisan')" style="flex:1 1 85px; background:#fff; border:1px solid #cfd8dc; border-radius:6px; padding:6px 8px; text-align:center; cursor:pointer;">
                             <div style="font-size:16px; font-weight:bold; color:#ad1457;" id="ws-kpi-val-jisan">0</div>
                             <div style="font-size:11px; color:#333;">💊 持参薬注意</div>
                         </div>
-                        <div id="ws-kpi-stable" onclick="filterWardBatchList('stable')" style="flex:1 1 100px; background:#fff; border:1px solid #cfd8dc; border-radius:6px; padding:6px 10px; text-align:center; cursor:pointer;">
+                        <div id="ws-kpi-stable" onclick="filterWardBatchList('stable')" style="flex:1 1 85px; background:#fff; border:1px solid #cfd8dc; border-radius:6px; padding:6px 8px; text-align:center; cursor:pointer;">
                             <div style="font-size:16px; font-weight:bold; color:#2e7d32;" id="ws-kpi-val-stable">0</div>
                             <div style="font-size:11px; color:#333;">🟢 安定継続</div>
                         </div>
@@ -1356,7 +1387,7 @@ function generateAbbreviation() {}
                     <!-- ビュー1: 全体一覧テーブル -->
                     <div id="ws-batch-view-table" style="background:#fff; border:1px solid #cfd8dc; border-radius:6px; overflow-x:auto;">
                         <div style="background:#f8f9fa; padding:6px 12px; border-bottom:1px solid #e0e0e0; display:flex; justify-content:space-between; align-items:center;">
-                            <span style="font-size:11px; color:#555;">💡 各行の <b>[▼ 比較展開]</b> をクリックすると、画面移動なしでその場に左右前後比較表が開きます</span>
+                            <span style="font-size:11px; color:#555;">💡 各行の <b>[▼ 比較展開]</b> をクリックすると、画面移動なしで採血異常・バイタル指示・処方前後比較が開きます</span>
                             <div style="display:flex; gap:6px;">
                                 <button type="button" onclick="toggleAllBatchDetails(true)" style="padding:2px 8px; font-size:11px; background:#fff; border:1px solid #bbb; border-radius:3px; cursor:pointer;">📂 すべて展開</button>
                                 <button type="button" onclick="toggleAllBatchDetails(false)" style="padding:2px 8px; font-size:11px; background:#fff; border:1px solid #bbb; border-radius:3px; cursor:pointer;">📁 すべて閉じる</button>
@@ -1365,16 +1396,17 @@ function generateAbbreviation() {}
                         <table style="width:100%; border-collapse:collapse; font-size:12px;">
                             <thead>
                                 <tr style="background:#eceff1; color:#37474f;">
-                                    <th style="width:16%; padding:8px 10px; text-align:left; border:1px solid #cfd8dc;">病室 / 患者名</th>
-                                    <th style="width:14%; padding:8px 10px; text-align:center; border:1px solid #cfd8dc;">📋 今週定期処方</th>
-                                    <th style="width:20%; padding:8px 10px; text-align:center; border:1px solid #cfd8dc;">🔄 処方変化サマリ</th>
-                                    <th style="width:20%; padding:8px 10px; text-align:left; border:1px solid #cfd8dc;">💊 持参 / ⏳ 定期切れ</th>
-                                    <th style="width:16%; padding:8px 10px; text-align:left; border:1px solid #cfd8dc;">🏠 退院ワード</th>
-                                    <th style="width:14%; padding:8px 10px; text-align:center; border:1px solid #cfd8dc;">操作</th>
+                                    <th style="width:15%; padding:8px 10px; text-align:left; border:1px solid #cfd8dc;">病室 / 患者名</th>
+                                    <th style="width:12%; padding:8px 10px; text-align:center; border:1px solid #cfd8dc;">📋 今週定期処方</th>
+                                    <th style="width:17%; padding:8px 10px; text-align:center; border:1px solid #cfd8dc;">🔄 処方変化サマリ</th>
+                                    <th style="width:17%; padding:8px 10px; text-align:left; border:1px solid #cfd8dc;">💊 持参 / ⏳ 定期切れ</th>
+                                    <th style="width:16%; padding:8px 10px; text-align:left; border:1px solid #cfd8dc;">🩸 採血 / 📋 バイタル・指示</th>
+                                    <th style="width:11%; padding:8px 10px; text-align:center; border:1px solid #cfd8dc;">🏠 退院ワード</th>
+                                    <th style="width:12%; padding:8px 10px; text-align:center; border:1px solid #cfd8dc;">操作</th>
                                 </tr>
                             </thead>
                             <tbody id="tbody-ws-batch-list">
-                                <tr><td colspan="6" style="text-align:center; color:#999; padding:30px;">「⚡ 病棟一括チェック」または「🏠 退院ワードのみ抽出」をクリックしてください</td></tr>
+                                <tr><td colspan="7" style="text-align:center; color:#999; padding:30px;">「⚡ 一括チェック」または各抽出ボタンをクリックしてください</td></tr>
                             </tbody>
                         </table>
                     </div>
@@ -1436,8 +1468,8 @@ function generateAbbreviation() {}
                                 </div>
                                 <div style="display:flex; flex-wrap:wrap; gap:8px; align-items:center;">
                                     <input type="text" id="ipt-ws-bkarte-search" class="yr-form-control" style="width:190px; font-size:12px; height:26px;" placeholder="🔍 全患者カルテ検索 (例: 発熱)" onkeyup="renderWardBatchKarteView()">
-                                    <button type="button" onclick="toggleAllBatchKartePatients(true)" style="padding:3px 8px; font-size:11px; background:#fff; border:1px solid #bbb; border-radius:3px; cursor:pointer;">📂 全患者を開く</button>
-                                    <button type="button" onclick="toggleAllBatchKartePatients(false)" style="padding:3px 8px; font-size:11px; background:#fff; border:1px solid #bbb; border-radius:3px; cursor:pointer;">📁 全患者を閉じる</button>
+                                    <button type="button" onclick="stepBatchKartePatient(-1)" style="padding:3px 10px; font-size:11px; font-weight:bold; background:#fff; border:1px solid #1976d2; color:#1976d2; border-radius:4px; cursor:pointer;">◀ 前の患者</button>
+                                    <button type="button" onclick="stepBatchKartePatient(1)" style="padding:3px 10px; font-size:11px; font-weight:bold; background:#fff; border:1px solid #1976d2; color:#1976d2; border-radius:4px; cursor:pointer;">次の患者 ▶</button>
                                 </div>
                             </div>
                             <div style="display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center; gap:10px; padding-top:6px; border-top:1px dashed #ddd; font-size:11px;">
@@ -9948,6 +9980,7 @@ function doLogin() {
     setTimeout(function() {
         renderTodos();
         yrInit(); // ログイン確定後に自IDの設定をUIへ再ロード
+        if (typeof loadWardKartePrefs === "function") loadWardKartePrefs();
 
         // 設定画面の初期表示を更新
         var idLbl = document.getElementById('set-current-id-label-main');
@@ -16876,6 +16909,8 @@ var wardSummaryState = {
     chushaOrders: [],
     karteNotes: [],
     karteRecords: [],
+    labData: null,
+    vitalData: null,
     karteFilter: "all",
     jisanAdjustments: {}
 };
@@ -16883,6 +16918,7 @@ var wardSummaryState = {
 var wardSummaryCache = {
     rx: {},
     karte: {},
+    labVital: {},
     karteAllFetching: false,
     karteAllStopRequested: false,
     karteAllToken: 0
@@ -17027,6 +17063,963 @@ function buildWardKarteNotesUrl(rawId, userId, todayStr, daysBack) {
         + "&disp_ukind_code=2122"
         + "&no_log_flg=1&disp_zoom=100"
         + "&_t=" + new Date().getTime();
+}
+
+function buildWardLabUrl(rawId, userId, todayStr) {
+    // 通常採血(直近1週間)＋外注検査(直近2週間)を軽量取得するため、日付期間指定(genteiFlg=0)でリクエスト
+    var startDate = addSummaryDaysStr(todayStr, -14);
+    var endDate = todayStr;
+    var dispFlgs = "0/0/11101/1/1/1/0/1///00";
+    return "http://10.5.171.42:8082/karte/kentai_kekka_karte.php"
+        + "?kanja_id=" + encodeURIComponent(rawId)
+        + "&user_id=" + encodeURIComponent(userId)
+        + "&section_code=0000023"
+        + "&kentai_disp_flgs=" + encodeURIComponent(dispFlgs)
+        + "&disp_kekka_start_date=" + encodeURIComponent(startDate)
+        + "&disp_kekka_end_date=" + encodeURIComponent(endDate)
+        + "&disp_zoom=80"
+        + "&disp_kensu_gentei_flg=0"
+        + "&disp_kensu_count=9999"
+        + "&disp_koumoku_name_kind=0"
+        + "&disp_column_unit=1&disp_column_sanko=1&disp_column_tani=1&disp_column_sankouchi=1&disp_column_hantei=1&disp_column_date=1"
+        + "&disp_result_order_kind=1&disp_graph_order_kind=1&disp_main_value_kind=1&disp_date_kind=0&disp_result_set_code=1"
+        + "&select_section_code_str=&select_section_name_str=&disp_row_flgtbl=00"
+        + "&_t=" + new Date().getTime();
+}
+
+function buildWardVitalUrl(rawId, userId, todayStr) {
+    var vsStr = addSummaryDaysStr(todayStr, -6);
+    var veStr = addSummaryDaysStr(todayStr, 3);
+    return "http://10.5.171.42:8082/karte/vital/vital_karte.php"
+        + "?kanja_id=" + encodeURIComponent(rawId)
+        + "&start_date=" + encodeURIComponent(vsStr)
+        + "&end_date=" + encodeURIComponent(veStr)
+        + "&user_id=" + encodeURIComponent(userId)
+        + "&disp_order_ichiran_kubun=1&disp_noorder_flg=0&disp_contents_flgtbl=123&disp_zoom=100&section_code=0000002"
+        + "&_t=" + new Date().getTime();
+}
+
+function extractWardLabDateStr(rawDateTxt) {
+    if (!rawDateTxt) return "";
+    var s = trimSummaryStr(String(rawDateTxt)).replace(/\./g, "/");
+    var m4 = s.match(/(\d{4})[\/\-年](\d{1,2})[\/\-月](\d{1,2})/);
+    if (m4) {
+        return padSummaryDateStr(m4[1] + "/" + m4[2] + "/" + m4[3]);
+    }
+    var m2 = s.match(/(\d{2})[\/\-](\d{1,2})[\/\-](\d{1,2})/);
+    if (m2) {
+        var yr = parseInt(m2[1], 10);
+        var fullYr = (yr >= 70 ? "19" : "20") + m2[1];
+        return padSummaryDateStr(fullYr + "/" + m2[2] + "/" + m2[3]);
+    }
+    return "";
+}
+
+function normalizeWardLabKey(name) {
+    if (!name) return "";
+    var s = String(name);
+    var hkMap = {
+        'ｶﾞ':'ガ','ｷﾞ':'ギ','ｸﾞ':'グ','ｹﾞ':'ゲ','ｺﾞ':'ゴ','ｻﾞ':'ザ','ｼﾞ':'ジ','ｽﾞ':'ズ','ｾﾞ':'ゼ','ｿﾞ':'ゾ',
+        'ﾀﾞ':'ダ','ﾁﾞ':'ヂ','ﾂﾞ':'ヅ','ﾃﾞ':'デ','ﾄﾞ':'ド','ﾊﾞ':'バ','ﾋﾞ':'ビ','ﾌﾞ':'ブ','ﾍﾞ':'ベ','ﾎﾞ':'ボ',
+        'ﾊﾟ':'パ','ﾋﾟ':'ピ','ﾌﾟ':'プ','ﾍﾟ':'ペ','ﾎﾟ':'ポ','ｳﾞ':'ヴ','ｧ':'ァ','ｨ':'ィ','ｩ':'ゥ','ｪ':'ェ','ｫ':'ォ',
+        'ｬ':'ャ','ｭ':'ュ','ｮ':'ョ','ｯ':'ッ','ｰ':'ー','ｱ':'ア','ｲ':'イ','ｳ':'ウ','ｴ':'エ','ｵ':'オ',
+        'ｶ':'カ','ｷ':'キ','ｸ':'ク','ｹ':'ケ','ｺ':'コ','ｻ':'サ','ｼ':'シ','ｽ':'ス','ｾ':'セ','ｿ':'ソ',
+        'ﾀ':'タ','ﾁ':'チ','ﾂ':'ツ','ﾃ':'テ','ﾄ':'ト','ﾅ':'ナ','ﾆ':'ニ','ﾇ':'ヌ','ﾈ':'ネ','ﾉ':'ノ',
+        'ﾊ':'ハ','ﾋ':'ヒ','ﾌ':'フ','ﾍ':'ヘ','ﾎ':'ホ','ﾏ':'マ','ﾐ':'ミ','ﾑ':'ム','ﾒ':'メ','ﾓ':'モ',
+        'ﾔ':'ヤ','ﾕ':'ユ','ﾖ':'ヨ','ﾗ':'ラ','ﾘ':'リ','ﾙ':'ル','ﾚ':'レ','ﾛ':'ロ','ﾜ':'ワ','ｦ':'ヲ','ﾝ':'ン'
+    };
+    for (var k in hkMap) {
+        if (hkMap.hasOwnProperty(k)) {
+            s = s.split(k).join(hkMap[k]);
+        }
+    }
+    s = s.replace(/[Ａ-Ｚａ-ｚ０-９]/g, function(m) { return String.fromCharCode(m.charCodeAt(0) - 0xFEE0); });
+    s = s.toUpperCase();
+    s = s.replace(/[（]/g, "(").replace(/[）]/g, ")").replace(/[－―‐]/g, "-").replace(/／/g, "/").replace(/[\s\u3000]+/g, "");
+    s = s.replace(/[Γγ]/g, "G");
+    if (s === "ALP(IFCC)") return "ALP";
+    if (s === "LD(IFCC)" || s === "LDH") return "LD";
+    if (s === "EGFR(CRE)" || s === "EGFR(CREA)" || s === "EGFRCRE" || s === "EGFRCREA" || s === "推算GFR") return "EGFR";
+    return s;
+}
+
+// 薬剤師が優先確認したい主要検査項目（腎・肝・電解質・血算・炎症・凝固・糖・心筋・内分泌・TDM）か判定
+// ※MCV, MCH, MCHC, RBC, Ht, TP, A/G, Na-Cl, 蛋白分画, 脂質等は false（折りたたみ側へ）
+var _WARD_MAJOR_LAB_SET = {
+    // 腎機能
+    "CRE":1, "CREA":1, "CR":1, "クレアチニン":1, "EGFR":1, "BUN":1, "UN":1, "尿素窒素":1, "UA":1, "尿酸":1, "シスタチンC":1, "CYSC":1, "B2MG":1, "β2-MG":1, "β2MG":1, "NAG":1,
+    // 肝・胆道・膵・栄養主要
+    "AST":1, "GOT":1, "ALT":1, "GPT":1, "G-GTP":1, "GGTP":1, "G-GT":1, "ALP":1, "LD":1, "LDH":1, "T-BIL":1, "TBIL":1, "総ビリルビン":1, "D-BIL":1, "DBIL":1, "直接ビリルビン":1, "ALB":1, "アルブミン":1, "CHE":1, "NH3":1, "アンモニア":1, "AMY":1, "アミラーゼ":1, "P-AMY":1, "PAMY":1, "リパーゼ":1,
+    // 電解質・微量元素
+    "NA":1, "K":1, "CL":1, "CA":1, "補正CA":1, "IP":1, "P":1, "無機リン":1, "MG":1, "FE":1, "ZN":1, "亜鉛":1, "CU":1, "銅":1,
+    // 炎症・感染症
+    "CRP":1, "PCT":1, "プロカルシトニン":1, "フェリチン":1, "β-D-グルカン":1, "エンドトキシン":1, "KL-6":1, "KL6":1, "SP-D":1,
+    // 血算・白血球分画主要 (MCV/MCH/MCHC/RBC/Htは折りたたみへ)
+    "WBC":1, "白血球":1, "白血球数":1, "HB":1, "HGB":1, "PLT":1, "血小板":1, "血小板数":1, "NEUT":1, "NEU":1, "好中球":1, "好中球数":1, "総好中球数":1, "T-NEU":1, "SEG":1, "STAB":1, "EOS":1, "好酸球":1, "LY":1, "リンパ球":1, "総リンパ球数":1, "T-LY":1,
+    // 凝固・線溶
+    "PT-INR":1, "PTINR":1, "INR":1, "PT%":1, "PT活性":1, "PT時間":1, "PT秒":1, "PT":1, "APTT":1, "D-DIMER":1, "DDIMER":1, "Dダイマー":1, "DD":1, "FDP":1, "FIB":1, "フィブリノーゲン":1, "AT3":1, "AT-III":1, "ATⅢ":1,
+    // 糖代謝・心筋・内分泌・血液ガス
+    "GLU":1, "GLUCOSE":1, "BS":1, "血糖":1, "HBA1C":1, "HBA1C(NGSP)":1, "A1C":1, "BNP":1, "NT-PROBNP":1, "CK":1, "CPK":1, "CK-MB":1, "CKMB":1, "トロポニンT":1, "トロポニンI":1, "TSH":1, "FREE-T3":1, "FT3":1, "FREE-T4":1, "FT4":1, "LAC":1, "乳酸":1
+};
+
+function isPharmacistMajorLabItem(rawName, category) {
+    if (category === "一般") return false; // 尿定性・沈渣の通常のH/Lは折りたたみ側へ（パニック値Pは別途最優先表示）
+    var norm = normalizeWardLabKey(rawName);
+    if (!norm) return false;
+    if (_WARD_MAJOR_LAB_SET[norm]) return true;
+    // TDM（薬物血中濃度）関連キーワード
+    if (/バンコマイシン|VCM|テイコプラニン|TEIC|タクロリムス|FK506|シクロスポリン|CYA|ジゴキシン|テオフィリン|フェニトイン|バルプロ酸|カルバマゼピン|リチウム|メトトレキサート|MTX|アミカシン|ゲンタマイシン|トブラマイシン|ボリコナゾール|血中濃度/.test(norm)) {
+        return true;
+    }
+    return false;
+}
+
+function parseWardLabHtml(bodyHtml, todayStr) {
+    var emptyRes = {
+        panicItems: [],
+        majorItems: [],
+        minorItems: [],
+        gaichuItems: [],
+        pendingItems: [],
+        latestDate: "",
+        hasAlert: false
+    };
+    if (!bodyHtml) return emptyRes;
+
+    // onMouseOver="PopUp('...<BR>...')" 内の <BR> がタグ除去を壊さないよう事前に属性を除去
+    var cleanHtml = String(bodyHtml)
+        .replace(/\bonMouseOver="[^"]*"/gi, "")
+        .replace(/\bonMouseOut="[^"]*"/gi, "");
+
+    var trChunks = cleanHtml.split(/<tr\b[^>]*>/i);
+    if (trChunks.length < 3) return emptyRes;
+
+    var dateCols = [];
+    var zenkenIdx = -1;
+    var bestFallbackIdx = -1;
+    var bestFallbackDates = [];
+
+    for (var r = 1; r < trChunks.length; r++) {
+        var tdRe = /<t[dh]\b[^>]*>([\s\S]*?)<\/t[dh]>/gi;
+        var tdM;
+        var dCells = [];
+        while ((tdM = tdRe.exec(trChunks[r])) !== null) {
+            var cTxt = trimSummaryStr(stripSummaryHtmlTags(tdM[1]).replace(/&nbsp;/gi, " "));
+            dCells.push(cTxt);
+        }
+        if (dCells.length < 3) continue;
+        var firstC = dCells[0];
+        var tempDates = [];
+        for (var c = 1; c < dCells.length; c++) {
+            if (dCells[c]) {
+                var normD = extractWardLabDateStr(dCells[c]);
+                if (normD) {
+                    tempDates.push({ colIdx: c, dateStr: dCells[c], normDate: normD });
+                }
+            }
+        }
+        if (tempDates.length > 0) {
+            if (firstC === "全件" || firstC === "検査項目" || firstC === "項目名" || firstC === "項目") {
+                zenkenIdx = r;
+                dateCols = tempDates;
+                break;
+            }
+            if (tempDates.length > bestFallbackDates.length) {
+                bestFallbackIdx = r;
+                bestFallbackDates = tempDates;
+            }
+        }
+    }
+    if (zenkenIdx === -1 && bestFallbackIdx !== -1) {
+        zenkenIdx = bestFallbackIdx;
+        dateCols = bestFallbackDates;
+    }
+    if (zenkenIdx === -1 || dateCols.length === 0) return emptyRes;
+
+    // 新しい日付順（降順）に整列
+    dateCols.sort(function(a, b) {
+        if (a.normDate > b.normDate) return -1;
+        if (a.normDate < b.normDate) return 1;
+        return a.colIdx - b.colIdx;
+    });
+
+    var minRegularDate = addSummaryDaysStr(todayStr, -7); // 直近1週間
+    var minGaichuDate = addSummaryDaysStr(todayStr, -14); // 外注は直近2週間
+
+    var curCat = "";
+    var parentGaichu = "";
+    var parentGaichuGroup = null;
+    var gaichuGroups = [];
+    var seenNormKey = {};
+
+    var genericGaichuSubs = {
+        "抗体価": 1, "判定": 1, "定量値": 1, "インデックス": 1, "INDEX": 1,
+        "C.O.I": 1, "COI": 1, "タイター": 1, "TITER": 1, "コメント": 1
+    };
+
+    function flushParentGaichuGroup() {
+        if (!parentGaichuGroup) return;
+        if (parentGaichuGroup.parts.length > 0) {
+            gaichuGroups.push(parentGaichuGroup);
+        }
+        parentGaichuGroup = null;
+    }
+
+    for (var idx = zenkenIdx + 1; idx < trChunks.length; idx++) {
+        var trHtml = trChunks[idx];
+        var cellRe = /(<t[dh]\b[^>]*>)([\s\S]*?)<\/t[dh]>/gi;
+        var cm;
+        var cells = [];
+        var tags = [];
+        var rawInners = [];
+        while ((cm = cellRe.exec(trHtml)) !== null) {
+            tags.push(cm[1]);
+            rawInners.push(cm[2]);
+            var txt = trimSummaryStr(stripSummaryHtmlTags(cm[2]).replace(/&nbsp;/gi, " "));
+            cells.push(txt);
+        }
+        if (cells.length === 0) continue;
+        var itemName = cells[0];
+        if (!itemName) continue;
+
+        // カテゴリ見出し行の判定（2列目が bgcolor="#C0C0C0" または <B>生化学</B> 等で2・3列目が空）
+        var isCatRow = false;
+        if (tags.length > 1 && tags[1].toLowerCase().indexOf("#c0c0c0") !== -1) {
+            isCatRow = true;
+        } else if (cells.length >= 3 && cells[1] === "" && cells[2] === "" && rawInners[0].toLowerCase().indexOf("<b") !== -1) {
+            isCatRow = true;
+        }
+        if (isCatRow) {
+            flushParentGaichuGroup();
+            parentGaichu = "";
+            curCat = itemName;
+            if (curCat === "以下余白") break;
+            continue;
+        }
+        if (curCat === "コメント１" || curCat === "コメント２" || curCat === "フリーコメント" || curCat === "所見情報") {
+            continue;
+        }
+
+        var refVal = (cells.length > 1) ? cells[1] : "";
+        var unitVal = (cells.length > 2) ? cells[2] : "";
+
+        // 外注カテゴリの処理
+        if (curCat === "外注") {
+            var hasAnyColVal = false;
+            var latestGVal = "";
+            var latestGFlg = "";
+            var latestGDate = "";
+            for (var gd = 0; gd < dateCols.length; gd++) {
+                var gCol = dateCols[gd].colIdx;
+                var gNormD = dateCols[gd].normDate;
+                var gv = (gCol < cells.length) ? cells[gCol] : "";
+                var gf = ((gCol + 1) < cells.length) ? cells[gCol + 1] : "";
+                if (gv !== "") {
+                    hasAnyColVal = true;
+                    if (gNormD >= minGaichuDate && gNormD <= todayStr && !latestGVal) {
+                        latestGVal = gv;
+                        latestGFlg = gf;
+                        latestGDate = gNormD;
+                    }
+                }
+            }
+
+            // 親見出し行（値がすべて空欄かつ基準値・単位も空欄：例 ｺｳｶｸｺｳﾀｲ, 抗GM1IgG抗体, 抗SS-A/Ro抗体）
+            if (!hasAnyColVal && refVal === "" && unitVal === "") {
+                flushParentGaichuGroup();
+                parentGaichu = itemName;
+                parentGaichuGroup = { name: itemName, date: "", parts: [], hasAbnormal: false, isPending: false };
+                continue;
+            }
+
+            var normSub = normalizeWardLabKey(itemName);
+            var isAnaPattern = (parentGaichu && normalizeWardLabKey(parentGaichu) === "コウカクコウタイ" && refVal === "0 - 39" && unitVal === "倍");
+            var isGenericSub = (parentGaichu && (genericGaichuSubs[normSub] || isAnaPattern));
+
+            if (isGenericSub && parentGaichuGroup) {
+                if (!latestGVal) continue;
+                if (!parentGaichuGroup.date) parentGaichuGroup.date = latestGDate;
+                if (latestGVal.indexOf("未") !== -1) parentGaichuGroup.isPending = true;
+                if (latestGFlg === "P" || latestGFlg === "H" || latestGFlg === "L") parentGaichuGroup.hasAbnormal = true;
+
+                // 抗核抗体の染色パターン行で「< 40」陰性のものは省略し、メインの「ｺｳﾀｲｶ」または陽性パターンのみ残す
+                if (isAnaPattern && normSub !== "コウタイカ" && latestGVal === "< 40" && !latestGFlg) {
+                    continue;
+                }
+                var subLabel = (normSub === "コウタイカ" || normSub === "判定" || normSub === "定量値" || normSub === "C.O.I") ? "" : (itemName + ":");
+                parentGaichuGroup.parts.push(subLabel + latestGVal + (unitVal ? unitVal : "") + (latestGFlg ? "(" + latestGFlg + ")" : ""));
+                continue;
+            } else {
+                flushParentGaichuGroup();
+                parentGaichu = "";
+                if (latestGVal) {
+                    if (latestGVal.indexOf("未") !== -1) {
+                        emptyRes.pendingItems.push({ name: itemName, date: latestGDate, category: "外注" });
+                    } else {
+                        emptyRes.gaichuItems.push({
+                            name: itemName,
+                            val: latestGVal,
+                            unit: unitVal,
+                            ref: refVal,
+                            flag: latestGFlg,
+                            date: latestGDate
+                        });
+                    }
+                }
+                continue;
+            }
+        }
+
+        // 通常カテゴリ（生化学・血液・輸血・一般など）の処理
+        var normItemKey = normalizeWardLabKey(itemName);
+        var dedupKey = curCat + "_" + normItemKey;
+
+        // 直近1週間 (minRegularDate〜todayStr) の測定値を収集
+        var recentVals = [];
+        for (var d = 0; d < dateCols.length; d++) {
+            var col = dateCols[d].colIdx;
+            var nDate = dateCols[d].normDate;
+            if (nDate < minRegularDate || nDate > todayStr) continue;
+            var vTxt = (col < cells.length) ? cells[col] : "";
+            var fTxt = ((col + 1) < cells.length) ? cells[col + 1] : "";
+            var vTag = (col < tags.length) ? tags[col] : "";
+            var fTag = ((col + 1) < tags.length) ? tags[col + 1] : "";
+            if (vTxt === "") continue;
+
+            if (!fTxt) {
+                if (/#ff0000/i.test(vTag) || /#ff0000/i.test(fTag)) fTxt = "P";
+                else if (/#ffc0cb/i.test(vTag) || /#ffc0cb/i.test(fTag)) fTxt = "H";
+                else if (/#e0ffff/i.test(vTag) || /#e0ffff/i.test(fTag)) fTxt = "L";
+            }
+            recentVals.push({ val: vTxt, flag: fTxt, date: nDate });
+        }
+
+        if (recentVals.length === 0) continue;
+
+        // ＡＬＰ (IFCC) と旧 ALP、ＬＤ (IFCC) と旧 LD の重複防止
+        if (seenNormKey[dedupKey]) continue;
+        seenNormKey[dedupKey] = true;
+
+        var latest = recentVals[0];
+        if (!emptyRes.latestDate || latest.date > emptyRes.latestDate) {
+            emptyRes.latestDate = latest.date;
+        }
+
+        if (latest.val.indexOf("未") !== -1) {
+            if (itemName.indexOf("測定法") === -1) {
+                emptyRes.pendingItems.push({ name: itemName, date: latest.date, category: curCat });
+            }
+            continue;
+        }
+
+        if (latest.flag === "P" || latest.flag === "H" || latest.flag === "L") {
+            var prevNonPending = null;
+            for (var pv = 1; pv < recentVals.length; pv++) {
+                if (recentVals[pv].val.indexOf("未") === -1) {
+                    prevNonPending = recentVals[pv];
+                    break;
+                }
+            }
+            var shortName = itemName.replace(/\s*\(IFCC\)/i, "").replace(/[Ａ-Ｚａ-ｚ０-９]/g, function(m) {
+                return String.fromCharCode(m.charCodeAt(0) - 0xFEE0);
+            });
+            var itemObj = {
+                category: curCat,
+                name: shortName,
+                rawName: itemName,
+                val: latest.val,
+                prevVal: prevNonPending ? prevNonPending.val : "",
+                prevDate: prevNonPending ? prevNonPending.date : "",
+                unit: unitVal,
+                ref: refVal,
+                flag: latest.flag,
+                date: latest.date
+            };
+            if (latest.flag === "P") {
+                emptyRes.panicItems.push(itemObj);
+            } else if (isPharmacistMajorLabItem(itemName, curCat)) {
+                emptyRes.majorItems.push(itemObj);
+            } else {
+                emptyRes.minorItems.push(itemObj);
+            }
+        }
+    }
+
+    flushParentGaichuGroup();
+    for (var gg = 0; gg < gaichuGroups.length; gg++) {
+        var grp = gaichuGroups[gg];
+        if (grp.isPending && grp.parts.length === 0) {
+            emptyRes.pendingItems.push({ name: grp.name, date: grp.date, category: "外注" });
+        } else if (grp.parts.length > 0) {
+            emptyRes.gaichuItems.push({
+                name: grp.name,
+                val: grp.parts.join(" / "),
+                unit: "",
+                ref: "",
+                flag: grp.hasAbnormal ? "H" : "",
+                date: grp.date
+            });
+        }
+    }
+
+    emptyRes.hasAlert = (emptyRes.panicItems.length > 0 || emptyRes.majorItems.length > 0 || emptyRes.gaichuItems.length > 0);
+    return emptyRes;
+}
+
+function parseWardVitalHtml(bodyHtml, todayStr) {
+    var res = {
+        surgeryDates: [],
+        surgeryStatusText: "",
+        dischargeEvents: [],
+        admitEvents: [],
+        dischargeInsts: [],
+        naifukuInsts: [],
+        drToNsInsts: [],
+        careNotes: [],
+        prnInsts: [],
+        constipationAlert: null,
+        diarrheaAlert: null,
+        mealStopAlerts: [],
+        stoolHistory: [],
+        latestWeight: "",
+        latestSpo2: "",
+        graphImgUrl: "",
+        hasAlert: false
+    };
+    if (!bodyHtml) return res;
+
+    var rawHtml = String(bodyHtml);
+
+    // 体温表背景グラフ画像URLの抽出
+    var bgM = rawHtml.match(/background=["']?(vital_karte_taion_graph\.php\?[^"'\s>]+)["']?/i);
+    if (bgM) {
+        res.graphImgUrl = "http://10.5.171.42:8082/karte/vital/" + bgM[1].replace(/&amp;/g, "&");
+    }
+
+    function parseCellsFromChunk(chunkHtml) {
+        var list = [];
+        var tdRe = /<t[dh]\b([^>]*)>([\s\S]*?)<\/t[dh]>/gi;
+        var m;
+        while ((m = tdRe.exec(chunkHtml)) !== null) {
+            var attrs = m[1] || "";
+            var inner = m[2] || "";
+            var popTxt = "";
+            var popM = attrs.match(/onMouseOver="PopUp\(([\s\S]*?)\)"/i);
+            if (popM) {
+                var rawPop = popM[1];
+                rawPop = rawPop.replace(/'\s*\+\s*ReplaceHtmlSpecialChars\('([^']*)'\)\s*\+\s*'/g, "$1");
+                rawPop = rawPop.replace(/^'+|'+$/g, "");
+                rawPop = rawPop.replace(/<指示なし>/g, "");
+                popTxt = trimSummaryStr(
+                    rawPop.replace(/<br\s*\/?>/gi, " ")
+                          .replace(/<[^>]+>/g, " ")
+                          .replace(/&nbsp;/gi, " ")
+                          .replace(/&quot;/gi, '"')
+                          .replace(/[\s\u3000]+/g, " ")
+                );
+            }
+            var cleanInner = inner.replace(/<指示なし>/g, "")
+                .replace(/\bonMouseOver="[^"]*"/gi, "")
+                .replace(/\bonMouseOut="[^"]*"/gi, "")
+                .replace(/<br\s*\/?>/gi, " ")
+                .replace(/<[^>]+>/g, " ")
+                .replace(/&nbsp;/gi, " ")
+                .replace(/&quot;/gi, '"')
+                .replace(/[\s\u3000]+/g, " ");
+            cleanInner = trimSummaryStr(cleanInner);
+            list.push({ text: cleanInner, popup: popTxt });
+        }
+        return list;
+    }
+
+    function extractDateRow(cells) {
+        if (cells.length < 4) return null;
+        var dates = [];
+        var validCnt = 0;
+        for (var i = 1; i < cells.length; i++) {
+            var dm = cells[i].text.match(/(\d{4}\/\d{2}\/\d{2})/);
+            if (dm) {
+                dates.push(dm[1]);
+                validCnt++;
+            } else {
+                dates.push("");
+            }
+        }
+        return (validCnt >= 4) ? dates : null;
+    }
+
+    var posTaion = rawHtml.search(/Name=["']?taion["']?/i);
+    var posKansatsu = rawHtml.search(/Name=["']?kansatsu["']?/i);
+    var posShiji = rawHtml.search(/Name=["']?shiji["']?/i);
+
+    var taionHtml = (posTaion !== -1) ? rawHtml.substring(posTaion, posKansatsu !== -1 ? posKansatsu : (posShiji !== -1 ? posShiji : rawHtml.length)) : "";
+    var kansatsuHtml = (posKansatsu !== -1) ? rawHtml.substring(posKansatsu, posShiji !== -1 ? posShiji : rawHtml.length) : "";
+    var shijiHtml = (posShiji !== -1) ? rawHtml.substring(posShiji) : "";
+
+    // =====================================
+    // 1. 体温表セクション (手術日・入退院時刻)
+    // =====================================
+    if (taionHtml) {
+        var tChunks = taionHtml.split(/<\/?tr\b[^>]*>/i);
+        var tDates = null;
+        for (var ti = 0; ti < tChunks.length; ti++) {
+            var tCells = parseCellsFromChunk(tChunks[ti]);
+            if (tCells.length < 2) continue;
+            var dRow = extractDateRow(tCells);
+            if (dRow) {
+                tDates = dRow;
+                continue;
+            }
+            if (!tDates) continue;
+            var rowLabel = tCells[0].text;
+            if (rowLabel.indexOf("病日") !== -1 || rowLabel.indexOf("術後") !== -1) {
+                for (var d = 0; d < tDates.length && (d + 1) < tCells.length; d++) {
+                    var v = tCells[d + 1].text;
+                    var dt = tDates[d];
+                    if (!dt || !v) continue;
+                    if (v.indexOf("手術日") !== -1) {
+                        res.surgeryDates.push(dt);
+                        var diffOp = Math.round((new Date(todayStr.replace(/-/g, "/")) - new Date(dt.replace(/-/g, "/"))) / (1000 * 60 * 60 * 24));
+                        if (diffOp === 0) res.surgeryStatusText = "本日手術日 (" + dt.slice(5) + ")";
+                        else if (diffOp > 0) res.surgeryStatusText = "術後" + diffOp + "日目 (" + dt.slice(5) + "手術)";
+                        else res.surgeryStatusText = dt.slice(5) + " 手術予定";
+                    }
+                }
+            } else if (rowLabel.indexOf("BP") !== -1) {
+                for (var d2 = 0; d2 < tDates.length && (d2 + 1) < tCells.length; d2++) {
+                    var ev = tCells[d2 + 1].text;
+                    var dt2 = tDates[d2];
+                    if (!dt2 || !ev) continue;
+                    if (ev.indexOf("退院") !== -1) {
+                        res.dischargeEvents.push({ date: dt2, text: dt2.slice(5) + " " + ev });
+                    }
+                    if (ev.indexOf("入院") !== -1) {
+                        res.admitEvents.push({ date: dt2, text: dt2.slice(5) + " " + ev });
+                    }
+                }
+            }
+        }
+    }
+
+    // =====================================
+    // 2. 観察項目セクション (体重・食種・便回・SpO2・看護師サイン)
+    // =====================================
+    if (kansatsuHtml) {
+        var kChunks = kansatsuHtml.split(/<\/?tr\b[^>]*>/i);
+        var kDates = null;
+        var stoolMap = {};
+        var activeWardDayMap = {};
+
+        for (var ki = 0; ki < kChunks.length; ki++) {
+            var kCells = parseCellsFromChunk(kChunks[ki]);
+            if (kCells.length < 2) continue;
+            var kdRow = extractDateRow(kCells);
+            if (kdRow) {
+                if (!kDates) kDates = kdRow;
+                else break; // 2つ目のテーブル（看護必要度）に入ったら観察項目は完了
+                continue;
+            }
+            if (!kDates) continue;
+            var kLabel = kCells[0].text;
+            var lastCarried = "";
+
+            for (var kd = 0; kd < kDates.length && (kd + 1) < kCells.length; kd++) {
+                var cDate = kDates[kd];
+                if (!cDate) continue;
+                var cellObj = kCells[kd + 1];
+                var cText = cellObj.text;
+                var cPop = cellObj.popup;
+                if (cText === "⇒") {
+                    cText = lastCarried;
+                } else if (cText) {
+                    lastCarried = cText;
+                }
+
+                if (kLabel === "体重" && cText && cDate <= todayStr) {
+                    res.latestWeight = cText + "kg (" + cDate.slice(5) + ")";
+                } else if (kLabel === "SPO2" && cText && cDate <= todayStr) {
+                    res.latestSpo2 = cText + "% (" + cDate.slice(5) + ")";
+                } else if (kLabel === "食種" && cText) {
+                    if (cDate >= addSummaryDaysStr(todayStr, -1) && /食止|絶食|禁食|禁飲食|欠食/.test(cText)) {
+                        res.mealStopAlerts.push({ date: cDate, text: cDate.slice(5) + " " + cText });
+                    }
+                } else if ((kLabel.indexOf("主食") !== -1 || kLabel === "尿回" || kLabel === "看護師サイン") && cText && cDate <= todayStr) {
+                    activeWardDayMap[cDate] = true;
+                } else if (kLabel === "便回" && cDate <= todayStr) {
+                    if (cText || cPop) {
+                        var cnt = null;
+                        var cm1 = cText.match(/^(\d+)/);
+                        var cm2 = cPop.match(/便回[：:]\s*(\d+)/);
+                        if (cm1) cnt = parseInt(cm1[1], 10);
+                        else if (cm2) cnt = parseInt(cm2[1], 10);
+
+                        var symp = "";
+                        var sm = cPop.match(/便症状[：:]\s*([^\s]*)/);
+                        if (sm && sm[1]) symp = sm[1];
+                        else if (cText.indexOf("/") !== -1) symp = trimSummaryStr(cText.split("/")[1] || "");
+
+                        stoolMap[cDate] = { count: cnt, symptom: symp, raw: cText };
+                        if (cnt !== null) {
+                            activeWardDayMap[cDate] = true;
+                            res.stoolHistory.push({ date: cDate, count: cnt, symptom: symp });
+                        }
+                    }
+                }
+            }
+        }
+
+        // 排便異常判定：
+        // (A) 直近 3日間以上 排便なし（便回0連続）
+        if (kDates && kDates.length > 0) {
+            var activeDatesUpToToday = [];
+            for (var ad = 0; ad < kDates.length; ad++) {
+                var dtStr = kDates[ad];
+                if (dtStr && dtStr <= todayStr && (activeWardDayMap[dtStr] || stoolMap[dtStr])) {
+                    activeDatesUpToToday.push(dtStr);
+                }
+            }
+            var zeroStreak = 0;
+            var explicitZeroCount = 0;
+            var streakEnd = "";
+            var streakStart = "";
+            for (var sIdx = activeDatesUpToToday.length - 1; sIdx >= 0; sIdx--) {
+                var sDt = activeDatesUpToToday[sIdx];
+                var sInfo = stoolMap[sDt];
+                var isZeroDay = false;
+                if (sInfo && sInfo.count === 0) {
+                    isZeroDay = true;
+                    explicitZeroCount++;
+                } else if (!sInfo && activeWardDayMap[sDt] && explicitZeroCount > 0) {
+                    // すでに便回0が記録されており、隣接する入院在棟日で未記入の場合も排便なし継続とみなす
+                    isZeroDay = true;
+                }
+                if (isZeroDay) {
+                    if (zeroStreak === 0) streakEnd = sDt;
+                    streakStart = sDt;
+                    zeroStreak++;
+                } else if (sInfo && sInfo.count > 0) {
+                    break;
+                }
+            }
+            if (zeroStreak >= 3 && explicitZeroCount >= 1) {
+                res.constipationAlert = {
+                    days: zeroStreak,
+                    startDate: streakStart,
+                    endDate: streakEnd,
+                    label: "直近" + zeroStreak + "日間 排便なし (" + streakStart.slice(5) + "〜" + streakEnd.slice(5) + " 便回0)"
+                };
+            }
+
+            // (B) 直近3日間の下痢・頻回排便 (便回3回以上 または 水様/泥状/下痢)
+            var minDiarrheaDate = addSummaryDaysStr(todayStr, -2);
+            for (var dh = res.stoolHistory.length - 1; dh >= 0; dh--) {
+                var sh = res.stoolHistory[dh];
+                if (sh.date < minDiarrheaDate) continue;
+                if (sh.count >= 3 || /水様|泥状|下痢/.test(sh.symptom || "")) {
+                    res.diarrheaAlert = {
+                        date: sh.date,
+                        count: sh.count,
+                        symptom: sh.symptom,
+                        label: sh.date.slice(5) + " 便回" + sh.count + "回" + (sh.symptom ? "(" + sh.symptom + ")" : "")
+                    };
+                    break;
+                }
+            }
+        }
+    }
+
+    // =====================================
+    // 3. 入院指示セクション (退院・内服薬・Dr→Ns・申し送り/必要度確認)
+    // =====================================
+    if (shijiHtml) {
+        var sChunks = shijiHtml.split(/<\/?tr\b[^>]*>/i);
+        var sDates = null;
+        var curCat = "";
+        var curItem = "";
+        var seenInstKey = {};
+
+        for (var si = 0; si < sChunks.length; si++) {
+            var sCells = parseCellsFromChunk(sChunks[si]);
+            if (sCells.length < 3) continue;
+            var sdRow = extractDateRow(sCells);
+            if (sdRow) {
+                sDates = sdRow;
+                continue;
+            }
+            if (!sDates) continue;
+            var nDates = sDates.length;
+            var mCells = sCells.length;
+            if (mCells < nDates) continue;
+
+            // 先頭 (mCells - nDates) 個のセルが見出し列（rowspan構造に完全対応）
+            var leadCount = mCells - nDates;
+            if (leadCount >= 2) {
+                if (sCells[0].text) curCat = sCells[0].text;
+                if (sCells[1].text) curItem = sCells[1].text;
+            } else if (leadCount === 1) {
+                if (sCells[0].text) curItem = sCells[0].text;
+            }
+
+            var carriedInst = "";
+            for (var dIdx = 0; dIdx < nDates; dIdx++) {
+                var colDate = sDates[dIdx];
+                var cell = sCells[leadCount + dIdx];
+                if (!colDate || !cell) continue;
+                var valTxt = cell.text;
+                if (valTxt === "⇒") {
+                    valTxt = carriedInst;
+                } else if (valTxt) {
+                    carriedInst = valTxt;
+                }
+                if (!valTxt || valTxt.indexOf("'+ contents +'") !== -1) continue;
+
+                var uKey = curCat + "|" + curItem + "|" + valTxt;
+                if (seenInstKey[uKey]) continue;
+                seenInstKey[uKey] = true;
+
+                var entry = { date: colDate, category: curCat, item: curItem, text: valTxt };
+
+                if (curItem === "退院") {
+                    res.dischargeInsts.push(entry);
+                } else if (curItem === "内服薬") {
+                    res.naifukuInsts.push(entry);
+                } else if (curCat.indexOf("Dr→Ns") !== -1 || curItem.indexOf("Dr→Ns") !== -1) {
+                    res.drToNsInsts.push(entry);
+                } else if (curCat === "申し送り" || curCat === "ケア" || curItem === "必要度確認" || curItem === "申し送り") {
+                    res.careNotes.push(entry);
+                } else if (curCat.indexOf("異常時指示") !== -1) {
+                    res.prnInsts.push(entry);
+                }
+            }
+        }
+    }
+
+    res.hasAlert = (
+        res.constipationAlert !== null ||
+        res.diarrheaAlert !== null ||
+        res.mealStopAlerts.length > 0 ||
+        res.naifukuInsts.length > 0 ||
+        res.drToNsInsts.length > 0 ||
+        res.careNotes.length > 0 ||
+        res.surgeryDates.length > 0
+    );
+    return res;
+}
+
+function formatWardLabItemBadge(it) {
+    var isP = (it.flag === "P");
+    var isH = (it.flag === "H");
+    var bg = isP ? "#d32f2f" : (isH ? "#ffebee" : "#e0f7fa");
+    var col = isP ? "#fff" : (isH ? "#c62828" : "#006064");
+    var bdr = isP ? "#b71c1c" : (isH ? "#ef9a9a" : "#80deea");
+    var arrow = isP ? "🚨" : (isH ? "↑" : "↓");
+    var prevStr = (it.prevVal && it.prevVal !== it.val) ? (escapeHtml(it.prevVal) + "→") : "";
+    var dtShort = it.date ? it.date.slice(5) : "";
+    var titleTip = escapeHtml((it.rawName || it.name) + " (" + (it.date || "") + ") 基準値: " + (it.ref || "-") + " " + (it.unit || ""));
+    return '<span title="' + titleTip + '" style="display:inline-block; background:' + bg + '; color:' + col + '; border:1px solid ' + bdr + '; padding:2px 7px; border-radius:4px; font-size:11px; font-weight:bold; margin:2px 3px 2px 0;">' +
+        escapeHtml(it.name) + ' ' + prevStr + escapeHtml(it.val) + ' <span style="font-size:10px;">' + arrow + '(' + escapeHtml(it.flag) + ')</span>' +
+        (dtShort ? ' <span style="font-size:9px; font-weight:normal; opacity:0.85;">[' + escapeHtml(dtShort) + ']</span>' : '') +
+        '</span>';
+}
+
+function buildWardLabSummaryHtml(labData, pObj, uidPrefix) {
+    var lab = labData || { panicItems: [], majorItems: [], minorItems: [], gaichuItems: [], pendingItems: [] };
+    var nextBlood = (pObj && pObj.bloodDate && pObj.bloodDate !== "-" && pObj.bloodDate !== "なし") ? pObj.bloodDate : "";
+    var nextBloodDetail = (pObj && pObj.bloodDetail) ? pObj.bloodDetail : "";
+
+    var parts = [];
+
+    // 0. 次回採血予定日（患者ボードから取得済みの場合）
+    if (nextBlood) {
+        parts.push('<div style="margin-bottom:5px; font-size:11px;">' +
+            '<span style="background:#e8EAF6; color:#283593; border:1px solid #c5cae9; padding:1px 7px; border-radius:4px; font-weight:bold;" title="' + escapeHtml(nextBloodDetail) + '">📅 次回採血予定: ' + escapeHtml(nextBlood) + '</span>' +
+            '</div>');
+    }
+
+    // 1. パニック値 (P)
+    if (lab.panicItems && lab.panicItems.length > 0) {
+        var pHtml = '<div style="margin-bottom:5px;"><span style="font-size:11px; font-weight:bold; color:#d32f2f; margin-right:4px;">🚨 パニック値(P):</span>';
+        for (var p = 0; p < lab.panicItems.length; p++) {
+            pHtml += formatWardLabItemBadge(lab.panicItems[p]);
+        }
+        pHtml += '</div>';
+        parts.push(pHtml);
+    }
+
+    // 2. 薬剤師主要項目 (H/L)
+    if (lab.majorItems && lab.majorItems.length > 0) {
+        var mHtml = '<div style="margin-bottom:5px;"><span style="font-size:11px; font-weight:bold; color:#bf360c; margin-right:4px;">⚠️ 主要異常値:</span>';
+        for (var m = 0; m < lab.majorItems.length; m++) {
+            mHtml += formatWardLabItemBadge(lab.majorItems[m]);
+        }
+        mHtml += '</div>';
+        parts.push(mHtml);
+    }
+
+    // 3. 外注検査・未確定項目
+    if ((lab.gaichuItems && lab.gaichuItems.length > 0) || (lab.pendingItems && lab.pendingItems.length > 0)) {
+        var gHtml = '<div style="margin-bottom:5px;"><span style="font-size:11px; font-weight:bold; color:#00695c; margin-right:4px;">🧪 外注・結果待ち:</span>';
+        if (lab.gaichuItems) {
+            for (var g = 0; g < lab.gaichuItems.length; g++) {
+                var git = lab.gaichuItems[g];
+                var gAbnormal = (git.flag === "P" || git.flag === "H" || git.flag === "L");
+                var gBg = gAbnormal ? "#fff3e0" : "#e0f2f1";
+                var gCol = gAbnormal ? "#e65100" : "#004d40";
+                var gBdr = gAbnormal ? "#ffcc80" : "#80cbc4";
+                gHtml += '<span style="display:inline-block; background:' + gBg + '; color:' + gCol + '; border:1px solid ' + gBdr + '; padding:2px 7px; border-radius:4px; font-size:11px; font-weight:bold; margin:2px 3px 2px 0;">' +
+                    escapeHtml(git.name) + ': ' + escapeHtml(git.val) + (git.unit ? ' ' + escapeHtml(git.unit) : '') +
+                    (git.flag ? ' (' + escapeHtml(git.flag) + ')' : '') +
+                    (git.date ? ' <span style="font-size:9px; font-weight:normal;">[' + escapeHtml(git.date.slice(5)) + ']</span>' : '') +
+                    '</span>';
+            }
+        }
+        if (lab.pendingItems) {
+            for (var pe = 0; pe < lab.pendingItems.length; pe++) {
+                var pit = lab.pendingItems[pe];
+                gHtml += '<span style="display:inline-block; background:#f5f5f5; color:#616161; border:1px dashed #bdbdbd; padding:2px 7px; border-radius:4px; font-size:11px; margin:2px 3px 2px 0;">' +
+                    '⏳ ' + escapeHtml(pit.name) + '【未】' + (pit.date ? '[' + escapeHtml(pit.date.slice(5)) + ']' : '') +
+                    '</span>';
+            }
+        }
+        gHtml += '</div>';
+        parts.push(gHtml);
+    }
+
+    // 4. 細かい項目（MCV/MCHC/蛋白分画等）は折りたたみ収納
+    if (lab.minorItems && lab.minorItems.length > 0) {
+        var minorId = "ws-lab-minor-" + escapeHtml(String(uidPrefix || "single"));
+        var previewNames = [];
+        for (var mn = 0; mn < Math.min(4, lab.minorItems.length); mn++) {
+            previewNames.push(lab.minorItems[mn].name);
+        }
+        var minorLbl = "その他H/L項目 (" + previewNames.join(", ") + (lab.minorItems.length > 4 ? " 他" : "") + " 計" + lab.minorItems.length + "件)";
+        var minHtml = '<div style="margin-top:3px;">' +
+            '<button type="button" id="btn-' + minorId + '" onclick="toggleWsInlineBlock(\'' + minorId + '\', \'' + escapeHtml(minorLbl) + '\')" style="background:#f8f9fa; border:1px solid #cfd8dc; color:#546e7a; font-size:10px; font-weight:bold; padding:2px 8px; border-radius:3px; cursor:pointer;">▶ ' + escapeHtml(minorLbl) + '</button>' +
+            '<div id="' + minorId + '" style="display:none; margin-top:4px; padding:6px 8px; background:#fafafa; border:1px dashed #cfd8dc; border-radius:4px;">';
+        for (var mi = 0; mi < lab.minorItems.length; mi++) {
+            minHtml += formatWardLabItemBadge(lab.minorItems[mi]);
+        }
+        minHtml += '</div></div>';
+        parts.push(minHtml);
+    }
+
+    if (parts.length === 0) {
+        return '<div style="color:#888; font-size:11px;">直近1週間の採血異常値・外注検査はありません</div>';
+    }
+    return parts.join("");
+}
+
+function buildWardVitalSummaryHtml(vitalData, pObj, uidPrefix, includePrnToggle) {
+    var v = vitalData || {};
+    var parts = [];
+
+    // 1. 手術情報（患者ボードの手術情報 ＋ 体温表の手術日/術後日数）
+    var surgBadges = [];
+    if (v.surgeryStatusText) {
+        surgBadges.push('🔪 ' + escapeHtml(v.surgeryStatusText));
+    }
+    if (pObj && pObj.surgeryDate && pObj.surgeryDate !== "なし" && pObj.surgeryDate !== "-") {
+        var sProc = pObj.surgeryProcedure ? (" " + pObj.surgeryProcedure) : "";
+        var sAnes = pObj.surgeryAnesthesia ? (" [" + pObj.surgeryAnesthesia + "]") : "";
+        surgBadges.push('✂️ ' + escapeHtml(pObj.surgeryDate + sProc + sAnes));
+    }
+    if (surgBadges.length > 0) {
+        parts.push('<div style="margin-bottom:5px;"><span style="display:inline-block; background:#ede7f6; color:#4527a0; border:1px solid #d1c4e9; padding:2px 8px; border-radius:4px; font-size:11px; font-weight:bold;">' + surgBadges.join(" ／ ") + '</span></div>');
+    }
+
+    // 2. 排便異常（直近3日間排便なし / 下痢）＆ 食止め（絶食）＆ 体重/SpO2
+    var obsBadges = [];
+    if (v.constipationAlert) {
+        obsBadges.push('<span style="display:inline-block; background:#fff3e0; color:#e65100; border:1px solid #ffb74d; padding:2px 8px; border-radius:4px; font-size:11px; font-weight:bold;">💩 ' + escapeHtml(v.constipationAlert.label) + '</span>');
+    }
+    if (v.diarrheaAlert) {
+        obsBadges.push('<span style="display:inline-block; background:#ffebee; color:#c62828; border:1px solid #ef9a9a; padding:2px 8px; border-radius:4px; font-size:11px; font-weight:bold;">💩 下痢・頻回: ' + escapeHtml(v.diarrheaAlert.label) + '</span>');
+    }
+    if (v.mealStopAlerts && v.mealStopAlerts.length > 0) {
+        for (var ms = 0; ms < v.mealStopAlerts.length; ms++) {
+            obsBadges.push('<span style="display:inline-block; background:#fce4ec; color:#ad1457; border:1px solid #f48fb1; padding:2px 8px; border-radius:4px; font-size:11px; font-weight:bold;">🍚 ' + escapeHtml(v.mealStopAlerts[ms].text) + '</span>');
+        }
+    }
+    if (v.latestWeight) {
+        obsBadges.push('<span style="display:inline-block; background:#f5f5f5; color:#424242; border:1px solid #e0e0e0; padding:2px 7px; border-radius:4px; font-size:11px;">⚖️ 体重: <b>' + escapeHtml(v.latestWeight) + '</b></span>');
+    }
+    if (v.latestSpo2) {
+        obsBadges.push('<span style="display:inline-block; background:#e3f2fd; color:#0d47a1; border:1px solid #bbdefb; padding:2px 7px; border-radius:4px; font-size:11px;">🫁 SpO2: <b>' + escapeHtml(v.latestSpo2) + '</b></span>');
+    }
+    if (obsBadges.length > 0) {
+        parts.push('<div style="margin-bottom:5px; display:flex; flex-wrap:wrap; gap:4px; align-items:center;">' + obsBadges.join("") + '</div>');
+    }
+
+    // 3. 入院指示（内服薬指示・退院指示・Dr→Ns・ケア/申し送り）
+    var instLines = [];
+    if (v.naifukuInsts && v.naifukuInsts.length > 0) {
+        for (var ni = 0; ni < v.naifukuInsts.length; ni++) {
+            var nit = v.naifukuInsts[ni];
+            instLines.push('<div style="background:#e8f5e9; border-left:3px solid #2e7d32; padding:4px 8px; margin-bottom:4px; font-size:11px; border-radius:2px;">' +
+                '<span style="font-weight:bold; color:#1b5e20;">💊 医師指示[内服薬] (' + escapeHtml(nit.date.slice(5)) + '):</span> ' + escapeHtml(nit.text) + '</div>');
+        }
+    }
+    if (v.dischargeInsts && v.dischargeInsts.length > 0) {
+        for (var di = 0; di < v.dischargeInsts.length; di++) {
+            var dit = v.dischargeInsts[di];
+            instLines.push('<div style="background:#f3e5f5; border-left:3px solid #6a1b9a; padding:4px 8px; margin-bottom:4px; font-size:11px; border-radius:2px;">' +
+                '<span style="font-weight:bold; color:#4a148c;">🏠 医師指示[退院] (' + escapeHtml(dit.date.slice(5)) + '):</span> ' + escapeHtml(dit.text) + '</div>');
+        }
+    }
+    if (v.careNotes && v.careNotes.length > 0) {
+        for (var ci = 0; ci < v.careNotes.length; ci++) {
+            var cit = v.careNotes[ci];
+            instLines.push('<div style="background:#fff8e1; border-left:3px solid #f57c00; padding:4px 8px; margin-bottom:4px; font-size:11px; border-radius:2px;">' +
+                '<span style="font-weight:bold; color:#e65100;">🗣️ ' + escapeHtml(cit.item || cit.category) + ' (' + escapeHtml(cit.date.slice(5)) + '):</span> ' + escapeHtml(cit.text) + '</div>');
+        }
+    }
+    if (v.drToNsInsts && v.drToNsInsts.length > 0) {
+        for (var dn = 0; dn < v.drToNsInsts.length; dn++) {
+            var dnit = v.drToNsInsts[dn];
+            instLines.push('<div style="background:#f1f8fe; border-left:3px solid #1976d2; padding:4px 8px; margin-bottom:4px; font-size:11px; border-radius:2px;">' +
+                '<span style="font-weight:bold; color:#0d47a1;">📋 Dr→Ns (' + escapeHtml(dnit.date.slice(5)) + '):</span> ' + escapeHtml(dnit.text) + '</div>');
+        }
+    }
+    if (instLines.length > 0) {
+        parts.push('<div>' + instLines.join("") + '</div>');
+    }
+
+    // 4. 単体画面向け：異常時指示（頓用指示等）＆ 体温表グラフ画像の折りたたみ表示
+    if (includePrnToggle) {
+        var extraBtns = [];
+        if (v.prnInsts && v.prnInsts.length > 0) {
+            var prnId = "ws-vital-prn-" + escapeHtml(String(uidPrefix || "single"));
+            var prnLbl = "異常時指示（発熱・疼痛・便秘・不眠時等 " + v.prnInsts.length + "件）";
+            var prnHtml = '<div style="margin-top:4px;">' +
+                '<button type="button" id="btn-' + prnId + '" onclick="toggleWsInlineBlock(\'' + prnId + '\', \'' + escapeHtml(prnLbl) + '\')" style="background:#f8f9fa; border:1px solid #cfd8dc; color:#546e7a; font-size:10px; font-weight:bold; padding:2px 8px; border-radius:3px; cursor:pointer;">▶ ' + escapeHtml(prnLbl) + '</button>' +
+                '<div id="' + prnId + '" style="display:none; margin-top:4px; padding:6px 8px; background:#fafafa; border:1px dashed #cfd8dc; border-radius:4px;">';
+            for (var pi = 0; pi < v.prnInsts.length; pi++) {
+                var pit = v.prnInsts[pi];
+                prnHtml += '<div style="font-size:11px; margin-bottom:4px; border-bottom:1px dotted #e0e0e0; padding-bottom:3px;">' +
+                    '<b style="color:#37474f;">【' + escapeHtml(pit.item) + '】</b> ' + escapeHtml(pit.text) + '</div>';
+            }
+            prnHtml += '</div></div>';
+            extraBtns.push(prnHtml);
+        }
+        if (v.graphImgUrl) {
+            var gId = "ws-vital-graph-" + escapeHtml(String(uidPrefix || "single"));
+            var gLbl = "🌡️ 体温・脈拍・血圧グラフ画像（体温表）を表示";
+            var gHtml = '<div style="margin-top:4px;">' +
+                '<button type="button" id="btn-' + gId + '" onclick="toggleWsInlineBlock(\'' + gId + '\', \'' + escapeHtml(gLbl) + '\')" style="background:#fff3e0; border:1px solid #ffb74d; color:#e65100; font-size:10px; font-weight:bold; padding:2px 8px; border-radius:3px; cursor:pointer;">▶ ' + escapeHtml(gLbl) + '</button>' +
+                '<div id="' + gId + '" style="display:none; margin-top:6px; padding:6px; background:#fff; border:1px solid #cfd8dc; border-radius:4px; overflow-x:auto;">' +
+                '<img src="' + escapeHtml(v.graphImgUrl) + '" style="max-width:100%; border:1px solid #ddd;" onclick="window.open(this.src)" title="クリックで別ウィンドウ表示">' +
+                '</div></div>';
+            extraBtns.push(gHtml);
+        }
+        if (extraBtns.length > 0) {
+            parts.push(extraBtns.join(""));
+        }
+    }
+
+    if (parts.length === 0) {
+        return '<div style="color:#888; font-size:11px;">特記すべき排便異常・食止め・入院指示はありません</div>';
+    }
+    return parts.join("");
 }
 
 function onWardKarteRangeChange(newVal) {
@@ -17222,18 +18215,21 @@ function fetchWardSummaryData(forceRefresh) {
     var cachedRx = (!forceRefresh && wardSummaryCache.rx[rawId]) ? wardSummaryCache.rx[rawId] : null;
     var rawCachedK = (!forceRefresh && wardSummaryCache.karte[rawId]) ? wardSummaryCache.karte[rawId] : null;
     var cachedKarte = (rawCachedK && rawCachedK.daysBack === daysBack) ? rawCachedK : null;
+    var cachedLV = (!forceRefresh && wardSummaryCache.labVital && wardSummaryCache.labVital[rawId]) ? wardSummaryCache.labVital[rawId] : null;
 
-    // 1. 両方キャッシュがある場合：通信ゼロで即座に表示
-    if (cachedRx && cachedKarte) {
+    // 1. すべてキャッシュがある場合：通信ゼロで即座に表示
+    if (cachedRx && cachedKarte && cachedLV) {
         wardSummaryState.fetchToken = new Date().getTime();
         wardSummaryState.isFetching = false;
         wardSummaryState.shohoOrders = cachedRx.shohoOrders || [];
         wardSummaryState.chushaOrders = cachedRx.chushaOrders || [];
         wardSummaryState.karteRecords = cachedKarte.karteRecords || [];
         wardSummaryState.karteNotes = cachedKarte.karteNotes || [];
+        wardSummaryState.labData = cachedLV.labData || null;
+        wardSummaryState.vitalData = cachedLV.vitalData || null;
         if (badgeKCount) badgeKCount.innerText = wardSummaryState.karteRecords.length + "件";
         if (badge) {
-            var cDiag = "処方:" + wardSummaryState.shohoOrders.length + "件, 注射:" + wardSummaryState.chushaOrders.length + "件, 記事:" + wardSummaryState.karteRecords.length + "件";
+            var cDiag = "処方:" + wardSummaryState.shohoOrders.length + "件, 注射:" + wardSummaryState.chushaOrders.length + "件, 記事:" + wardSummaryState.karteRecords.length + "件, 採血/バイタル取得済";
             badge.innerHTML = '<span style="color:#1565c0;">⚡ キャッシュ表示 (' + escapeHtml(displayName) + ')</span> <span style="font-size:10px; color:#666;">[' + cDiag + ']</span>';
         }
         renderWardSummaryPanels(todayStr);
@@ -17312,11 +18308,13 @@ function fetchWardSummaryData(forceRefresh) {
         + "&_t=" + new Date().getTime();
 
     var notesUrl = buildWardKarteNotesUrl(rawId, userId, todayStr, daysBack);
+    var labUrl = buildWardLabUrl(rawId, userId, todayStr);
+    var vitalUrl = buildWardVitalUrl(rawId, userId, todayStr);
 
     function finalizeSingleFetch() {
         wardSummaryState.isFetching = false;
         if (btn) btn.disabled = false;
-        var diagTxt = "処方:" + wardSummaryState.shohoOrders.length + "件, 注射:" + wardSummaryState.chushaOrders.length + "件, 記事・文書:" + wardSummaryState.karteRecords.length + "件";
+        var diagTxt = "処方:" + wardSummaryState.shohoOrders.length + "件, 注射:" + wardSummaryState.chushaOrders.length + "件, 記事・文書:" + wardSummaryState.karteRecords.length + "件, 採血/バイタル取得済";
         if (badge) {
             badge.innerHTML = '<span style="color:#2e7d32;">✔ 取得完了 (' + escapeHtml(displayName) + ')</span> <span style="font-size:10px; color:#666;">[' + diagTxt + ']</span>';
         }
@@ -17325,11 +18323,39 @@ function fetchWardSummaryData(forceRefresh) {
         renderWardSummaryKarteList();
     }
 
+    function stepFetchLabVital() {
+        if (cachedLV) {
+            wardSummaryState.labData = cachedLV.labData || null;
+            wardSummaryState.vitalData = cachedLV.vitalData || null;
+            finalizeSingleFetch();
+            return;
+        }
+        fetchSummaryHtmlViaIframe(labUrl, 25000, function(bodyLab, errLab) {
+            if (myToken !== wardSummaryState.fetchToken) return;
+            var parsedLab = (!errLab && bodyLab) ? parseWardLabHtml(bodyLab, todayStr) : parseWardLabHtml("", todayStr);
+            wardSummaryState.labData = parsedLab;
+
+            fetchSummaryHtmlViaIframe(vitalUrl, 25000, function(bodyVital, errVital) {
+                if (myToken !== wardSummaryState.fetchToken) return;
+                var parsedVital = (!errVital && bodyVital) ? parseWardVitalHtml(bodyVital, todayStr) : parseWardVitalHtml("", todayStr);
+                wardSummaryState.vitalData = parsedVital;
+
+                if (!wardSummaryCache.labVital) wardSummaryCache.labVital = {};
+                wardSummaryCache.labVital[rawId] = {
+                    labData: parsedLab,
+                    vitalData: parsedVital,
+                    fetchedAt: new Date().getTime()
+                };
+                finalizeSingleFetch();
+            });
+        });
+    }
+
     function stepFetchKarte() {
         if (cachedKarte) {
             wardSummaryState.karteRecords = cachedKarte.karteRecords || [];
             wardSummaryState.karteNotes = cachedKarte.karteNotes || [];
-            finalizeSingleFetch();
+            stepFetchLabVital();
             return;
         }
         fetchSummaryHtmlViaIframe(notesUrl, 30000, function(bodyNotes, errNotes) {
@@ -17347,7 +18373,7 @@ function fetchWardSummaryData(forceRefresh) {
                 daysBack: daysBack,
                 fetchedAt: new Date().getTime()
             };
-            finalizeSingleFetch();
+            stepFetchLabVital();
         });
     }
 
@@ -17393,12 +18419,20 @@ function getWardKartePrefsKey() {
     return "ward_karte_prefs_" + uid;
 }
 
+var _wardKartePrefSaveTimer = null;
+
 function loadWardKartePrefs() {
     try {
-        if (typeof localStorage === "undefined") return;
-        var raw = localStorage.getItem(getWardKartePrefsKey());
+        var raw = null;
+        if (typeof myStorage !== "undefined" && typeof myStorage.getItem === "function") {
+            raw = myStorage.getItem("ward_karte_prefs");
+        }
+        if (!raw && typeof localStorage !== "undefined") {
+            raw = localStorage.getItem(getWardKartePrefsKey());
+        }
         if (!raw) return;
-        var prefs = JSON.parse(raw);
+        var prefs = (typeof JSON !== "undefined") ? JSON.parse(raw) : eval("(" + raw + ")");
+        if (!prefs) return;
         if (prefs.imgSize) {
             var sel = document.getElementById("sel-ws-karte-imgsize");
             if (sel) sel.value = prefs.imgSize;
@@ -17431,6 +18465,7 @@ function loadWardKartePrefs() {
 }
 
 function onWardKartePrefChange() {
+    var prefs = null;
     try {
         var sel = document.getElementById("sel-ws-karte-imgsize");
         var selSort = document.getElementById("sel-ws-karte-sort");
@@ -17452,19 +18487,34 @@ function onWardKartePrefChange() {
             var chkB = document.getElementById("chk-ws-brole-" + k);
             if (chkB) chkB.checked = rolesObj[k];
         }
-        if (typeof localStorage !== "undefined") {
-            var prefs = {
-                imgSize: imgVal,
-                sortOrder: sortVal,
-                karteDays: getWardKarteDaysBack(),
-                roles: rolesObj
-            };
-            localStorage.setItem(getWardKartePrefsKey(), JSON.stringify(prefs));
-        }
+        prefs = {
+            imgSize: imgVal,
+            sortOrder: sortVal,
+            karteDays: getWardKarteDaysBack(),
+            roles: rolesObj
+        };
     } catch(e) {}
+
+    // 画面描画を最優先で即時反映（待ち時間0ms）
     renderWardSummaryKarteList();
     if (typeof renderWardBatchKarteView === "function" && wardBatchState.currentView === "karte") {
         renderWardBatchKarteView();
+    }
+
+    // ファイルI/O（myStorage = yrSettings.json）は350msデバウンスで裏で1回だけ保存（操作を重くしない）
+    if (prefs) {
+        if (_wardKartePrefSaveTimer) clearTimeout(_wardKartePrefSaveTimer);
+        _wardKartePrefSaveTimer = setTimeout(function() {
+            try {
+                var jsonStr = JSON.stringify(prefs);
+                if (typeof myStorage !== "undefined" && typeof myStorage.setItem === "function") {
+                    myStorage.setItem("ward_karte_prefs", jsonStr);
+                }
+                if (typeof localStorage !== "undefined") {
+                    localStorage.setItem(getWardKartePrefsKey(), jsonStr);
+                }
+            } catch(e) {}
+        }, 350);
     }
 }
 
@@ -18199,16 +19249,75 @@ function renderWardSummaryPanels(todayStr) {
     }
 
     // ==========================================
-    // 4. 直近カルテ記事・退院キーワード抽出 (出典: いつの誰の記録かを明記)
+    // 4. 直近1週間の採血異常値（パニック値P・主要項目H/L・外注検査）
+    // ==========================================
+    var contentLab = document.getElementById("content-ward-summary-lab");
+    var badgeLab = document.getElementById("badge-ward-summary-lab");
+    var labD = wardSummaryState.labData || null;
+    if (contentLab) {
+        contentLab.innerHTML = buildWardLabSummaryHtml(labD, wardSummaryState.patient, "single_" + pId);
+    }
+    if (badgeLab) {
+        if (labD) {
+            var pCnt = (labD.panicItems ? labD.panicItems.length : 0);
+            var mCnt = (labD.majorItems ? labD.majorItems.length : 0);
+            var gCnt = (labD.gaichuItems ? labD.gaichuItems.length : 0);
+            if (pCnt > 0) {
+                badgeLab.innerText = "🚨 パニック値 " + pCnt + "件 / 主要 " + mCnt + "件";
+                badgeLab.className = "ws-badge ws-badge-stopped";
+            } else if (mCnt > 0 || gCnt > 0) {
+                badgeLab.innerText = "主要異常 " + mCnt + "件" + (gCnt > 0 ? " / 外注 " + gCnt + "件" : "");
+                badgeLab.className = "ws-badge ws-badge-changed";
+            } else {
+                badgeLab.innerText = "主要異常なし";
+                badgeLab.className = "ws-badge ws-badge-unchanged";
+            }
+        } else {
+            badgeLab.innerText = "未取得";
+        }
+    }
+
+    // ==========================================
+    // 5. バイタル・観察項目（排便/食止/体重/SpO2/手術日）＆ 入院指示
+    // ==========================================
+    var contentVital = document.getElementById("content-ward-summary-vital");
+    var badgeVital = document.getElementById("badge-ward-summary-vital");
+    var vitalD = wardSummaryState.vitalData || null;
+    if (contentVital) {
+        contentVital.innerHTML = buildWardVitalSummaryHtml(vitalD, wardSummaryState.patient, "single_" + pId, true);
+    }
+    if (badgeVital) {
+        if (vitalD) {
+            var vAlerts = [];
+            if (vitalD.constipationAlert) vAlerts.push("排便なし" + vitalD.constipationAlert.days + "日");
+            if (vitalD.diarrheaAlert) vAlerts.push("下痢");
+            if (vitalD.mealStopAlerts && vitalD.mealStopAlerts.length > 0) vAlerts.push("食止");
+            if (vitalD.naifukuInsts && vitalD.naifukuInsts.length > 0) vAlerts.push("内服指示");
+            if (vitalD.careNotes && vitalD.careNotes.length > 0) vAlerts.push("申し送り");
+            if (vitalD.drToNsInsts && vitalD.drToNsInsts.length > 0) vAlerts.push("Dr→Ns");
+            if (vAlerts.length > 0) {
+                badgeVital.innerText = vAlerts.join("・");
+                badgeVital.className = "ws-badge ws-badge-changed";
+            } else {
+                badgeVital.innerText = "特記なし";
+                badgeVital.className = "ws-badge ws-badge-unchanged";
+            }
+        } else {
+            badgeVital.innerText = "未取得";
+        }
+    }
+
+    // ==========================================
+    // 6. 直近カルテ記事・退院キーワード抽出 (出典: いつの誰の記録かを明記 ＋ バイタル入院指示「退院」欄も統合)
     // ==========================================
     var recsForDisc = wardSummaryState.karteRecords || [];
-    var dischargeMatches = extractWardDischargeMatches(recsForDisc, notes);
+    var dischargeMatches = extractWardDischargeMatches(recsForDisc, notes, wardSummaryState.vitalData);
 
     var contentDisc = document.getElementById("content-ward-summary-discharge");
     var badgeDisc = document.getElementById("badge-ward-summary-discharge");
     if (contentDisc) {
         if (dischargeMatches.length === 0) {
-            contentDisc.innerHTML = '<div style="color:#888; font-size:12px; padding:4px 0;">直近のカルテ記事に退院・転院に関するキーワードは見つかりませんでした。</div>';
+            contentDisc.innerHTML = '<div style="color:#888; font-size:12px; padding:4px 0;">直近のカルテ記事・入院指示に退院・転院に関するキーワードは見つかりませんでした。</div>';
         } else {
             var htmlDisc = "";
             for (var dm = 0; dm < dischargeMatches.length; dm++) {
@@ -18231,12 +19340,52 @@ function renderWardSummaryPanels(todayStr) {
     }
 }
 
-// 退院キーワード抽出ヘルパー（出典付き・前後文脈保持・ノイズ文書除外）
-function extractWardDischargeMatches(karteRecords, fallbackNotes) {
+// 退院キーワード抽出ヘルパー（出典付き・前後文脈保持・ノイズ文書除外 ＋ バイタル入院指示「退院」欄統合）
+function extractWardDischargeMatches(karteRecords, fallbackNotes, vitalData) {
     var dischargeMatches = [];
     var seenSentences = {};
     var kwRegex = /(?:退院|転院)/;
     var noiseMaskRegex = /退院支援スクリーニングシート|退院支援スクリーニング|退院支援看護師/g;
+
+    // 1. バイタル画面の医師指示「退院」欄および体温表の「退院」イベントを最優先で追加
+    if (vitalData) {
+        if (vitalData.dischargeInsts && vitalData.dischargeInsts.length > 0) {
+            for (var vdi = 0; vdi < vitalData.dischargeInsts.length; vdi++) {
+                var dInst = vitalData.dischargeInsts[vdi];
+                var dKey = "vital_inst_" + dInst.text;
+                if (!seenSentences[dKey]) {
+                    seenSentences[dKey] = true;
+                    dischargeMatches.push({
+                        date: dInst.date || "",
+                        orderNo: "",
+                        images: [],
+                        author: "医師指示",
+                        role: "入院指示[退院]",
+                        kind: "バイタル入院指示",
+                        sentence: dInst.text
+                    });
+                }
+            }
+        }
+        if (vitalData.dischargeEvents && vitalData.dischargeEvents.length > 0) {
+            for (var vde = 0; vde < vitalData.dischargeEvents.length; vde++) {
+                var dEv = vitalData.dischargeEvents[vde];
+                var eKey = "vital_ev_" + dEv.text;
+                if (!seenSentences[eKey]) {
+                    seenSentences[eKey] = true;
+                    dischargeMatches.push({
+                        date: dEv.date || "",
+                        orderNo: "",
+                        images: [],
+                        author: "体温表",
+                        role: "予定",
+                        kind: "バイタル体温表",
+                        sentence: dEv.text
+                    });
+                }
+            }
+        }
+    }
 
     function scanLines(txt, meta) {
         if (!txt) return;
@@ -18370,13 +19519,12 @@ function startWardBatchFetch(fetchMode) {
     });
 
     var isDischargeOnly = (fetchMode === "discharge_only");
-    var includeDischarge = true;
-    if (!isDischargeOnly) {
-        var chkDisc = document.getElementById("chk-ws-batch-include-discharge");
-        if (chkDisc) includeDischarge = !!chkDisc.checked;
-    }
-    wardBatchState.fetchMode = isDischargeOnly ? "discharge_only" : "full";
-    switchWardBatchView(isDischargeOnly ? "discharge" : "table");
+    var isRxOnly = (fetchMode === "rx_only");
+    var isLabVitalOnly = (fetchMode === "lab_vital_only");
+    var includeDischarge = (!isRxOnly && !isLabVitalOnly);
+    var includeLabVital = (fetchMode === "full" || isLabVitalOnly || !fetchMode);
+    wardBatchState.fetchMode = isDischargeOnly ? "discharge_only" : (isRxOnly ? "rx_only" : (isLabVitalOnly ? "lab_vital_only" : "full"));
+    switchWardBatchView(isDischargeOnly ? "discharge" : (isLabVitalOnly ? "text" : "table"));
 
     var myToken = new Date().getTime();
     wardBatchState.runToken = myToken;
@@ -18387,20 +19535,24 @@ function startWardBatchFetch(fetchMode) {
     wardBatchState.wardName = (typeof currentWard !== "undefined" && currentWard) ? currentWard : "病棟";
 
     var btnStart = document.getElementById("btn-ws-batch-start");
+    var btnRxOnly = document.getElementById("btn-ws-batch-rx-only");
     var btnDiscOnly = document.getElementById("btn-ws-batch-disc-only");
+    var btnLvOnly = document.getElementById("btn-ws-batch-lv-only");
     var btnStop = document.getElementById("btn-ws-batch-stop");
     var progWrap = document.getElementById("ws-batch-progress-wrap");
     var progBar = document.getElementById("ws-batch-progress-bar");
     var badge = document.getElementById("ws-batch-status-badge");
 
     if (btnStart) btnStart.style.display = "none";
+    if (btnRxOnly) btnRxOnly.style.display = "none";
     if (btnDiscOnly) btnDiscOnly.style.display = "none";
+    if (btnLvOnly) btnLvOnly.style.display = "none";
     if (btnStop) btnStop.style.display = "inline-block";
     if (progWrap) progWrap.style.display = "block";
     if (progBar) progBar.style.width = "0%";
 
     var tbody = document.getElementById("tbody-ws-batch-list");
-    if (tbody) tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:#0288d1; padding:24px;">⏳ カルテから情報を順次収集しています...</td></tr>';
+    if (tbody) tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; color:#0288d1; padding:24px;">⏳ カルテから情報を順次収集しています...</td></tr>';
 
     var todayStr = (typeof getTodayYmdStr === "function") ? getTodayYmdStr() : "";
     if (!todayStr) {
@@ -18416,6 +19568,7 @@ function startWardBatchFetch(fetchMode) {
     var lastSun = addSummaryDaysStr(thisMon, -1);
 
     var userId = (typeof currentSystemId !== "undefined" && currentSystemId) ? currentSystemId : "pharmacy";
+    var daysBack = getWardKarteDaysBack();
     var total = list.length;
     var idx = 0;
 
@@ -18423,13 +19576,16 @@ function startWardBatchFetch(fetchMode) {
         if (myToken !== wardBatchState.runToken) return;
         wardBatchState.isRunning = false;
         if (btnStart) btnStart.style.display = "inline-block";
+        if (btnRxOnly) btnRxOnly.style.display = "inline-block";
         if (btnDiscOnly) btnDiscOnly.style.display = "inline-block";
+        if (btnLvOnly) btnLvOnly.style.display = "inline-block";
         if (btnStop) btnStop.style.display = "none";
         if (badge) {
             if (stopped) {
                 badge.innerHTML = '<span style="color:#e65100;">⏹ 中断 (' + idx + ' / ' + total + '名完了)</span>';
             } else {
-                badge.innerHTML = '<span style="color:#2e7d32;">✔ 一括チェック完了 (' + total + '名)</span>';
+                var modeLbl = isDischargeOnly ? "退院ワード抽出" : (isRxOnly ? "処方チェック" : (isLabVitalOnly ? "採血・バイタル抽出" : "一括チェック(処方+カルテ+採血+バイタル)"));
+                badge.innerHTML = '<span style="color:#2e7d32;">✔ ' + modeLbl + '完了 (' + total + '名)</span>';
             }
         }
         renderWardBatchTable();
@@ -18477,24 +19633,66 @@ function startWardBatchFetch(fetchMode) {
             + "&range_date=" + rDays + "/7/1/1&disp_selectsection=&disp_selectukind=1,2,3,91&disp_usection_code=0&disp_ukind_code=2122"
             + "&order_kind_set_code=0031&order_kind_code_str=0031&no_log_flg=1&nyugai_kind=&min_date=&max_date=&disp_zoom=100&_t=" + new Date().getTime();
 
-        var notesUrl = "http://10.5.171.42:8082/karte/karte.php"
-            + "?disp_flgs=1/0/1/0/0/0/1/0/0/1/0/0/0/0/0"
-            + "&kanja_id=" + encodeURIComponent(rawId)
-            + "&user_id=" + encodeURIComponent(userId)
-            + "&start_date=" + yesterdayStr + "&end_date=" + todayStr + "&hakkou_date=" + yesterdayStr + "&kijun_date=" + todayStr
-            + "&range_date=3/7/1/1&disp_selectsection=&disp_selectukind=1,2,3,91&disp_usection_code=0&disp_ukind_code=2122"
-            + "&no_log_flg=1&disp_zoom=100&_t=" + new Date().getTime();
+        var notesUrl = isDischargeOnly
+            ? ("http://10.5.171.42:8082/karte/karte.php"
+                + "?disp_flgs=1/0/1/0/0/0/1/0/0/1/0/0/0/0/0"
+                + "&kanja_id=" + encodeURIComponent(rawId)
+                + "&user_id=" + encodeURIComponent(userId)
+                + "&start_date=" + yesterdayStr + "&end_date=" + todayStr + "&hakkou_date=" + yesterdayStr + "&kijun_date=" + todayStr
+                + "&range_date=3/7/1/1&disp_selectsection=&disp_selectukind=1,2,3,91&disp_usection_code=0&disp_ukind_code=2122"
+                + "&no_log_flg=1&disp_zoom=100&_t=" + new Date().getTime())
+            : buildWardKarteNotesUrl(rawId, userId, todayStr, daysBack);
 
-        function finalizePatient(shohoOrders, chushaOrders, karteRecs) {
+        var labUrl = buildWardLabUrl(rawId, userId, todayStr);
+        var vitalUrl = buildWardVitalUrl(rawId, userId, todayStr);
+
+        function finalizePatient(shohoOrders, chushaOrders, karteRecs, labData, vitalData) {
             if (myToken !== wardBatchState.runToken) return;
-            if (!isDischargeOnly && typeof wardSummaryCache !== "undefined") {
-                wardSummaryCache.rx[String(pObj.id)] = {
+            var pidKey = String(pObj.id);
+            if (!isDischargeOnly && !isLabVitalOnly && typeof wardSummaryCache !== "undefined") {
+                wardSummaryCache.rx[pidKey] = {
                     shohoOrders: shohoOrders || [],
                     chushaOrders: chushaOrders || [],
                     fetchedAt: new Date().getTime()
                 };
             }
-            var analyzed = analyzeSinglePatientForBatch(pObj, shohoOrders, chushaOrders, karteRecs, todayStr, todayDateObj, thisMon, thisSun, lastMon, lastSun);
+            var discRecs = karteRecs || [];
+            if (!isDischargeOnly && !isRxOnly && !isLabVitalOnly && typeof wardSummaryCache !== "undefined") {
+                var pNotes = [];
+                for (var pni = 0; pni < discRecs.length; pni++) {
+                    if (discRecs[pni].body) pNotes.push(discRecs[pni].body);
+                }
+                wardSummaryCache.karte[pidKey] = {
+                    karteRecords: discRecs,
+                    karteNotes: pNotes,
+                    daysBack: daysBack,
+                    fetchedAt: new Date().getTime()
+                };
+                if (typeof updateBatchKarteCountBadge === "function") updateBatchKarteCountBadge();
+            }
+            if (includeLabVital && typeof wardSummaryCache !== "undefined") {
+                if (!wardSummaryCache.labVital) wardSummaryCache.labVital = {};
+                wardSummaryCache.labVital[pidKey] = {
+                    labData: labData || null,
+                    vitalData: vitalData || null,
+                    fetchedAt: new Date().getTime()
+                };
+            }
+            // クイックモード時に既存キャッシュの処方や採血・バイタルがあれば引き継ぐ
+            var effShoho = shohoOrders;
+            var effChusha = chushaOrders;
+            if ((isDischargeOnly || isLabVitalOnly) && wardSummaryCache.rx && wardSummaryCache.rx[pidKey]) {
+                effShoho = wardSummaryCache.rx[pidKey].shohoOrders || [];
+                effChusha = wardSummaryCache.rx[pidKey].chushaOrders || [];
+            }
+            var effLab = labData;
+            var effVital = vitalData;
+            if (!includeLabVital && wardSummaryCache.labVital && wardSummaryCache.labVital[pidKey]) {
+                effLab = wardSummaryCache.labVital[pidKey].labData || null;
+                effVital = wardSummaryCache.labVital[pidKey].vitalData || null;
+            }
+
+            var analyzed = analyzeSinglePatientForBatch(pObj, effShoho, effChusha, discRecs, todayStr, todayDateObj, thisMon, thisSun, lastMon, lastSun, effLab, effVital);
             wardBatchState.results.push(analyzed);
 
             idx++;
@@ -18506,15 +19704,37 @@ function startWardBatchFetch(fetchMode) {
                 var txtEl = document.getElementById("txt-ws-batch-summary");
                 if (txtEl) txtEl.value = buildWardBatchSummaryText();
             }
+            if (wardBatchState.currentView === "karte" && typeof renderWardBatchKarteView === "function") {
+                renderWardBatchKarteView();
+            }
             if (typeof renderWardBatchDrugSearchResult === "function") renderWardBatchDrugSearchResult();
             setTimeout(processNext, 40);
+        }
+
+        function fetchLabVitalStep(shohoOrders, chushaOrders, recs) {
+            if (!includeLabVital) {
+                finalizePatient(shohoOrders, chushaOrders, recs, null, null);
+                return;
+            }
+            fetchSummaryHtmlViaIframe(labUrl, 20000, function(bodyLab, errLab) {
+                if (myToken !== wardBatchState.runToken) return;
+                var parsedLab = (!errLab && bodyLab) ? parseWardLabHtml(bodyLab, todayStr) : parseWardLabHtml("", todayStr);
+                fetchSummaryHtmlViaIframe(vitalUrl, 20000, function(bodyVital, errVital) {
+                    if (myToken !== wardBatchState.runToken) return;
+                    var parsedVital = (!errVital && bodyVital) ? parseWardVitalHtml(bodyVital, todayStr) : parseWardVitalHtml("", todayStr);
+                    finalizePatient(shohoOrders, chushaOrders, recs, parsedLab, parsedVital);
+                });
+            });
         }
 
         if (isDischargeOnly) {
             fetchSummaryHtmlViaIframe(notesUrl, 20000, function(bodyNotes, errNotes) {
                 var recs = (!errNotes && bodyNotes) ? parseWardSummaryKarteRecords(bodyNotes) : [];
-                finalizePatient([], [], recs);
+                finalizePatient([], [], recs, null, null);
             });
+        } else if (isLabVitalOnly) {
+            var cachedK = (wardSummaryCache.karte && wardSummaryCache.karte[String(pObj.id)]) ? (wardSummaryCache.karte[String(pObj.id)].karteRecords || []) : [];
+            fetchLabVitalStep([], [], cachedK);
         } else {
             fetchSummaryHtmlViaIframe(shohoUrl, 20000, function(bodyShoho, errShoho) {
                 if (myToken !== wardBatchState.runToken) return;
@@ -18527,10 +19747,10 @@ function startWardBatchFetch(fetchMode) {
                     if (includeDischarge) {
                         fetchSummaryHtmlViaIframe(notesUrl, 20000, function(bodyNotes, errNotes) {
                             var recs = (!errNotes && bodyNotes) ? parseWardSummaryKarteRecords(bodyNotes) : [];
-                            finalizePatient(shohoOrders, chushaOrders, recs);
+                            fetchLabVitalStep(shohoOrders, chushaOrders, recs);
                         });
                     } else {
-                        finalizePatient(shohoOrders, chushaOrders, []);
+                        fetchLabVitalStep(shohoOrders, chushaOrders, []);
                     }
                 });
             });
@@ -18540,7 +19760,7 @@ function startWardBatchFetch(fetchMode) {
     processNext();
 }
 
-function analyzeSinglePatientForBatch(pObj, shoho, chusha, karteRecs, todayStr, todayDateObj, thisMon, thisSun, lastMon, lastSun) {
+function analyzeSinglePatientForBatch(pObj, shoho, chusha, karteRecs, todayStr, todayDateObj, thisMon, thisSun, lastMon, lastSun, labData, vitalData) {
     // 1. 処方比較 & 今週の定期処方発行チェック
     var prevMap = {};
     var currMap = {};
@@ -18749,10 +19969,29 @@ function analyzeSinglePatientForBatch(pObj, shoho, chusha, karteRecs, todayStr, 
         }
     }
 
-    // 4. 退院ワード抽出
-    var dischargeMatches = extractWardDischargeMatches(karteRecs, []);
+    // 4. 退院ワード抽出（バイタル入院指示「退院」欄・体温表「退院」イベントも統合）
+    var dischargeMatches = extractWardDischargeMatches(karteRecs, [], vitalData);
 
-    var hasAction = (compareChanges.length > 0 || teikiIssuanceStatus === "missing" || jisanAlerts.length > 0 || teikiAlerts.length > 0 || dischargeMatches.length > 0);
+    // 5. 採血異常値（パニック値P・主要項目H/L・外注検査）およびバイタル・入院指示アラート判定
+    var hasLabAlert = false;
+    var hasPanicLab = false;
+    if (labData) {
+        if (labData.panicItems && labData.panicItems.length > 0) {
+            hasLabAlert = true;
+            hasPanicLab = true;
+        }
+        if ((labData.majorItems && labData.majorItems.length > 0) || (labData.gaichuItems && labData.gaichuItems.length > 0)) {
+            hasLabAlert = true;
+        }
+    }
+    var hasVitalAlert = false;
+    if (vitalData && vitalData.hasAlert) {
+        hasVitalAlert = true;
+    } else if (pObj && pObj.surgeryDate && pObj.surgeryDate !== "なし" && pObj.surgeryDate !== "-") {
+        hasVitalAlert = true;
+    }
+
+    var hasAction = (compareChanges.length > 0 || teikiIssuanceStatus === "missing" || jisanAlerts.length > 0 || teikiAlerts.length > 0 || dischargeMatches.length > 0 || hasLabAlert || hasVitalAlert);
     return {
         patient: pObj,
         thisMon: thisMon,
@@ -18771,6 +20010,11 @@ function analyzeSinglePatientForBatch(pObj, shoho, chusha, karteRecs, todayStr, 
         jisanAlerts: jisanAlerts,
         teikiAlerts: teikiAlerts,
         dischargeMatches: dischargeMatches,
+        labData: labData || null,
+        vitalData: vitalData || null,
+        hasLabAlert: hasLabAlert,
+        hasPanicLab: hasPanicLab,
+        hasVitalAlert: hasVitalAlert,
         hasAction: hasAction,
         shohoOrders: shoho,
         chushaOrders: chusha
@@ -18779,7 +20023,7 @@ function analyzeSinglePatientForBatch(pObj, shoho, chusha, karteRecs, todayStr, 
 
 function filterWardBatchList(filterKey) {
     wardBatchState.filter = filterKey || "all";
-    var keys = ["all", "action", "discharge", "rxchange", "nocurrteiki", "teiki", "jisan", "stable"];
+    var keys = ["all", "action", "discharge", "rxchange", "nocurrteiki", "teiki", "jisan", "lab", "vital", "stable"];
     for (var i = 0; i < keys.length; i++) {
         var el = document.getElementById("ws-kpi-" + keys[i]);
         if (!el) continue;
@@ -18824,6 +20068,21 @@ function toggleAllBatchDetails(openBool) {
 
 function buildBatchInlineDetailHtml(row) {
     var html = '<div style="background:#f9fbfd; border:1px solid #b0bec5; border-radius:4px; padding:10px 12px; margin:4px 0;">';
+    var pIdKey = row.patient ? String(row.patient.id || "") : "row";
+
+    // 0. 採血異常値・外注 ＆ バイタル・観察項目・入院指示（取得されている場合）
+    if (row.labData || (row.patient && row.patient.bloodDate && row.patient.bloodDate !== "-" && row.patient.bloodDate !== "なし")) {
+        html += '<div style="background:#fff; border:1px solid #ffcdd2; border-radius:4px; padding:7px 10px; margin-bottom:8px;">' +
+            '<div style="font-size:12px; font-weight:bold; color:#b71c1c; margin-bottom:4px;">🩸 直近1週間の採血異常値（パニック値P・主要項目）＆ 外注検査</div>' +
+            buildWardLabSummaryHtml(row.labData, row.patient, "batch_inline_" + pIdKey) +
+            '</div>';
+    }
+    if (row.vitalData || (row.patient && row.patient.surgeryDate && row.patient.surgeryDate !== "なし" && row.patient.surgeryDate !== "-")) {
+        html += '<div style="background:#fff; border:1px solid #ffe0b2; border-radius:4px; padding:7px 10px; margin-bottom:8px;">' +
+            '<div style="font-size:12px; font-weight:bold; color:#e65100; margin-bottom:4px;">📋 バイタル・観察項目（排便/食止/手術日）＆ 入院指示</div>' +
+            buildWardVitalSummaryHtml(row.vitalData, row.patient, "batch_inline_" + pIdKey, true) +
+            '</div>';
+    }
 
     // 1. 左右前後比較テーブル
     html += '<div style="font-size:12px; font-weight:bold; color:#0d47a1; margin-bottom:6px;">🔄 処方前後比較 (' + row.lastMon.slice(5) + '〜' + row.lastSun.slice(5) + ' vs ' + row.thisMon.slice(5) + '〜' + row.thisSun.slice(5) + ')</div>';
@@ -18952,7 +20211,7 @@ function sortWardBatchResults(arr) {
 function renderWardBatchTable() {
     var allRes = wardBatchState.results || [];
     var cntAll = allRes.length;
-    var cntAction = 0, cntDisc = 0, cntRx = 0, cntNoCurrTeiki = 0, cntTeiki = 0, cntJisan = 0, cntStable = 0;
+    var cntAction = 0, cntDisc = 0, cntRx = 0, cntNoCurrTeiki = 0, cntTeiki = 0, cntJisan = 0, cntLab = 0, cntVital = 0, cntStable = 0;
     for (var i = 0; i < allRes.length; i++) {
         var r = allRes[i];
         if (r.hasAction) cntAction++; else cntStable++;
@@ -18961,8 +20220,10 @@ function renderWardBatchTable() {
         if (r.teikiIssuanceStatus === "missing") cntNoCurrTeiki++;
         if (r.teikiAlerts.length > 0) cntTeiki++;
         if (r.jisanAlerts.length > 0) cntJisan++;
+        if (r.hasLabAlert) cntLab++;
+        if (r.hasVitalAlert) cntVital++;
     }
-    var mapVals = { all: cntAll, action: cntAction, discharge: cntDisc, rxchange: cntRx, nocurrteiki: cntNoCurrTeiki, teiki: cntTeiki, jisan: cntJisan, stable: cntStable };
+    var mapVals = { all: cntAll, action: cntAction, discharge: cntDisc, rxchange: cntRx, nocurrteiki: cntNoCurrTeiki, teiki: cntTeiki, jisan: cntJisan, lab: cntLab, vital: cntVital, stable: cntStable };
     for (var k in mapVals) {
         var el = document.getElementById("ws-kpi-val-" + k);
         if (el) el.innerText = mapVals[k];
@@ -18982,11 +20243,13 @@ function renderWardBatchTable() {
         else if (fKey === "nocurrteiki" && item.teikiIssuanceStatus === "missing") filtered.push(item);
         else if (fKey === "teiki" && item.teikiAlerts.length > 0) filtered.push(item);
         else if (fKey === "jisan" && item.jisanAlerts.length > 0) filtered.push(item);
+        else if (fKey === "lab" && item.hasLabAlert) filtered.push(item);
+        else if (fKey === "vital" && item.hasVitalAlert) filtered.push(item);
         else if (fKey === "stable" && !item.hasAction) filtered.push(item);
     }
 
     if (filtered.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:#999; padding:24px;">該当する患者はいません</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; color:#999; padding:24px;">該当する患者はいません</td></tr>';
         return;
     }
 
@@ -19033,7 +20296,45 @@ function renderWardBatchTable() {
         }
         if (!alertHtml) alertHtml = '<span style="color:#aaa;">-</span>';
 
-        // 4. 退院ワードバッジ
+        // 4. 採血異常・外注 ＆ バイタル・入院指示コンパクトバッジ
+        var lvBadges = [];
+        if (row.labData) {
+            var pLen = row.labData.panicItems ? row.labData.panicItems.length : 0;
+            var mLen = row.labData.majorItems ? row.labData.majorItems.length : 0;
+            var gLen = row.labData.gaichuItems ? row.labData.gaichuItems.length : 0;
+            if (pLen > 0) {
+                lvBadges.push('<span style="display:inline-block; background:#d32f2f; color:#fff; font-size:10px; font-weight:bold; padding:1px 6px; border-radius:3px; margin:1px;">🚨 P値 ' + pLen + '</span>');
+            }
+            if (mLen > 0) {
+                lvBadges.push('<span style="display:inline-block; background:#ffebee; color:#c62828; border:1px solid #ef9a9a; font-size:10px; font-weight:bold; padding:1px 6px; border-radius:3px; margin:1px;">🩸 主要異常 ' + mLen + '</span>');
+            }
+            if (gLen > 0) {
+                lvBadges.push('<span style="display:inline-block; background:#e0f2f1; color:#00695c; border:1px solid #80cbc4; font-size:10px; font-weight:bold; padding:1px 6px; border-radius:3px; margin:1px;">🧪 外注 ' + gLen + '</span>');
+            }
+        }
+        if (row.vitalData) {
+            if (row.vitalData.constipationAlert) {
+                lvBadges.push('<span style="display:inline-block; background:#fff3e0; color:#e65100; border:1px solid #ffb74d; font-size:10px; font-weight:bold; padding:1px 6px; border-radius:3px; margin:1px;">💩 便0(' + row.vitalData.constipationAlert.days + '日)</span>');
+            }
+            if (row.vitalData.diarrheaAlert) {
+                lvBadges.push('<span style="display:inline-block; background:#ffebee; color:#c62828; border:1px solid #ef9a9a; font-size:10px; font-weight:bold; padding:1px 6px; border-radius:3px; margin:1px;">💩 下痢</span>');
+            }
+            if (row.vitalData.mealStopAlerts && row.vitalData.mealStopAlerts.length > 0) {
+                lvBadges.push('<span style="display:inline-block; background:#fce4ec; color:#ad1457; border:1px solid #f48fb1; font-size:10px; font-weight:bold; padding:1px 6px; border-radius:3px; margin:1px;">🍚 食止</span>');
+            }
+            if (row.vitalData.naifukuInsts && row.vitalData.naifukuInsts.length > 0) {
+                lvBadges.push('<span style="display:inline-block; background:#e8f5e9; color:#1b5e20; border:1px solid #a5d6a7; font-size:10px; font-weight:bold; padding:1px 6px; border-radius:3px; margin:1px;">💊 内服指示</span>');
+            }
+            if ((row.vitalData.drToNsInsts && row.vitalData.drToNsInsts.length > 0) || (row.vitalData.careNotes && row.vitalData.careNotes.length > 0)) {
+                lvBadges.push('<span style="display:inline-block; background:#e3f2fd; color:#0d47a1; border:1px solid #90caf9; font-size:10px; font-weight:bold; padding:1px 6px; border-radius:3px; margin:1px;">📋 指示/送</span>');
+            }
+            if (row.vitalData.surgeryStatusText) {
+                lvBadges.push('<span style="display:inline-block; background:#ede7f6; color:#4527a0; border:1px solid #d1c4e9; font-size:10px; font-weight:bold; padding:1px 6px; border-radius:3px; margin:1px;">🔪 ' + escapeHtml(row.vitalData.surgeryStatusText) + '</span>');
+            }
+        }
+        var lvHtml = (lvBadges.length > 0) ? lvBadges.join(" ") : '<span style="color:#aaa;">-</span>';
+
+        // 5. 退院ワードバッジ
         var discHtml = '<span style="color:#aaa;">-</span>';
         if (row.dischargeMatches.length > 0) {
             discHtml = '<span style="background:#f3e5f5; color:#6a1b9a; border:1px solid #e1bee7; padding:2px 6px; border-radius:4px; font-size:11px; font-weight:bold;">🏠 ヒット (' + row.dischargeMatches.length + '件)</span>';
@@ -19045,6 +20346,7 @@ function renderWardBatchTable() {
             '<td style="padding:7px 10px; border:1px solid #e0e0e0; text-align:center;">' + teikiIssueHtml + '</td>' +
             '<td style="padding:7px 10px; border:1px solid #e0e0e0; text-align:center;">' + rxHtml + '</td>' +
             '<td style="padding:7px 10px; border:1px solid #e0e0e0;">' + alertHtml + '</td>' +
+            '<td style="padding:7px 10px; border:1px solid #e0e0e0;">' + lvHtml + '</td>' +
             '<td style="padding:7px 10px; border:1px solid #e0e0e0; text-align:center;">' + discHtml + '</td>' +
             '<td style="padding:7px 10px; border:1px solid #e0e0e0; text-align:center; white-space:nowrap;">' +
                 '<button type="button" id="btn-ws-expand-' + pIdEsc + '" class="yr-btn" style="background:#1976d2; color:#fff; font-size:11px; padding:3px 7px; margin-right:3px;" onclick="toggleBatchDetailRow(\'' + pIdEsc + '\')">▼ 比較展開</button>' +
@@ -19052,7 +20354,7 @@ function renderWardBatchTable() {
             '</td>' +
             '</tr>' +
             '<tr id="ws-batch-detail-' + pIdEsc + '" style="display:none;">' +
-            '<td colspan="6" style="padding:6px 12px; border:1px solid #cfd8dc; background:#f5f7fa;">' +
+            '<td colspan="7" style="padding:6px 12px; border:1px solid #cfd8dc; background:#f5f7fa;">' +
                 buildBatchInlineDetailHtml(row) +
             '</td></tr>';
     }
@@ -19187,7 +20489,7 @@ function buildWardBatchSummaryText() {
     var allRes = wardBatchState.results || [];
     if (allRes.length === 0) return "";
     var memo = "【" + (wardBatchState.wardName || "病棟") + " 病棟サマリ (" + (typeof getTodayYmdStr === "function" ? getTodayYmdStr() : "") + ")】\r\n\r\n";
-    var discLines = [], rxLines = [], missingTeikiLines = [], alertLines = [];
+    var discLines = [], labLines = [], vitalLines = [], rxLines = [], missingTeikiLines = [], alertLines = [];
     for (var i = 0; i < allRes.length; i++) {
         var r = allRes[i];
         var pName = (r.patient.room ? r.patient.room + " " : "") + (r.patient.name || r.patient.id);
@@ -19198,6 +20500,52 @@ function buildWardBatchSummaryText() {
             var dm0 = r.dischargeMatches[0];
             var dmMeta = dm0.author ? (" [" + dm0.author.split("(")[0] + "]") : "";
             discLines.push("  ・" + pName + ": " + dm0.sentence + dmMeta);
+        }
+        if (r.hasLabAlert && r.labData) {
+            var lParts = [];
+            var ld = r.labData;
+            for (var lp = 0; lp < (ld.panicItems ? ld.panicItems.length : 0); lp++) {
+                var pit = ld.panicItems[lp];
+                lParts.push("[P]" + pit.name + " " + pit.val);
+            }
+            for (var lm = 0; lm < (ld.majorItems ? ld.majorItems.length : 0); lm++) {
+                var mit = ld.majorItems[lm];
+                lParts.push(mit.name + " " + mit.val + "(" + mit.flag + ")");
+            }
+            for (var lg = 0; lg < (ld.gaichuItems ? ld.gaichuItems.length : 0); lg++) {
+                var git = ld.gaichuItems[lg];
+                lParts.push("外注:" + git.name + " " + git.val);
+            }
+            if (lParts.length > 0) {
+                labLines.push("  ・" + pName + ": " + lParts.join(", "));
+            }
+        }
+        if (r.hasVitalAlert) {
+            var vParts = [];
+            var vd = r.vitalData;
+            if (vd) {
+                if (vd.surgeryStatusText) vParts.push(vd.surgeryStatusText);
+                if (vd.constipationAlert) vParts.push(vd.constipationAlert.label);
+                if (vd.diarrheaAlert) vParts.push("下痢:" + vd.diarrheaAlert.label);
+                if (vd.mealStopAlerts && vd.mealStopAlerts.length > 0) {
+                    for (var vms = 0; vms < vd.mealStopAlerts.length; vms++) vParts.push(vd.mealStopAlerts[vms].text);
+                }
+                if (vd.naifukuInsts && vd.naifukuInsts.length > 0) {
+                    for (var vni = 0; vni < vd.naifukuInsts.length; vni++) vParts.push("[内服指示]" + vd.naifukuInsts[vni].text);
+                }
+                if (vd.careNotes && vd.careNotes.length > 0) {
+                    for (var vci = 0; vci < vd.careNotes.length; vci++) vParts.push("[申し送り]" + vd.careNotes[vci].text);
+                }
+                if (vd.drToNsInsts && vd.drToNsInsts.length > 0) {
+                    for (var vdn = 0; vdn < vd.drToNsInsts.length; vdn++) vParts.push("[Dr→Ns]" + vd.drToNsInsts[vdn].text);
+                }
+            }
+            if (r.patient && r.patient.surgeryDate && r.patient.surgeryDate !== "なし" && r.patient.surgeryDate !== "-") {
+                vParts.push("手術:" + r.patient.surgeryDate + (r.patient.surgeryProcedure ? " " + r.patient.surgeryProcedure : ""));
+            }
+            if (vParts.length > 0) {
+                vitalLines.push("  ・" + pName + ": " + vParts.join(" / "));
+            }
         }
         if (r.compareChanges.length > 0) {
             var cTxts = [];
@@ -19213,6 +20561,8 @@ function buildWardBatchSummaryText() {
     }
     memo += "■ 🏠 退院・転院ワード (" + discLines.length + "名):\r\n" + (discLines.length ? discLines.join("\r\n") : "  なし") + "\r\n\r\n";
     if (wardBatchState.fetchMode !== "discharge_only") {
+        memo += "■ 🩸 採血異常値(直近1週間)・外注検査 (" + labLines.length + "名):\r\n" + (labLines.length ? labLines.join("\r\n") : "  なし") + "\r\n\r\n";
+        memo += "■ 📋 バイタル・観察項目(3日排便なし/食止/手術)・入院指示 (" + vitalLines.length + "名):\r\n" + (vitalLines.length ? vitalLines.join("\r\n") : "  なし") + "\r\n\r\n";
         memo += "■ 📋 今週定期未発行 (" + missingTeikiLines.length + "名):\r\n" + (missingTeikiLines.length ? missingTeikiLines.join("\r\n") : "  なし") + "\r\n\r\n";
         memo += "■ 🔄 処方・注射変更 (" + rxLines.length + "名):\r\n" + (rxLines.length ? rxLines.join("\r\n") : "  なし") + "\r\n\r\n";
         memo += "■ ⏳ 持参薬・定期切れ注意 (" + alertLines.length + "名):\r\n" + (alertLines.length ? alertLines.join("\r\n") : "  なし") + "\r\n";
@@ -19261,7 +20611,7 @@ function renderWardBatchRichSummary() {
 
     var rawRes = wardBatchState.results || [];
     if (rawRes.length === 0) {
-        container.innerHTML = '<div style="color:#999; text-align:center; padding:30px; background:#fff; border:1px dashed #cfd8dc; border-radius:6px;">「⚡ 病棟一括チェック」または「🏠 退院ワードのみ抽出」を実行すると、ここに病棟サマリが表示されます</div>';
+        container.innerHTML = '<div style="color:#999; text-align:center; padding:30px; background:#fff; border:1px dashed #cfd8dc; border-radius:6px;">「⚡ 一括チェック」または各抽出ボタンを実行すると、ここに病棟サマリが表示されます</div>';
         return;
     }
 
@@ -19271,6 +20621,8 @@ function renderWardBatchRichSummary() {
     var wardName = wardBatchState.wardName || "現在の病棟";
 
     var discItems = [];
+    var labItems = [];
+    var vitalItems = [];
     var missingTeikiItems = [];
     var rxChangeItems = [];
     var alertItems = [];
@@ -19279,6 +20631,8 @@ function renderWardBatchRichSummary() {
         var r = allRes[i];
         if (r.dischargeMatches && r.dischargeMatches.length > 0) discItems.push(r);
         if (!isDiscOnly) {
+            if (r.hasLabAlert) labItems.push(r);
+            if (r.hasVitalAlert) vitalItems.push(r);
             if (r.teikiIssuanceStatus === "missing") missingTeikiItems.push(r);
             if (r.compareChanges && r.compareChanges.length > 0) rxChangeItems.push(r);
             if ((r.jisanAlerts && r.jisanAlerts.length > 0) || (r.teikiAlerts && r.teikiAlerts.length > 0)) alertItems.push(r);
@@ -19330,6 +20684,8 @@ function renderWardBatchRichSummary() {
         '<div style="display:flex; flex-wrap:wrap; align-items:center; gap:6px; font-size:11px;">' +
         '<span style="background:#f3e5f5; color:#4a148c; padding:2px 8px; border-radius:10px; font-weight:bold;">🏠 退院: ' + discItems.length + '名</span>' +
         (isDiscOnly ? '<span style="background:#eceff1; color:#546e7a; padding:2px 8px; border-radius:10px;">※ 退院ワードのみ</span>' : (
+            '<span style="background:#ffebee; color:#b71c1c; padding:2px 8px; border-radius:10px; font-weight:bold;">🩸 採血異常/外注: ' + labItems.length + '名</span>' +
+            '<span style="background:#fff3e0; color:#e65100; padding:2px 8px; border-radius:10px; font-weight:bold;">📋 バイタル/指示: ' + vitalItems.length + '名</span>' +
             '<span style="background:#ffebee; color:#c62828; padding:2px 8px; border-radius:10px; font-weight:bold;">📋 定期未: ' + missingTeikiItems.length + '名</span>' +
             '<span style="background:#fff3e0; color:#e65100; padding:2px 8px; border-radius:10px; font-weight:bold;">🔄 変更: ' + rxChangeItems.length + '名</span>' +
             '<span style="background:#fce4ec; color:#ad1457; padding:2px 8px; border-radius:10px; font-weight:bold;">⏳ 持参/定期切: ' + alertItems.length + '名</span>'
@@ -19338,7 +20694,7 @@ function renderWardBatchRichSummary() {
         '<button type="button" onclick="toggleWardRichSummarySections(false)" style="padding:2px 7px; font-size:10px; background:#fff; border:1px solid #bbb; border-radius:3px; cursor:pointer;">📁 すべて閉じる</button>' +
         '</div></div>';
 
-    // 1. 退院・転院ワード
+    // 1. 退院・転院ワード（カルテ記事＋バイタル入院指示「退院」欄）
     var discBody = "";
     if (discItems.length === 0) {
         discBody = '<div style="color:#888; font-size:12px; padding:4px 2px;">該当する患者はいません</div>';
@@ -19376,9 +20732,48 @@ function renderWardBatchRichSummary() {
         }
         discBody += '</table>';
     }
-    html += buildSectionCard("🏠 退院・転院ワード", discItems.length, "#f3e5f5", "#e1bee7", "#fff", "#4a148c", discBody);
+    html += buildSectionCard("🏠 退院・転院ワード（カルテ記事 ＋ 入院指示[退院]）", discItems.length, "#f3e5f5", "#e1bee7", "#fff", "#4a148c", discBody);
 
     if (!isDiscOnly) {
+        // 2. 採血異常値（直近1週間：パニック値P ＋ 薬剤師主要項目H/L）＆ 外注検査
+        var labBody = "";
+        if (labItems.length === 0) {
+            labBody = '<div style="color:#888; font-size:12px; padding:4px 2px;">直近1週間のパニック値・主要採血異常・外注検査に該当する患者はいません（または未取得）</div>';
+        } else {
+            labBody = '<table style="width:100%; border-collapse:collapse; font-size:12px;">';
+            for (var li = 0; li < labItems.length; li++) {
+                var lr = labItems[li];
+                var lpObj = lr.patient;
+                var lpIdKey = String(lpObj.id || li);
+                labBody += '<tr style="border-bottom:1px solid #ffcdd2;">' +
+                    '<td style="width:20%; padding:7px 8px; vertical-align:top; background:#fffafa; border:1px solid #eee;">' + buildPatientCell(lpObj) + '</td>' +
+                    '<td style="width:72%; padding:7px 10px; vertical-align:top; border:1px solid #eee;">' + buildWardLabSummaryHtml(lr.labData, lpObj, "rich_" + lpIdKey) + '</td>' +
+                    '<td style="width:8%; padding:7px 6px; text-align:center; vertical-align:middle; border:1px solid #eee;">' + buildKarteBtn(lpObj) + '</td>' +
+                    '</tr>';
+            }
+            labBody += '</table>';
+        }
+        html += buildSectionCard("🩸 採血異常値（直近1週間：パニック値P・主要項目）＆ 外注検査", labItems.length, "#ffebee", "#ef9a9a", "#fff", "#b71c1c", labBody);
+
+        // 3. バイタル・観察項目（直近3日間排便なし / 下痢 / 食止め / 手術）＆ 入院指示（内服薬 / Dr→Ns / ケア）
+        var vitalBody = "";
+        if (vitalItems.length === 0) {
+            vitalBody = '<div style="color:#888; font-size:12px; padding:4px 2px;">排便異常（3日間排便なし/下痢）・食止め・入院指示に該当する患者はいません（または未取得）</div>';
+        } else {
+            vitalBody = '<table style="width:100%; border-collapse:collapse; font-size:12px;">';
+            for (var vi = 0; vi < vitalItems.length; vi++) {
+                var vr = vitalItems[vi];
+                var vpObj = vr.patient;
+                var vpIdKey = String(vpObj.id || vi);
+                vitalBody += '<tr style="border-bottom:1px solid #ffe0b2;">' +
+                    '<td style="width:20%; padding:7px 8px; vertical-align:top; background:#fffdf9; border:1px solid #eee;">' + buildPatientCell(vpObj) + '</td>' +
+                    '<td style="width:72%; padding:7px 10px; vertical-align:top; border:1px solid #eee;">' + buildWardVitalSummaryHtml(vr.vitalData, vpObj, "rich_" + vpIdKey, false) + '</td>' +
+                    '<td style="width:8%; padding:7px 6px; text-align:center; vertical-align:middle; border:1px solid #eee;">' + buildKarteBtn(vpObj) + '</td>' +
+                    '</tr>';
+            }
+            vitalBody += '</table>';
+        }
+        html += buildSectionCard("📋 バイタル・観察項目（3日排便なし/下痢/食止/手術）＆ 入院指示（内服/Dr→Ns/ケア）", vitalItems.length, "#fff8e1", "#ffe082", "#fff", "#e65100", vitalBody);
         // 2. 今週定期未発行
         var mtBody = "";
         if (missingTeikiItems.length === 0) {
@@ -19821,47 +21216,36 @@ function filterWardBatchKarte(fType) {
     renderWardBatchKarteView();
 }
 
-function toggleBatchKartePatient(pId) {
-    if (!wardBatchState.batchKarteCollapsed) wardBatchState.batchKarteCollapsed = {};
-    var bodyEl = document.getElementById("ws-bkarte-body-" + pId);
-    var arrowEl = document.getElementById("ws-bkarte-arrow-" + pId);
-    if (!bodyEl) return;
-    var isHidden = (bodyEl.style.display === "none");
-    bodyEl.style.display = isHidden ? "block" : "none";
-    wardBatchState.batchKarteCollapsed[pId] = !isHidden;
-    if (arrowEl) arrowEl.innerText = isHidden ? "▼" : "▶";
+function selectBatchKartePatient(pId) {
+    wardBatchState.selectedBatchKartePatientId = String(pId || "");
+    renderWardBatchKarteView();
 }
 
-function toggleAllBatchKartePatients(openFlag) {
-    if (!wardBatchState.batchKarteCollapsed) wardBatchState.batchKarteCollapsed = {};
-    var container = document.getElementById("ws-batch-karte-container");
-    if (!container) return;
-    var divs = container.getElementsByTagName("div");
-    for (var i = 0; i < divs.length; i++) {
-        var el = divs[i];
-        if (el.id && el.id.indexOf("ws-bkarte-body-") === 0) {
-            var pId = el.id.replace("ws-bkarte-body-", "");
-            el.style.display = openFlag ? "block" : "none";
-            wardBatchState.batchKarteCollapsed[pId] = !openFlag;
-            var arrowEl = document.getElementById("ws-bkarte-arrow-" + pId);
-            if (arrowEl) arrowEl.innerText = openFlag ? "▼" : "▶";
+function stepBatchKartePatient(delta) {
+    var ids = wardBatchState.displayedBatchKartePatientIds || [];
+    if (ids.length === 0) {
+        yrShowAlert("表示可能な患者カルテがありません。", "info");
+        return;
+    }
+    var cur = String(wardBatchState.selectedBatchKartePatientId || "");
+    var idx = -1;
+    for (var i = 0; i < ids.length; i++) {
+        if (String(ids[i]) === cur) {
+            idx = i;
+            break;
         }
     }
-}
-
-function scrollToBatchKartePatient(pId) {
-    if (!wardBatchState.batchKarteCollapsed) wardBatchState.batchKarteCollapsed = {};
-    var cardEl = document.getElementById("ws-bkarte-card-" + pId);
-    var bodyEl = document.getElementById("ws-bkarte-body-" + pId);
-    var arrowEl = document.getElementById("ws-bkarte-arrow-" + pId);
-    if (bodyEl) {
-        bodyEl.style.display = "block";
-        wardBatchState.batchKarteCollapsed[pId] = false;
+    var nextIdx = (idx === -1) ? 0 : (idx + delta);
+    if (nextIdx < 0) {
+        yrShowAlert("先頭の患者です。", "info");
+        return;
     }
-    if (arrowEl) arrowEl.innerText = "▼";
-    if (cardEl && typeof cardEl.scrollIntoView === "function") {
-        cardEl.scrollIntoView(true);
+    if (nextIdx >= ids.length) {
+        yrShowAlert("最後の患者です。", "info");
+        return;
     }
+    wardBatchState.selectedBatchKartePatientId = String(ids[nextIdx]);
+    renderWardBatchKarteView();
 }
 
 function renderWardBatchKarteView() {
@@ -19889,7 +21273,7 @@ function renderWardBatchKarteView() {
     if (cachedPatients.length === 0) {
         if (jumpBar) jumpBar.innerHTML = "";
         container.innerHTML = '<div style="color:#999; text-align:center; padding:30px; background:#fff; border:1px dashed #cfd8dc; border-radius:6px;">' +
-            (wardSummaryCache.karteAllFetching ? '⏳ カルテを一括取得しています。取得できた患者から順に表示されます...' : '上部の「📋 カルテ一括取得」ボタンをクリックすると、全患者のカルテを取得してここに一覧表示します') +
+            (wardSummaryCache.karteAllFetching ? '⏳ カルテを一括取得しています。取得できた患者から順に表示されます...' : '上部の「⚡ 一括チェック」または「📋 カルテのみ抽出」ボタンをクリックすると、全患者のカルテを取得してここに表示します') +
             '</div>';
         return;
     }
@@ -19915,18 +21299,13 @@ function renderWardBatchKarteView() {
         other:  (document.getElementById("chk-ws-brole-other")  || document.getElementById("chk-ws-role-other")  || { checked: true }).checked
     };
 
-    if (!wardBatchState.batchKarteCollapsed) wardBatchState.batchKarteCollapsed = {};
-
-    var jumpHtml = '<div style="background:#fff; border:1px solid #e0e0e0; border-radius:6px; padding:8px 10px; display:flex; flex-wrap:wrap; align-items:center; gap:5px;">' +
-        '<span style="font-size:11px; font-weight:bold; color:#555; margin-right:4px;">👤 患者ジャンプ:</span>';
-    var cardsHtml = "";
-    var shownPatientCount = 0;
+    var validEntries = [];
+    var displayedIds = [];
 
     for (var pi = 0; pi < sortedItems.length; pi++) {
         var entry = sortedItems[pi];
         var pt = entry.patient;
         var pIdStr = String(pt.id || "");
-        var pIdEsc = escapeHtml(pIdStr);
         var recs = (entry.cache && entry.cache.karteRecords) ? entry.cache.karteRecords : [];
 
         var filtered = [];
@@ -19945,96 +21324,135 @@ function renderWardBatchKarteView() {
         }
 
         if (hideEmpty && filtered.length === 0) continue;
-        shownPatientCount++;
-
-        var roomBadge = pt.room ? ('<span style="background:#fff; color:#37474f; border:1px solid #cfd8dc; padding:1px 6px; border-radius:3px; font-size:11px; font-weight:bold; margin-right:5px;">' + escapeHtml(pt.room) + '</span>') : "";
-        var pLabel = (pt.room ? pt.room + " " : "") + (pt.name || pIdStr);
-        jumpHtml += '<button type="button" onclick="scrollToBatchKartePatient(\'' + pIdEsc + '\')" style="font-size:11px; padding:2px 8px; background:#e3f2fd; border:1px solid #90caf9; color:#0d47a1; border-radius:12px; cursor:pointer; font-weight:bold;">' +
-            escapeHtml(pLabel) + ' <span style="font-size:10px; color:#1565c0;">(' + filtered.length + ')</span></button>';
-
-        var isCollapsed = !!wardBatchState.batchKarteCollapsed[pIdStr];
-        var ordered = (sortOrder === "asc") ? filtered : filtered.slice().reverse();
-
-        var recHtml = "";
-        if (ordered.length === 0) {
-            recHtml = '<div style="color:#999; font-size:12px; padding:8px;">条件に一致するカルテ記事はありません（全 ' + recs.length + '件）</div>';
-        } else {
-            for (var j = 0; j < ordered.length; j++) {
-                var item = ordered[j];
-                var isDoc = (item.images && item.images.length > 0) || item.orderCode === "0502";
-                var borderCol = isDoc ? "#f57c00" : "#1976d2";
-                var badgeBg = isDoc ? "#fff3e0" : "#e3f2fd";
-                var badgeCol = isDoc ? "#e65100" : "#0d47a1";
-
-                var bodyTxt = escapeHtml(item.body || "").replace(/\r?\n/g, "<br>");
-                if (keyword) {
-                    try {
-                        var escKw = escapeHtml(keyword).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-                        bodyTxt = bodyTxt.replace(new RegExp("(" + escKw + ")", "gi"), '<mark style="background:#fff59d; font-weight:bold;">$1</mark>');
-                    } catch(e) {}
-                }
-
-                var imgHtml = "";
-                if (item.images && item.images.length > 0) {
-                    imgHtml += '<div style="margin-top:6px; padding-top:6px; border-top:1px dashed #ddd;">';
-                    for (var m = 0; m < item.images.length; m++) {
-                        var imgSrc = escapeHtml(item.images[m]);
-                        var imgJs = imgSrc.replace(/\\/g, "\\\\");
-                        if (imgMode === "link") {
-                            imgHtml += '<div style="margin-bottom:4px;"><button type="button" onclick="window.open(\'' + imgJs + '\')" style="padding:3px 9px; font-size:11px; background:#fff; border:1px solid #1976d2; color:#1976d2; border-radius:4px; cursor:pointer; font-weight:bold;">🖼 画像' + (m + 1) + 'を別ウィンドウで開く</button></div>';
-                        } else {
-                            var imgSt = (imgMode === "small")
-                                ? "max-width:260px; max-height:180px; border:1px solid #ccc; border-radius:4px; cursor:pointer;"
-                                : "max-width:100%; border:1px solid #ccc; border-radius:4px; cursor:pointer;";
-                            imgHtml += '<div style="margin-bottom:6px;"><img src="' + imgSrc + '" style="' + imgSt + '" onclick="window.open(\'' + imgJs + '\')" title="クリックで拡大"></div>';
-                        }
-                    }
-                    imgHtml += '</div>';
-                }
-
-                recHtml += '<div style="background:#fff; border:1px solid #e0e0e0; border-left:4px solid ' + borderCol + '; border-radius:4px; padding:8px 12px; margin-bottom:8px;">' +
-                    '<div style="display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center; gap:6px; margin-bottom:4px; padding-bottom:4px; border-bottom:1px solid #f0f0f0;">' +
-                    '<div>' +
-                    '<span style="background:' + badgeBg + '; color:' + badgeCol + '; font-size:11px; font-weight:bold; padding:1px 7px; border-radius:10px; margin-right:6px;">' + escapeHtml(item.kind || "記事") + '</span>' +
-                    '<b style="font-size:12px; color:#333;">' + escapeHtml(item.title || "") + '</b>' +
-                    '</div>' +
-                    '<div style="font-size:11px; color:#555;">' +
-                    (item.date ? '<span style="margin-right:8px;">📅 ' + escapeHtml(item.date) + '</span>' : '') +
-                    (item.author ? '<span>👤 ' + escapeHtml(item.author) + (item.role ? ' &lt;' + escapeHtml(item.role) + '&gt;' : '') + '</span>' : '') +
-                    '</div></div>' +
-                    (bodyTxt ? '<div style="font-size:12px; color:#222; line-height:1.55; font-family:\'MS PGothic\',sans-serif;">' + bodyTxt + '</div>' : '') +
-                    imgHtml +
-                    '</div>';
-            }
-        }
-
-        cardsHtml += '<div id="ws-bkarte-card-' + pIdEsc + '" style="background:#fff; border:1px solid #90caf9; border-radius:6px; margin-bottom:14px; box-shadow:0 1px 2px rgba(0,0,0,0.04);">' +
-            '<div style="background:#e3f2fd; padding:8px 14px; border-bottom:1px solid #90caf9; border-radius:6px 6px 0 0; display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center; gap:8px;">' +
-            '<div onclick="toggleBatchKartePatient(\'' + pIdEsc + '\')" style="cursor:pointer; flex-grow:1;">' +
-            '<span id="ws-bkarte-arrow-' + pIdEsc + '" style="display:inline-block; width:14px; font-weight:bold; color:#0d47a1;">' + (isCollapsed ? "▶" : "▼") + '</span> ' +
-            roomBadge +
-            '<b style="font-size:13px; color:#0d47a1;">' + escapeHtml(pt.name || pIdStr) + '</b>' +
-            '<span style="font-size:11px; color:#555; margin-left:8px;">(ID:' + pIdEsc + (pt.daysInHosp ? ' / 在院' + escapeHtml(String(pt.daysInHosp)) + '日' : '') + ')</span>' +
-            '<span style="background:#fff; color:#1565c0; border:1px solid #90caf9; font-size:11px; font-weight:bold; padding:1px 8px; border-radius:10px; margin-left:8px;">記事 ' + filtered.length + '件' + (filtered.length !== recs.length ? ' / 全' + recs.length + '件' : '') + '</span>' +
-            '</div>' +
-            '<div style="display:flex; gap:6px;">' +
-            '<button type="button" class="yr-btn" style="background:#546e7a; color:#fff; font-size:11px; padding:3px 9px;" onclick="jumpToWardSummaryDetail(\'' + pIdEsc + '\')">👤 単体画面で開く</button>' +
-            '<button type="button" class="yr-btn" style="background:#1976d2; color:#fff; font-size:11px; padding:3px 9px;" onclick="openWardKarteRecord(\'' + pIdEsc + '\', \'\')">📄 カルテ本画面</button>' +
-            '</div></div>' +
-            '<div id="ws-bkarte-body-' + pIdEsc + '" style="padding:10px 12px; background:#fafcff; display:' + (isCollapsed ? "none" : "block") + ';">' +
-            recHtml +
-            '</div></div>';
+        validEntries.push({ patient: pt, allCount: recs.length, filtered: filtered });
+        displayedIds.push(pIdStr);
     }
 
-    jumpHtml += '</div>';
+    wardBatchState.displayedBatchKartePatientIds = displayedIds;
 
-    if (shownPatientCount === 0) {
+    if (validEntries.length === 0) {
         if (jumpBar) jumpBar.innerHTML = "";
         container.innerHTML = '<div style="color:#888; text-align:center; padding:30px; background:#fff; border:1px solid #e0e0e0; border-radius:6px;">条件に一致するカルテ記事を持つ患者がいません（職種フィルタ・検索キーワード・「該当記事0件の患者を隠す」設定をご確認ください）</div>';
-    } else {
-        if (jumpBar) jumpBar.innerHTML = jumpHtml;
-        container.innerHTML = cardsHtml;
+        return;
     }
+
+    // 選択中の患者を決定（未選択またはフィルタ外になった場合は先頭患者）
+    var selId = String(wardBatchState.selectedBatchKartePatientId || "");
+    var activeEntry = null;
+    var activeIdx = 0;
+    for (var vi = 0; vi < validEntries.length; vi++) {
+        if (String(validEntries[vi].patient.id) === selId) {
+            activeEntry = validEntries[vi];
+            activeIdx = vi;
+            break;
+        }
+    }
+    if (!activeEntry) {
+        activeEntry = validEntries[0];
+        activeIdx = 0;
+        wardBatchState.selectedBatchKartePatientId = String(activeEntry.patient.id || "");
+    }
+
+    // 患者ジャンプバーの構築（クリックで患者切り替え）
+    var jumpHtml = '<div style="background:#fff; border:1px solid #cfd8dc; border-radius:6px; padding:8px 10px; display:flex; flex-wrap:wrap; align-items:center; gap:6px;">' +
+        '<span style="font-size:11px; font-weight:bold; color:#37474f; margin-right:2px;">👤 患者選択 (' + (activeIdx + 1) + '/' + validEntries.length + '名):</span>';
+
+    for (var ji = 0; ji < validEntries.length; ji++) {
+        var je = validEntries[ji];
+        var jp = je.patient;
+        var jpIdStr = String(jp.id || "");
+        var jpIdEsc = escapeHtml(jpIdStr);
+        var isCurrent = (jpIdStr === String(activeEntry.patient.id));
+        var btnBg = isCurrent ? "#1565c0" : "#e3f2fd";
+        var btnCol = isCurrent ? "#fff" : "#0d47a1";
+        var btnBorder = isCurrent ? "#0d47a1" : "#90caf9";
+        var cntCol = isCurrent ? "#e3f2fd" : "#1565c0";
+        var pLabel = (jp.room ? jp.room + " " : "") + (jp.name || jpIdStr);
+        jumpHtml += '<button type="button" onclick="selectBatchKartePatient(\'' + jpIdEsc + '\')" style="font-size:11px; padding:3px 10px; background:' + btnBg + '; border:1px solid ' + btnBorder + '; color:' + btnCol + '; border-radius:14px; cursor:pointer; font-weight:bold;">' +
+            escapeHtml(pLabel) + ' <span style="font-size:10px; color:' + cntCol + ';">(' + je.filtered.length + ')</span></button>';
+    }
+    jumpHtml += '</div>';
+    if (jumpBar) jumpBar.innerHTML = jumpHtml;
+
+    // 選択された1人の患者カルテのみを描画
+    var apt = activeEntry.patient;
+    var apIdStr = String(apt.id || "");
+    var apIdEsc = escapeHtml(apIdStr);
+    var roomBadge = apt.room ? ('<span style="background:#fff; color:#37474f; border:1px solid #cfd8dc; padding:1px 7px; border-radius:3px; font-size:12px; font-weight:bold; margin-right:6px;">' + escapeHtml(apt.room) + '</span>') : "";
+    var ordered = (sortOrder === "asc") ? activeEntry.filtered : activeEntry.filtered.slice().reverse();
+
+    var recHtml = "";
+    if (ordered.length === 0) {
+        recHtml = '<div style="color:#999; font-size:12px; padding:16px; text-align:center;">条件に一致するカルテ記事はありません（全 ' + activeEntry.allCount + '件）</div>';
+    } else {
+        for (var j = 0; j < ordered.length; j++) {
+            var item = ordered[j];
+            var isDoc = (item.images && item.images.length > 0) || item.orderCode === "0502";
+            var borderCol = isDoc ? "#f57c00" : "#1976d2";
+            var badgeBg = isDoc ? "#fff3e0" : "#e3f2fd";
+            var badgeCol = isDoc ? "#e65100" : "#0d47a1";
+
+            var bodyTxt = escapeHtml(item.body || "").replace(/\r?\n/g, "<br>");
+            if (keyword) {
+                try {
+                    var escKw = escapeHtml(keyword).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+                    bodyTxt = bodyTxt.replace(new RegExp("(" + escKw + ")", "gi"), '<mark style="background:#fff59d; font-weight:bold;">$1</mark>');
+                } catch(e) {}
+            }
+
+            var imgHtml = "";
+            if (item.images && item.images.length > 0) {
+                imgHtml += '<div style="margin-top:6px; padding-top:6px; border-top:1px dashed #ddd;">';
+                for (var m = 0; m < item.images.length; m++) {
+                    var imgSrc = escapeHtml(item.images[m]);
+                    var imgJs = imgSrc.replace(/\\/g, "\\\\");
+                    if (imgMode === "link") {
+                        imgHtml += '<div style="margin-bottom:4px;"><button type="button" onclick="window.open(\'' + imgJs + '\')" style="padding:3px 9px; font-size:11px; background:#fff; border:1px solid #1976d2; color:#1976d2; border-radius:4px; cursor:pointer; font-weight:bold;">🖼 画像' + (m + 1) + 'を別ウィンドウで開く</button></div>';
+                    } else {
+                        var imgSt = (imgMode === "small")
+                            ? "max-width:260px; max-height:180px; border:1px solid #ccc; border-radius:4px; cursor:pointer;"
+                            : "max-width:100%; border:1px solid #ccc; border-radius:4px; cursor:pointer;";
+                        imgHtml += '<div style="margin-bottom:6px;"><img src="' + imgSrc + '" style="' + imgSt + '" onclick="window.open(\'' + imgJs + '\')" title="クリックで拡大"></div>';
+                    }
+                }
+                imgHtml += '</div>';
+            }
+
+            recHtml += '<div style="background:#fff; border:1px solid #e0e0e0; border-left:4px solid ' + borderCol + '; border-radius:4px; padding:10px 14px; margin-bottom:10px;">' +
+                '<div style="display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center; gap:6px; margin-bottom:6px; padding-bottom:4px; border-bottom:1px solid #f0f0f0;">' +
+                '<div>' +
+                '<span style="background:' + badgeBg + '; color:' + badgeCol + '; font-size:11px; font-weight:bold; padding:1px 7px; border-radius:10px; margin-right:6px;">' + escapeHtml(item.kind || "記事") + '</span>' +
+                '<b style="font-size:12px; color:#333;">' + escapeHtml(item.title || "") + '</b>' +
+                '</div>' +
+                '<div style="font-size:11px; color:#555;">' +
+                (item.date ? '<span style="margin-right:8px;">📅 ' + escapeHtml(item.date) + '</span>' : '') +
+                (item.author ? '<span>👤 ' + escapeHtml(item.author) + (item.role ? ' &lt;' + escapeHtml(item.role) + '&gt;' : '') + '</span>' : '') +
+                '</div></div>' +
+                (bodyTxt ? '<div style="font-size:12px; color:#222; line-height:1.6; font-family:\'MS PGothic\',sans-serif;">' + bodyTxt + '</div>' : '') +
+                imgHtml +
+                '</div>';
+        }
+    }
+
+    var cardHtml = '<div style="background:#fff; border:2px solid #1976d2; border-radius:6px; box-shadow:0 1px 3px rgba(0,0,0,0.06);">' +
+        '<div style="background:#e3f2fd; padding:10px 14px; border-bottom:1px solid #90caf9; border-radius:4px 4px 0 0; display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center; gap:8px;">' +
+        '<div>' +
+        roomBadge +
+        '<b style="font-size:14px; color:#0d47a1;">' + escapeHtml(apt.name || apIdStr) + '</b>' +
+        '<span style="font-size:12px; color:#555; margin-left:8px;">(ID:' + apIdEsc + (apt.daysInHosp ? ' / 在院' + escapeHtml(String(apt.daysInHosp)) + '日' : '') + (apt.disease ? ' / ' + escapeHtml(apt.disease) : '') + ')</span>' +
+        '<span style="background:#1565c0; color:#fff; font-size:11px; font-weight:bold; padding:2px 9px; border-radius:10px; margin-left:8px;">表示記事 ' + activeEntry.filtered.length + '件' + (activeEntry.filtered.length !== activeEntry.allCount ? ' / 全' + activeEntry.allCount + '件' : '') + '</span>' +
+        '</div>' +
+        '<div style="display:flex; flex-wrap:wrap; gap:6px; align-items:center;">' +
+        '<button type="button" onclick="stepBatchKartePatient(-1)" style="padding:3px 9px; font-size:11px; font-weight:bold; background:#fff; border:1px solid #1976d2; color:#1976d2; border-radius:4px; cursor:pointer;">◀ 前の患者</button>' +
+        '<button type="button" onclick="stepBatchKartePatient(1)" style="padding:3px 9px; font-size:11px; font-weight:bold; background:#fff; border:1px solid #1976d2; color:#1976d2; border-radius:4px; cursor:pointer;">次の患者 ▶</button>' +
+        '<button type="button" class="yr-btn" style="background:#546e7a; color:#fff; font-size:11px; padding:3px 9px;" onclick="jumpToWardSummaryDetail(\'' + apIdEsc + '\')">👤 単体画面で処方も見る</button>' +
+        '<button type="button" class="yr-btn" style="background:#1976d2; color:#fff; font-size:11px; padding:3px 9px;" onclick="openWardKarteRecord(\'' + apIdEsc + '\', \'\')">📄 カルテ本画面</button>' +
+        '</div></div>' +
+        '<div style="padding:12px 14px; background:#fafcff;">' +
+        recHtml +
+        '</div></div>';
+
+    container.innerHTML = cardHtml;
 }
 
 </script>
