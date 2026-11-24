@@ -1077,25 +1077,30 @@ function generateAbbreviation() {}
                 <!-- 操作バー -->
                 <div style="background:#f1f8e9; border:1px solid #c5e1a5; border-radius:4px; padding:10px 14px; margin-bottom:10px;">
                     <div style="display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center; gap:8px;">
-                        <div style="display:flex; flex-wrap:wrap; align-items:center; gap:6px;">
-                            <span style="font-size:13px; font-weight:bold; color:#2e7d32;">👤 患者選択:</span>
-                            <button type="button" class="yr-btn" style="background:#fff; color:#2e7d32; border:1px solid #a5d6a7; font-size:11px; font-weight:bold; padding:4px 8px;" onclick="navigateWardSummaryPatient(-1)" title="前の患者へ">◀ 前へ</button>
-                            <select id="sel-ward-summary-patient-dropdown" class="yr-form-control" style="width:220px; font-size:12px; height:28px;" onchange="onWardSummaryPatientDropdownChange(this.value)">
-                                <option value="">-- 患者一覧から選択 --</option>
-                            </select>
-                            <button type="button" class="yr-btn" style="background:#fff; color:#2e7d32; border:1px solid #a5d6a7; font-size:11px; font-weight:bold; padding:4px 8px;" onclick="navigateWardSummaryPatient(1)" title="次の患者へ">次へ ▶</button>
-                            <input type="text" id="ipt-ward-summary-patient-search" class="yr-form-control" style="width:100px; font-size:12px; height:28px;" placeholder="患者ID直接入力" onkeypress="if(event.keyCode===13) fetchWardSummaryData(true)">
-                            <button id="btn-ward-summary-fetch" class="yr-btn" style="background:#2e7d32; color:#fff; font-size:12px; font-weight:bold; padding:4px 12px;" onclick="fetchWardSummaryData(true)" title="最新の処方・カルテを再取得します">⚡ 最新再取得</button>
-                            <select id="sel-ws-karte-range" class="yr-form-control" style="width:125px; font-size:11px; height:28px;" onchange="onWardKarteRangeChange(this.value)" title="カルテ記事・文書画像の取得期間">
-                                <option value="0">本日のみ (1日)</option>
-                                <option value="1">昨日〜本日 (2日間)</option>
-                                <option value="2">直近3日間</option>
-                                <option value="7" selected>直近1週間</option>
-                                <option value="14">直近2週間</option>
-                            </select>
-                            <button type="button" id="btn-ws-single-karte-all" class="yr-btn" style="background:#1565c0; color:#fff; font-size:11px; font-weight:bold; padding:4px 10px;" onclick="startWardBatchKarteAllFetch()" title="選択中の取得期間で病棟全患者のカルテを一括取得してキャッシュします">📋 全患者カルテ一括取得</button>
-                            <button type="button" id="btn-ws-single-karte-stop" class="yr-btn" style="background:#c62828; color:#fff; font-size:11px; font-weight:bold; padding:4px 10px; display:none;" onclick="stopWardBatchKarteAllFetch()">⏹ 中断</button>
-                            <span id="ws-karte-all-status" style="font-size:11px; font-weight:bold; color:#1565c0;"></span>
+                        <div style="display:flex; flex-wrap:wrap; align-items:center; gap:8px;">
+                            <div style="display:inline-flex; flex-wrap:wrap; align-items:center; gap:6px;">
+                                <span style="font-size:13px; font-weight:bold; color:#2e7d32;">👤 患者選択:</span>
+                                <button type="button" class="yr-btn" style="background:#fff; color:#2e7d32; border:1px solid #a5d6a7; font-size:11px; font-weight:bold; padding:4px 8px;" onclick="navigateWardSummaryPatient(-1)" title="前の患者へ">◀ 前へ</button>
+                                <select id="sel-ward-summary-patient-dropdown" class="yr-form-control" style="width:220px; font-size:12px; height:28px;" onchange="onWardSummaryPatientDropdownChange(this.value)">
+                                    <option value="">-- 患者一覧から選択 --</option>
+                                </select>
+                                <button type="button" class="yr-btn" style="background:#fff; color:#2e7d32; border:1px solid #a5d6a7; font-size:11px; font-weight:bold; padding:4px 8px;" onclick="navigateWardSummaryPatient(1)" title="次の患者へ">次へ ▶</button>
+                                <input type="text" id="ipt-ward-summary-patient-search" class="yr-form-control" style="width:95px; font-size:12px; height:28px;" placeholder="患者ID直接入力" onkeypress="if(event.keyCode===13) fetchWardSummaryData(true)">
+                                <button id="btn-ward-summary-fetch" class="yr-btn" style="background:#2e7d32; color:#fff; font-size:12px; font-weight:bold; padding:4px 12px;" onclick="fetchWardSummaryData(true)" title="選択中患者の最新の処方・採血・バイタル・カルテを再取得します">⚡ 最新再取得</button>
+                            </div>
+                            <span style="display:inline-flex; flex-wrap:wrap; align-items:center; gap:5px; background:#e3f2fd; border:1px solid #90caf9; border-radius:4px; padding:3px 8px;" title="カルテ記事・文書画像の抽出対象期間（※処方比較は先週/今週、採血は直近1〜2週間固定です）">
+                                <span style="font-size:11px; font-weight:bold; color:#0d47a1;">📅 カルテ抽出期間:</span>
+                                <select id="sel-ws-karte-range" class="yr-form-control" style="width:125px; font-size:11px; height:25px; border:1px solid #64b5f6; background:#fff; font-weight:bold; color:#0d47a1;" onchange="onWardKarteRangeChange(this.value)" title="カルテ記事・文書画像の取得期間">
+                                    <option value="0">本日のみ (1日)</option>
+                                    <option value="1">昨日〜本日 (2日間)</option>
+                                    <option value="2">直近3日間</option>
+                                    <option value="7" selected>直近1週間</option>
+                                    <option value="14">直近2週間</option>
+                                </select>
+                                <button type="button" id="btn-ws-single-karte-all" class="yr-btn" style="background:#1565c0; color:#fff; font-size:11px; font-weight:bold; padding:3px 10px;" onclick="startWardBatchKarteAllFetch()" title="このカルテ抽出期間で病棟全患者のカルテを一括取得してキャッシュします">📋 全患者カルテ一括取得</button>
+                                <button type="button" id="btn-ws-single-karte-stop" class="yr-btn" style="background:#c62828; color:#fff; font-size:11px; font-weight:bold; padding:3px 10px; display:none;" onclick="stopWardBatchKarteAllFetch()">⏹ 中断</button>
+                                <span id="ws-karte-all-status" style="font-size:11px; font-weight:bold; color:#1565c0;"></span>
+                            </span>
                         </div>
                         <div id="ward-summary-status-badge" style="font-size:12px; font-weight:bold; color:#555;">
                             待機中
@@ -1116,7 +1121,7 @@ function generateAbbreviation() {}
                 <!-- サブビュー切り替えバー -->
                 <div style="display:flex; gap:6px; border-bottom:2px solid #2e7d32; margin-bottom:14px;">
                     <button type="button" id="btn-ws-subtab-rx" onclick="switchWardSummarySubTab('rx')" style="padding:7px 16px; font-size:12px; font-weight:bold; border:1px solid #2e7d32; border-bottom:none; background:#2e7d32; color:#fff; border-radius:5px 5px 0 0; cursor:pointer;">💊 処方変更・持参薬サマリ</button>
-                    <button type="button" id="btn-ws-subtab-karte" onclick="switchWardSummarySubTab('karte')" style="padding:7px 16px; font-size:12px; font-weight:bold; border:1px solid #cfd8dc; border-bottom:none; background:#f1f3f4; color:#333; border-radius:5px 5px 0 0; cursor:pointer;">📋 直近1週間のカルテ・文書画像 <span id="badge-ws-karte-count" style="background:#fff; color:#2e7d32; padding:1px 6px; border-radius:10px; font-size:10px; margin-left:4px;">0件</span></button>
+                    <button type="button" id="btn-ws-subtab-karte" onclick="switchWardSummarySubTab('karte')" style="padding:7px 16px; font-size:12px; font-weight:bold; border:1px solid #cfd8dc; border-bottom:none; background:#f1f3f4; color:#333; border-radius:5px 5px 0 0; cursor:pointer;">📋 <span id="lbl-ws-subtab-karte-period">直近1週間</span>のカルテ・文書画像 <span id="badge-ws-karte-count" style="background:#fff; color:#2e7d32; padding:1px 6px; border-radius:10px; font-size:10px; margin-left:4px;">0件</span></button>
                 </div>
 
                 <!-- サブペイン1: 処方変更・持参薬サマリ -->
@@ -1238,13 +1243,23 @@ function generateAbbreviation() {}
                 <div id="ws-subpane-karte" style="display:none;">
                     <div style="background:#f8f9fa; border:1px solid #dee2e6; border-radius:4px; padding:8px 12px; margin-bottom:12px;">
                         <div style="display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center; gap:8px; margin-bottom:8px;">
-                            <div style="display:flex; gap:6px; align-items:center;">
+                            <div style="display:flex; flex-wrap:wrap; gap:6px; align-items:center;">
+                                <span style="display:inline-flex; align-items:center; gap:4px; background:#e3f2fd; border:1px solid #90caf9; border-radius:4px; padding:2px 7px; margin-right:4px;" title="カルテ記事・文書画像の抽出対象期間">
+                                    <span style="font-size:11px; font-weight:bold; color:#0d47a1;">📅 カルテ抽出期間:</span>
+                                    <select id="sel-ws-karte-range-sub" class="yr-form-control" style="width:120px; font-size:11px; height:23px; border:1px solid #64b5f6; background:#fff; font-weight:bold; color:#0d47a1;" onchange="onWardKarteRangeChange(this.value)">
+                                        <option value="0">本日のみ (1日)</option>
+                                        <option value="1">昨日〜本日 (2日間)</option>
+                                        <option value="2">直近3日間</option>
+                                        <option value="7" selected>直近1週間</option>
+                                        <option value="14">直近2週間</option>
+                                    </select>
+                                </span>
                                 <span style="font-size:12px; font-weight:bold; color:#333;">種別:</span>
                                 <button type="button" id="btn-ws-kfilter-all" onclick="filterWardSummaryKarte('all')" style="padding:3px 10px; font-size:11px; font-weight:bold; border:1px solid #1976d2; background:#1976d2; color:#fff; border-radius:4px; cursor:pointer;">すべて</button>
                                 <button type="button" id="btn-ws-kfilter-img" onclick="filterWardSummaryKarte('img')" style="padding:3px 10px; font-size:11px; font-weight:bold; border:1px solid #ccc; background:#fff; color:#333; border-radius:4px; cursor:pointer;">🖼 文書・画像あり</button>
                                 <button type="button" id="btn-ws-kfilter-note" onclick="filterWardSummaryKarte('note')" style="padding:3px 10px; font-size:11px; font-weight:bold; border:1px solid #ccc; background:#fff; color:#333; border-radius:4px; cursor:pointer;">📝 経過記事のみ</button>
                             </div>
-                            <div style="display:flex; gap:10px; align-items:center;">
+                            <div style="display:flex; flex-wrap:wrap; gap:10px; align-items:center;">
                                 <label style="font-size:11px; font-weight:bold; color:#333; margin:0;">
                                     ↕ 並び順:
                                     <select id="sel-ws-karte-sort" onchange="onWardKartePrefChange()" style="font-size:11px; padding:2px 6px; border:1px solid #ccc; border-radius:3px;">
@@ -1272,7 +1287,7 @@ function generateAbbreviation() {}
                             <label style="cursor:pointer; margin:0;"><input type="checkbox" id="chk-ws-role-other" checked onchange="onWardKartePrefChange()"> その他(栄養/MSW等)</label>
                         </div>
                     </div>
-                    <div id="content-ward-summary-karte-notes" style="max-height:600px; overflow-y:auto;">
+                    <div id="content-ward-summary-karte-notes">
                         <div style="color:#999; text-align:center; padding:30px;">患者を選択して「⚡ データ取得・分析」を実行してください</div>
                     </div>
                 </div> <!-- /ws-subpane-karte -->
@@ -1288,15 +1303,16 @@ function generateAbbreviation() {}
                                 <button type="button" id="btn-ws-batch-rx-only" class="yr-btn" style="background:#00796b; color:#fff; font-size:12px; font-weight:bold; padding:5px 12px;" onclick="startWardBatchFetch('rx_only')" title="処方・注射・持参薬のみを高速チェックします（日中の処方変更確認におすすめ）">💊 処方チェック</button>
                                 <button type="button" id="btn-ws-batch-disc-only" class="yr-btn" style="background:#6a1b9a; color:#fff; font-size:12px; font-weight:bold; padding:5px 12px;" onclick="startWardBatchFetch('discharge_only')" title="退院・転院ワードのみを高速抽出します">🏠 退院ワードのみ抽出</button>
                                 <button type="button" id="btn-ws-batch-lv-only" class="yr-btn" style="background:#c62828; color:#fff; font-size:12px; font-weight:bold; padding:5px 12px;" onclick="startWardBatchFetch('lab_vital_only')" title="直近1週間の採血異常値・外注検査・バイタル(3日排便なし/食止/手術日)・入院指示のみを抽出します">🩸 採血・バイタルのみ抽出</button>
-                                <span style="display:inline-flex; align-items:center; gap:4px; background:#fff; padding:2px 6px; border:1px solid #90caf9; border-radius:4px;">
-                                    <select id="sel-ws-batch-karte-range" class="yr-form-control" style="width:120px; font-size:11px; height:24px; border:none;" onchange="onWardKarteRangeChange(this.value)" title="カルテ記事・文書画像の取得期間">
+                                <span style="display:inline-flex; flex-wrap:wrap; align-items:center; gap:5px; background:#e3f2fd; padding:3px 8px; border:1px solid #90caf9; border-radius:4px;" title="一括チェック時のカルテ取得、および「📋 カルテのみ抽出」の対象期間（※処方比較は先週/今週、採血は直近1〜2週間固定です）">
+                                    <span style="font-size:11px; font-weight:bold; color:#0d47a1;">📅 カルテ抽出期間:</span>
+                                    <select id="sel-ws-batch-karte-range" class="yr-form-control" style="width:120px; font-size:11px; height:24px; border:1px solid #64b5f6; background:#fff; font-weight:bold; color:#0d47a1;" onchange="onWardKarteRangeChange(this.value)" title="カルテ記事・文書画像の取得期間">
                                         <option value="0">本日のみ (1日)</option>
                                         <option value="1">昨日〜本日 (2日間)</option>
                                         <option value="2">直近3日間</option>
                                         <option value="7" selected>直近1週間</option>
                                         <option value="14">直近2週間</option>
                                     </select>
-                                    <button type="button" id="btn-ws-batch-karte-all" class="yr-btn" style="background:#1565c0; color:#fff; font-size:12px; font-weight:bold; padding:4px 10px;" onclick="startWardBatchKarteAllFetch()" title="選択中の取得期間で全患者のカルテのみを一括抽出します">📋 カルテのみ抽出</button>
+                                    <button type="button" id="btn-ws-batch-karte-all" class="yr-btn" style="background:#1565c0; color:#fff; font-size:12px; font-weight:bold; padding:4px 10px;" onclick="startWardBatchKarteAllFetch()" title="このカルテ抽出期間で全患者のカルテのみを一括抽出します">📋 カルテのみ抽出</button>
                                 </span>
                                 <button type="button" id="btn-ws-batch-karte-stop" class="yr-btn" style="background:#c62828; color:#fff; font-size:12px; font-weight:bold; padding:5px 12px; display:none;" onclick="stopWardBatchKarteAllFetch()">⏹ カルテ中断</button>
                                 <button type="button" id="btn-ws-batch-stop" class="yr-btn" style="background:#c62828; color:#fff; font-size:12px; font-weight:bold; padding:5px 12px; display:none;" onclick="stopWardBatchFetch()">⏹ 中断</button>
@@ -1467,6 +1483,17 @@ function generateAbbreviation() {}
                             <div style="display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center; gap:8px; margin-bottom:8px;">
                                 <div style="display:flex; flex-wrap:wrap; gap:6px; align-items:center;">
                                     <span style="font-size:12px; font-weight:bold; color:#1565c0;">📚 一括カルテ閲覧</span>
+                                    <span style="display:inline-flex; align-items:center; gap:4px; background:#e3f2fd; border:1px solid #90caf9; border-radius:4px; padding:2px 7px; margin-left:4px;" title="カルテ記事・文書画像の抽出対象期間">
+                                        <span style="font-size:11px; font-weight:bold; color:#0d47a1;">📅 カルテ抽出期間:</span>
+                                        <select id="sel-ws-bkarte-range-sub" class="yr-form-control" style="width:120px; font-size:11px; height:23px; border:1px solid #64b5f6; background:#fff; font-weight:bold; color:#0d47a1;" onchange="onWardKarteRangeChange(this.value)">
+                                            <option value="0">本日のみ (1日)</option>
+                                            <option value="1">昨日〜本日 (2日間)</option>
+                                            <option value="2">直近3日間</option>
+                                            <option value="7" selected>直近1週間</option>
+                                            <option value="14">直近2週間</option>
+                                        </select>
+                                        <button type="button" onclick="startWardBatchKarteAllFetch()" style="padding:2px 8px; font-size:11px; font-weight:bold; background:#1565c0; color:#fff; border:none; border-radius:3px; cursor:pointer;" title="この期間で全患者のカルテを再取得します">🔄 この期間で取得</button>
+                                    </span>
                                     <span style="font-size:11px; color:#666; margin-left:4px;">種別:</span>
                                     <button type="button" id="btn-ws-bkfilter-all" onclick="filterWardBatchKarte('all')" style="padding:3px 9px; font-size:11px; font-weight:bold; border:1px solid #1976d2; background:#1976d2; color:#fff; border-radius:4px; cursor:pointer;">すべて</button>
                                     <button type="button" id="btn-ws-bkfilter-img" onclick="filterWardBatchKarte('img')" style="padding:3px 9px; font-size:11px; font-weight:bold; border:1px solid #ccc; background:#fff; color:#333; border-radius:4px; cursor:pointer;">🖼 文書・画像あり</button>
@@ -1517,6 +1544,47 @@ function generateAbbreviation() {}
                         </div>
                     </div>
                 </div> <!-- /ws-mainpane-batch -->
+
+                <!-- 📌 画面右端固定：折りたたみ式「👤 患者一覧」サイドドロワー ＆ クイック移動・トップへ戻るボタン -->
+                <div id="ws-side-nav-root" class="hide-on-print">
+                    <!-- 画面右端中央の折りたたみタブ（縦幅を奪わずワンクリックで患者一覧を開閉） -->
+                    <div id="ws-side-drawer-handle" onclick="toggleWardSidePatientDrawer()" title="画面横から患者一覧を開閉します（スクロール中でもワンクリックで別患者へ切り替えられます）" style="position:fixed; right:0; top:135px; z-index:9600; background:#1565c0; color:#fff; padding:10px 7px; border-radius:8px 0 0 8px; box-shadow:-2px 2px 8px rgba(0,0,0,0.22); cursor:pointer; font-size:12px; font-weight:bold; line-height:1.35; text-align:center; user-select:none; border:1px solid #0d47a1; border-right:none;">
+                        <div id="ws-side-drawer-handle-icon" style="font-size:13px; margin-bottom:3px;">◀</div>
+                        <div>👤<br>患<br>者<br>一<br>覧</div>
+                        <div id="ws-side-drawer-handle-cnt" style="font-size:10px; background:#fff; color:#0d47a1; border-radius:8px; padding:1px 4px; margin-top:4px; font-weight:bold;">0</div>
+                    </div>
+
+                    <!-- 画面右端から展開する患者一覧ドロワー本体 -->
+                    <div id="ws-side-patient-drawer" style="display:none; position:fixed; right:0; top:95px; bottom:68px; width:275px; z-index:9650; background:#fff; border-left:2px solid #1565c0; border-top:2px solid #1565c0; border-bottom:2px solid #1565c0; border-radius:8px 0 0 8px; box-shadow:-4px 4px 16px rgba(0,0,0,0.25); flex-direction:column; overflow:hidden;">
+                        <div style="background:#1565c0; color:#fff; padding:8px 10px; display:flex; justify-content:space-between; align-items:center;">
+                            <span style="font-size:12px; font-weight:bold;">👤 患者一覧 <span id="ws-side-drawer-ward-lbl" style="font-size:11px; font-weight:normal; opacity:0.9;"></span></span>
+                            <button type="button" onclick="toggleWardSidePatientDrawer(false)" style="background:rgba(255,255,255,0.2); border:1px solid rgba(255,255,255,0.5); color:#fff; font-size:11px; font-weight:bold; padding:2px 8px; border-radius:4px; cursor:pointer;" title="折りたたむ">折りたたみ ▶</button>
+                        </div>
+                        <div style="padding:6px 8px; background:#f1f5f9; border-bottom:1px solid #cfd8dc; display:flex; flex-direction:column; gap:5px;">
+                            <div style="display:flex; gap:4px; align-items:center;">
+                                <input type="text" id="ipt-ws-side-patient-filter" class="yr-form-control" style="flex:1; height:24px; font-size:11px; padding:2px 6px;" placeholder="🔍 病室・氏名・IDで絞込..." onkeyup="renderWardSidePatientDrawerList()">
+                                <button type="button" onclick="var el=document.getElementById('ipt-ws-side-patient-filter'); if(el){el.value=''; renderWardSidePatientDrawerList();}" style="background:#fff; border:1px solid #ccc; color:#555; font-size:10px; padding:2px 6px; border-radius:3px; cursor:pointer;" title="クリア">✕</button>
+                            </div>
+                            <div style="display:flex; justify-content:space-between; align-items:center; gap:4px;">
+                                <button type="button" onclick="stepWardActivePatient(-1)" style="flex:1; background:#fff; border:1px solid #90caf9; color:#0d47a1; font-size:11px; font-weight:bold; padding:3px 6px; border-radius:4px; cursor:pointer;">◀ 前の患者</button>
+                                <button type="button" onclick="stepWardActivePatient(1)" style="flex:1; background:#fff; border:1px solid #90caf9; color:#0d47a1; font-size:11px; font-weight:bold; padding:3px 6px; border-radius:4px; cursor:pointer;">次の患者 ▶</button>
+                            </div>
+                        </div>
+                        <div id="ws-side-drawer-list" style="flex:1; overflow-y:auto; padding:6px;"></div>
+                        <div style="padding:6px 8px; background:#f8fafc; border-top:1px solid #e0e0e0; display:flex; justify-content:space-between; align-items:center; font-size:10px; color:#666;">
+                            <span>💡 クリックで即座に患者切替</span>
+                            <label style="cursor:pointer; margin:0;"><input type="checkbox" id="chk-ws-side-auto-close" onchange="onWardSideAutoCloseChange()"> 選択後に閉じる</label>
+                        </div>
+                    </div>
+
+                    <!-- 画面右下固定フローティングバー（前後患者切替 ＆ ▲ トップへ戻る） -->
+                    <div id="ws-floating-bottom-bar" style="position:fixed; right:16px; bottom:28px; z-index:9590; display:flex; align-items:center; gap:5px; background:rgba(255,255,255,0.96); border:1px solid #90caf9; border-radius:22px; padding:5px 10px; box-shadow:0 3px 12px rgba(0,0,0,0.2);">
+                        <button type="button" onclick="stepWardActivePatient(-1)" style="background:#e3f2fd; border:1px solid #90caf9; color:#0d47a1; font-size:11px; font-weight:bold; padding:4px 9px; border-radius:14px; cursor:pointer;" title="前の患者へ切り替え">◀ 前</button>
+                        <button type="button" onclick="toggleWardSidePatientDrawer()" style="background:#1565c0; border:1px solid #0d47a1; color:#fff; font-size:11px; font-weight:bold; padding:4px 10px; border-radius:14px; cursor:pointer;" title="画面横の患者一覧を開閉">👤 <span id="ws-floating-cur-patient-lbl">患者一覧</span></button>
+                        <button type="button" onclick="stepWardActivePatient(1)" style="background:#e3f2fd; border:1px solid #90caf9; color:#0d47a1; font-size:11px; font-weight:bold; padding:4px 9px; border-radius:14px; cursor:pointer;" title="次の患者へ切り替え">次 ▶</button>
+                        <button type="button" onclick="scrollWardSummaryToTop()" style="background:#2e7d32; border:1px solid #1b5e20; color:#fff; font-size:11px; font-weight:bold; padding:4px 12px; border-radius:14px; cursor:pointer; margin-left:2px;" title="画面の一番上へ戻ります">▲ トップへ戻る</button>
+                    </div>
+                </div>
     </div>
     <!-- 薬歴ツールタブ (直接埋め込み) -->
     <div id="tab-yakureki" class="tab-content" style="padding: 2px 12px 10px 12px;">
@@ -8676,6 +8744,7 @@ function switchTab(tabId) {
         if (typeof updatePatientDropdowns === 'function') updatePatientDropdowns();
         if (typeof loadWardKartePrefs === 'function') loadWardKartePrefs();
         if (typeof renderWardSummarySingleMemoPanel === 'function') renderWardSummarySingleMemoPanel();
+        if (typeof refreshWardSidePatientDrawer === 'function') refreshWardSidePatientDrawer();
     }
     if(tabId === 'tab-settings') {
         if (typeof renderWardSettingButtons === "function") renderWardSettingButtons();
@@ -10927,6 +10996,9 @@ function updateMyDisplayNameMain() {
             var wardSummaryIpt = document.getElementById('ipt-ward-summary-patient-search');
             var curWardSummaryVal = wardSummaryIpt ? wardSummaryIpt.value.trim() : '';
             populateSelect(wardSummarySel, curWardSummaryVal);
+            if (typeof refreshWardSidePatientDrawer === 'function') {
+                try { refreshWardSidePatientDrawer(); } catch(e) {}
+            }
         }
         function onWardSummaryPatientDropdownChange(val) {
             var ipt = document.getElementById('ipt-ward-summary-patient-search');
@@ -17046,12 +17118,36 @@ function navigateWardSummaryPatient(delta) {
     var ipt = document.getElementById("ipt-ward-summary-patient-search");
     if (ipt) ipt.value = nextId;
     fetchWardSummaryData(false);
+    if (typeof scrollWardSummaryToTop === "function") scrollWardSummaryToTop();
 }
 
 function getWardKarteDaysBack() {
-    var sel = document.getElementById("sel-ws-karte-range") || document.getElementById("sel-ws-batch-karte-range");
+    var sel = document.getElementById("sel-ws-karte-range") ||
+              document.getElementById("sel-ws-karte-range-sub") ||
+              document.getElementById("sel-ws-batch-karte-range") ||
+              document.getElementById("sel-ws-bkarte-range-sub");
     var v = sel ? parseInt(sel.value, 10) : 7;
     return isNaN(v) ? 7 : v;
+}
+
+function getWardKartePeriodLabel(daysVal) {
+    var d = parseInt(daysVal, 10);
+    if (d === 0) return "本日のみ";
+    if (d === 1) return "昨日〜本日";
+    if (d === 2) return "直近3日間";
+    if (d === 14) return "直近2週間";
+    return "直近1週間";
+}
+
+function syncWardKarteRangeControls(daysVal) {
+    var vStr = String(typeof daysVal !== "undefined" && daysVal !== null ? daysVal : getWardKarteDaysBack());
+    var ids = ["sel-ws-karte-range", "sel-ws-karte-range-sub", "sel-ws-batch-karte-range", "sel-ws-bkarte-range-sub"];
+    for (var i = 0; i < ids.length; i++) {
+        var el = document.getElementById(ids[i]);
+        if (el) el.value = vStr;
+    }
+    var subLbl = document.getElementById("lbl-ws-subtab-karte-period");
+    if (subLbl) subLbl.innerText = getWardKartePeriodLabel(vStr);
 }
 
 function buildWardKarteNotesUrl(rawId, userId, todayStr, daysBack) {
@@ -18054,13 +18150,8 @@ function buildWardVitalSummaryHtml(vitalData, pObj, uidPrefix, showDefaultTaionG
 }
 
 function onWardKarteRangeChange(newVal) {
-    var sel1 = document.getElementById("sel-ws-karte-range");
-    var sel2 = document.getElementById("sel-ws-batch-karte-range");
-    if (typeof newVal !== "undefined" && newVal !== null) {
-        if (sel1) sel1.value = String(newVal);
-        if (sel2) sel2.value = String(newVal);
-    } else if (sel1 && sel2) {
-        sel2.value = sel1.value;
+    if (typeof syncWardKarteRangeControls === "function") {
+        syncWardKarteRangeControls(newVal);
     }
     onWardKartePrefChange();
     var stEl = document.getElementById("ws-karte-all-status");
@@ -18626,6 +18717,7 @@ function fetchWardSummaryData(forceRefresh) {
     }
     wardSummaryState.patient = pObj;
     renderWardSummarySingleMemoPanel(pObj);
+    if (typeof refreshWardSidePatientDrawer === "function") refreshWardSidePatientDrawer();
 
     var today = new Date();
     var todayStr = ("000" + today.getFullYear()).slice(-4) + "/" + ("0" + (today.getMonth() + 1)).slice(-2) + "/" + ("0" + today.getDate()).slice(-2);
@@ -18868,10 +18960,13 @@ function loadWardKartePrefs() {
             if (selSortB) selSortB.value = prefs.sortOrder;
         }
         if (typeof prefs.karteDays !== "undefined") {
-            var selRange = document.getElementById("sel-ws-karte-range");
-            if (selRange) selRange.value = String(prefs.karteDays);
-            var selRangeB = document.getElementById("sel-ws-batch-karte-range");
-            if (selRangeB) selRangeB.value = String(prefs.karteDays);
+            if (typeof syncWardKarteRangeControls === "function") {
+                syncWardKarteRangeControls(prefs.karteDays);
+            }
+        }
+        if (typeof prefs.sideAutoClose === "boolean") {
+            var chkAuto = document.getElementById("chk-ws-side-auto-close");
+            if (chkAuto) chkAuto.checked = prefs.sideAutoClose;
         }
         if (prefs.roles) {
             var rKeys = ["doctor", "nurse", "pharm", "rehab", "other"];
@@ -18909,10 +19004,12 @@ function onWardKartePrefChange() {
             var chkB = document.getElementById("chk-ws-brole-" + k);
             if (chkB) chkB.checked = rolesObj[k];
         }
+        var chkAuto = document.getElementById("chk-ws-side-auto-close");
         prefs = {
             imgSize: imgVal,
             sortOrder: sortVal,
             karteDays: getWardKarteDaysBack(),
+            sideAutoClose: chkAuto ? !!chkAuto.checked : false,
             roles: rolesObj
         };
     } catch(e) {}
@@ -19138,7 +19235,8 @@ function renderWardSummaryKarteList() {
     }
 
     if (filtered.length === 0) {
-        container.innerHTML = '<div style="color:#888; text-align:center; padding:30px;">該当する直近1週間のカルテ記事・文書はありません（職種フィルタ等の条件をご確認ください）</div>';
+        var pLbl0 = (typeof getWardKartePeriodLabel === "function") ? getWardKartePeriodLabel(getWardKarteDaysBack()) : "選択期間";
+        container.innerHTML = '<div style="color:#888; text-align:center; padding:30px;">該当する' + escapeHtml(pLbl0) + 'のカルテ記事・文書はありません（職種フィルタ等の条件をご確認ください）</div>';
         return;
     }
 
@@ -19200,6 +19298,14 @@ function renderWardSummaryKarteList() {
             imgHtml +
             '</div>';
     }
+    html += '<div style="margin-top:12px; padding:10px 12px; background:#f1f8e9; border:1px solid #c5e1a5; border-radius:6px; display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center; gap:8px;">' +
+        '<div style="display:flex; gap:6px; align-items:center;">' +
+            '<button type="button" class="yr-btn" style="background:#fff; color:#2e7d32; border:1px solid #a5d6a7; font-size:11px; font-weight:bold; padding:4px 10px;" onclick="navigateWardSummaryPatient(-1)">◀ 前の患者へ</button>' +
+            '<button type="button" class="yr-btn" style="background:#fff; color:#2e7d32; border:1px solid #a5d6a7; font-size:11px; font-weight:bold; padding:4px 10px;" onclick="navigateWardSummaryPatient(1)">次の患者へ ▶</button>' +
+            '<button type="button" class="yr-btn" style="background:#1565c0; color:#fff; font-size:11px; font-weight:bold; padding:4px 10px;" onclick="toggleWardSidePatientDrawer(true)">👤 画面横の患者一覧を開く</button>' +
+        '</div>' +
+        '<button type="button" class="yr-btn" style="background:#2e7d32; color:#fff; font-size:11px; font-weight:bold; padding:4px 14px;" onclick="scrollWardSummaryToTop()">▲ トップへ戻る</button>' +
+    '</div>';
     container.innerHTML = html;
 }
 
@@ -19909,6 +20015,7 @@ function switchWardSummaryMainMode(mode) {
             btnBatch.style.borderColor = "#ccc";
         }
     }
+    if (typeof refreshWardSidePatientDrawer === "function") refreshWardSidePatientDrawer();
 }
 
 function stopWardBatchFetch() {
@@ -20789,6 +20896,7 @@ function renderWardBatchTable() {
             '</td></tr>';
     }
     tbody.innerHTML = html;
+    if (typeof refreshWardSidePatientDrawer === "function") refreshWardSidePatientDrawer();
 }
 
 function jumpToWardSummaryDetail(pId) {
@@ -20799,6 +20907,7 @@ function jumpToWardSummaryDetail(pId) {
     var sel = document.getElementById("sel-ward-summary-patient-dropdown");
     if (sel) sel.value = pId;
     fetchWardSummaryData(false);
+    if (typeof scrollWardSummaryToTop === "function") scrollWardSummaryToTop();
 }
 
 function switchWardBatchView(viewName) {
@@ -20830,6 +20939,7 @@ function switchWardBatchView(viewName) {
     } else if (wardBatchState.currentView === "karte") {
         if (typeof renderWardBatchKarteView === "function") renderWardBatchKarteView();
     }
+    if (typeof refreshWardSidePatientDrawer === "function") refreshWardSidePatientDrawer();
 }
 
 function openWardKarteRecord(pId, dateStr) {
@@ -21643,6 +21753,8 @@ function filterWardBatchKarte(fType) {
 function selectBatchKartePatient(pId) {
     wardBatchState.selectedBatchKartePatientId = String(pId || "");
     renderWardBatchKarteView();
+    if (typeof refreshWardSidePatientDrawer === "function") refreshWardSidePatientDrawer();
+    if (typeof scrollWardSummaryToTop === "function") scrollWardSummaryToTop();
 }
 
 function stepBatchKartePatient(delta) {
@@ -21670,6 +21782,8 @@ function stepBatchKartePatient(delta) {
     }
     wardBatchState.selectedBatchKartePatientId = String(ids[nextIdx]);
     renderWardBatchKarteView();
+    if (typeof refreshWardSidePatientDrawer === "function") refreshWardSidePatientDrawer();
+    if (typeof scrollWardSummaryToTop === "function") scrollWardSummaryToTop();
 }
 
 function renderWardBatchKarteView() {
@@ -21880,9 +21994,318 @@ function renderWardBatchKarteView() {
         bkMemoHtml +
         '<div style="padding:12px 14px; background:#fafcff;">' +
         recHtml +
+        '<div style="margin-top:12px; padding:10px 12px; background:#e3f2fd; border:1px solid #90caf9; border-radius:6px; display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center; gap:8px;">' +
+            '<div style="display:flex; gap:6px; align-items:center;">' +
+                '<button type="button" onclick="stepBatchKartePatient(-1)" style="padding:4px 10px; font-size:11px; font-weight:bold; background:#fff; border:1px solid #1976d2; color:#1976d2; border-radius:4px; cursor:pointer;">◀ 前の患者</button>' +
+                '<button type="button" onclick="stepBatchKartePatient(1)" style="padding:4px 10px; font-size:11px; font-weight:bold; background:#fff; border:1px solid #1976d2; color:#1976d2; border-radius:4px; cursor:pointer;">次の患者 ▶</button>' +
+                '<button type="button" onclick="toggleWardSidePatientDrawer(true)" style="padding:4px 10px; font-size:11px; font-weight:bold; background:#1565c0; border:1px solid #0d47a1; color:#fff; border-radius:4px; cursor:pointer;">👤 画面横の患者一覧を開く</button>' +
+            '</div>' +
+            '<button type="button" onclick="scrollWardSummaryToTop()" style="padding:4px 14px; font-size:11px; font-weight:bold; background:#2e7d32; border:1px solid #1b5e20; color:#fff; border-radius:4px; cursor:pointer;">▲ トップへ戻る</button>' +
+        '</div>' +
         '</div></div>';
 
     container.innerHTML = cardHtml;
+    if (typeof refreshWardSidePatientDrawer === "function") refreshWardSidePatientDrawer();
+}
+
+// =========================================================
+// 画面横折りたたみ式「👤 患者一覧」サイドドロワー ＆ 「▲ トップへ戻る」ナビゲーション
+// =========================================================
+var wardSideDrawerState = {
+    isOpen: false
+};
+
+function scrollWardSummaryToTop() {
+    try {
+        if (window.scrollTo) window.scrollTo(0, 0);
+        if (document.documentElement) document.documentElement.scrollTop = 0;
+        if (document.body) document.body.scrollTop = 0;
+        var mainScroll = document.getElementById("main-content-scroll");
+        if (mainScroll) mainScroll.scrollTop = 0;
+        var karteNotes = document.getElementById("content-ward-summary-karte-notes");
+        if (karteNotes) karteNotes.scrollTop = 0;
+    } catch(e) {}
+}
+
+function isWardBatchModeActive() {
+    var batchPane = document.getElementById("ws-mainpane-batch");
+    return !!(batchPane && batchPane.style.display !== "none");
+}
+
+function getWardActivePatientId() {
+    if (isWardBatchModeActive()) {
+        if (wardBatchState && wardBatchState.currentView === "karte" && wardBatchState.selectedBatchKartePatientId) {
+            return String(wardBatchState.selectedBatchKartePatientId);
+        }
+        if (wardSummaryState && wardSummaryState.patient && wardSummaryState.patient.id) {
+            return String(wardSummaryState.patient.id);
+        }
+        return "";
+    }
+    if (wardSummaryState && wardSummaryState.patient && wardSummaryState.patient.id) {
+        return String(wardSummaryState.patient.id);
+    }
+    var sel = document.getElementById("sel-ward-summary-patient-dropdown");
+    if (sel && sel.value) return String(sel.value);
+    var ipt = document.getElementById("ipt-ward-summary-patient-search");
+    if (ipt && trimSummaryStr(ipt.value)) return trimSummaryStr(ipt.value);
+    return "";
+}
+
+function toggleWardSidePatientDrawer(forceState) {
+    var drawer = document.getElementById("ws-side-patient-drawer");
+    var handleIcon = document.getElementById("ws-side-drawer-handle-icon");
+    if (!drawer) return;
+    var nextOpen = (typeof forceState === "boolean") ? forceState : !wardSideDrawerState.isOpen;
+    wardSideDrawerState.isOpen = nextOpen;
+    drawer.style.display = nextOpen ? "flex" : "none";
+    if (handleIcon) {
+        handleIcon.innerText = nextOpen ? "▶" : "◀";
+    }
+    if (nextOpen) {
+        refreshWardSidePatientDrawer();
+        // 現在選択中の患者項目がドロワー内で見えるようにスクロール調整
+        setTimeout(function() {
+            try {
+                var listEl = document.getElementById("ws-side-drawer-list");
+                var activeEl = document.getElementById("ws-side-pat-item-active");
+                if (listEl && activeEl) {
+                    var topPos = activeEl.offsetTop - Math.floor(listEl.clientHeight / 2) + 20;
+                    if (topPos < 0) topPos = 0;
+                    listEl.scrollTop = topPos;
+                }
+            } catch(e) {}
+        }, 30);
+    }
+}
+
+function onWardSideAutoCloseChange() {
+    if (typeof onWardKartePrefChange === "function") {
+        onWardKartePrefChange();
+    }
+}
+
+function getSortedWardPatientsForSideDrawer() {
+    var list = [];
+    if (typeof getCurrentPatientsList === "function") {
+        try { list = getCurrentPatientsList() || []; } catch(e) {}
+    }
+    if ((!list || list.length === 0) && typeof DataManager !== "undefined" && DataManager.appData && DataManager.appData.patients && typeof currentWard !== "undefined") {
+        list = DataManager.appData.patients[currentWard] || [];
+    }
+    var valid = [];
+    var seen = {};
+    for (var i = 0; i < list.length; i++) {
+        var p = list[i];
+        if (p && p.id && !seen[String(p.id)]) {
+            seen[String(p.id)] = true;
+            valid.push(p);
+        }
+    }
+    // 一括モード時は一括画面の並び順設定を尊重、単体モード時は患者ID昇順
+    if (isWardBatchModeActive()) {
+        var wrapped = [];
+        for (var j = 0; j < valid.length; j++) wrapped.push({ patient: valid[j] });
+        var sortedW = sortWardBatchResults(wrapped);
+        var res = [];
+        for (var k = 0; k < sortedW.length; k++) res.push(sortedW[k].patient);
+        return res;
+    }
+    valid.sort(function(a, b) {
+        var nA = parseInt(String(a.id || "").replace(/\D/g, ""), 10);
+        var nB = parseInt(String(b.id || "").replace(/\D/g, ""), 10);
+        if (!isNaN(nA) && !isNaN(nB) && nA !== nB) return nA - nB;
+        return String(a.id || "").localeCompare(String(b.id || ""));
+    });
+    return valid;
+}
+
+function refreshWardSidePatientDrawer() {
+    renderWardSidePatientDrawerList();
+}
+
+function renderWardSidePatientDrawerList() {
+    var listContainer = document.getElementById("ws-side-drawer-list");
+    var cntBadge = document.getElementById("ws-side-drawer-handle-cnt");
+    var wardLbl = document.getElementById("ws-side-drawer-ward-lbl");
+    var floatCurLbl = document.getElementById("ws-floating-cur-patient-lbl");
+
+    var patients = getSortedWardPatientsForSideDrawer();
+    if (cntBadge) cntBadge.innerText = String(patients.length);
+    if (wardLbl) {
+        var wName = (typeof getWardName === "function" && typeof currentWard !== "undefined") ? getWardName(currentWard) : "";
+        wardLbl.innerText = wName ? ("(" + wName + ": " + patients.length + "名)") : ("(" + patients.length + "名)");
+    }
+
+    var activePid = getWardActivePatientId();
+    var normActive = String(activePid || "").replace(/^0+/, "");
+    var activePatObj = null;
+    var activeIdx = -1;
+    for (var a = 0; a < patients.length; a++) {
+        var pIdA = String(patients[a].id || "");
+        if (pIdA === activePid || (normActive && pIdA.replace(/^0+/, "") === normActive)) {
+            activePatObj = patients[a];
+            activeIdx = a;
+            break;
+        }
+    }
+
+    if (floatCurLbl) {
+        if (activePatObj) {
+            var rPrefix = activePatObj.room ? (activePatObj.room + " ") : "";
+            floatCurLbl.innerText = rPrefix + (activePatObj.name || activePatObj.id) + " (" + (activeIdx + 1) + "/" + patients.length + ")";
+        } else {
+            floatCurLbl.innerText = "患者一覧 (" + patients.length + "名)";
+        }
+    }
+
+    if (!listContainer) return;
+    if (patients.length === 0) {
+        listContainer.innerHTML = '<div style="padding:20px 10px; text-align:center; color:#888; font-size:11px;">患者一覧が読み込まれていません</div>';
+        return;
+    }
+
+    var filterEl = document.getElementById("ipt-ws-side-patient-filter");
+    var q = filterEl ? trimSummaryStr(filterEl.value).toLowerCase() : "";
+
+    var batchResMap = {};
+    if (wardBatchState && wardBatchState.results) {
+        for (var br = 0; br < wardBatchState.results.length; br++) {
+            var rItem = wardBatchState.results[br];
+            if (rItem && rItem.patient && rItem.patient.id) {
+                batchResMap[String(rItem.patient.id)] = rItem;
+            }
+        }
+    }
+    var karteCacheMap = (typeof wardSummaryCache !== "undefined" && wardSummaryCache.karte) ? wardSummaryCache.karte : {};
+
+    var html = "";
+    var matchCount = 0;
+    for (var i = 0; i < patients.length; i++) {
+        var p = patients[i];
+        var pid = String(p.id || "");
+        var pidEsc = escapeHtml(pid);
+        var pName = p.name || ("ID:" + pid);
+        var pRoom = p.room || "";
+        if (q) {
+            var hay = (pRoom + " " + pName + " " + pid + " " + (p.disease || "")).toLowerCase();
+            if (hay.indexOf(q) === -1) continue;
+        }
+        matchCount++;
+        var isCurrent = (activePatObj && String(activePatObj.id) === pid);
+        var itemIdAttr = isCurrent ? ' id="ws-side-pat-item-active"' : '';
+        var bg = isCurrent ? "#1565c0" : "#fff";
+        var fg = isCurrent ? "#fff" : "#222";
+        var subFg = isCurrent ? "#e3f2fd" : "#666";
+        var borderCol = isCurrent ? "#0d47a1" : "#e0e0e0";
+
+        var badges = [];
+        var kCache = karteCacheMap[pid];
+        if (kCache && kCache.karteRecords) {
+            var kBg = isCurrent ? "rgba(255,255,255,0.22)" : "#e3f2fd";
+            var kCol = isCurrent ? "#fff" : "#1565c0";
+            badges.push('<span style="background:' + kBg + '; color:' + kCol + '; font-size:10px; font-weight:bold; padding:1px 5px; border-radius:8px;">📋' + kCache.karteRecords.length + '</span>');
+        }
+        var bRow = batchResMap[pid];
+        if (bRow) {
+            if (bRow.hasPanicLab) {
+                badges.push('<span style="background:#d32f2f; color:#fff; font-size:10px; font-weight:bold; padding:1px 5px; border-radius:8px;">🚨P</span>');
+            } else if (bRow.hasAction) {
+                var aBg = isCurrent ? "#ffeb3b" : "#fff3e0";
+                var aCol = isCurrent ? "#b71c1c" : "#e65100";
+                badges.push('<span style="background:' + aBg + '; color:' + aCol + '; font-size:10px; font-weight:bold; padding:1px 5px; border-radius:8px;">⚠️</span>');
+            }
+        }
+
+        var roomBadge = pRoom
+            ? ('<span style="display:inline-block; min-width:34px; text-align:center; background:' + (isCurrent ? '#0d47a1' : '#eceff1') + '; color:' + (isCurrent ? '#fff' : '#37474f') + '; font-size:10px; font-weight:bold; padding:1px 5px; border-radius:3px; margin-right:5px;">' + escapeHtml(pRoom) + '</span>')
+            : '';
+
+        html += '<div' + itemIdAttr + ' onclick="selectWardSideDrawerPatient(\'' + pidEsc + '\')" ' +
+            'style="padding:6px 8px; margin-bottom:4px; background:' + bg + '; color:' + fg + '; border:1px solid ' + borderCol + '; border-radius:5px; cursor:pointer; display:flex; justify-content:space-between; align-items:center; gap:4px; box-shadow:0 1px 2px rgba(0,0,0,0.03);">' +
+            '<div style="min-width:0; flex:1;">' +
+                '<div style="font-size:12px; font-weight:bold; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">' +
+                    roomBadge + escapeHtml(pName) +
+                '</div>' +
+                '<div style="font-size:10px; color:' + subFg + '; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">' +
+                    'ID:' + pidEsc + (p.daysInHosp ? ' / ' + escapeHtml(String(p.daysInHosp)) + '日目' : '') + (p.disease ? ' / ' + escapeHtml(p.disease) : '') +
+                '</div>' +
+            '</div>' +
+            (badges.length > 0 ? '<div style="display:flex; gap:2px; align-items:center; flex-shrink:0;">' + badges.join("") + '</div>' : '') +
+        '</div>';
+    }
+
+    if (matchCount === 0) {
+        html = '<div style="padding:16px 8px; text-align:center; color:#888; font-size:11px;">該当する患者がいません</div>';
+    }
+    listContainer.innerHTML = html;
+}
+
+function selectWardSideDrawerPatient(pId) {
+    if (!pId) return;
+    var pidStr = String(pId);
+    var chkAuto = document.getElementById("chk-ws-side-auto-close");
+    if (chkAuto && chkAuto.checked) {
+        toggleWardSidePatientDrawer(false);
+    }
+
+    if (isWardBatchModeActive()) {
+        if (wardBatchState && wardBatchState.currentView === "karte") {
+            // 一括カルテ閲覧中は該当患者のカルテに切り替え（もし0件非表示設定で隠れていても見られるように選択）
+            var cacheMap = (typeof wardSummaryCache !== "undefined" && wardSummaryCache.karte) ? wardSummaryCache.karte : {};
+            if (cacheMap[pidStr]) {
+                var hideChk = document.getElementById("chk-ws-bkarte-hide-empty");
+                if (hideChk && hideChk.checked && (!cacheMap[pidStr].karteRecords || cacheMap[pidStr].karteRecords.length === 0)) {
+                    hideChk.checked = false;
+                }
+                selectBatchKartePatient(pidStr);
+                return;
+            } else {
+                // まだ一括カルテ未取得の場合は単体カルテ画面で即取得して表示
+                jumpToWardSummaryDetail(pidStr);
+                return;
+            }
+        }
+        // 一括テーブル・退院ワード一覧・サマリ表示中にクリックされた場合：該当患者の行があればそこへスクロール、なければ単体詳細へ
+        var activeBatchPane = document.getElementById("ws-batch-view-" + (wardBatchState.currentView || "table"));
+        if (activeBatchPane) {
+            var trs = activeBatchPane.getElementsByTagName("tr");
+            for (var i = 0; i < trs.length; i++) {
+                var tr = trs[i];
+                if (tr.getAttribute("data-ws-patient-id") === pidStr && tr.id.indexOf("ws-batch-detail-") === -1) {
+                    if (tr.scrollIntoView) tr.scrollIntoView(true);
+                    var origBg = tr.style.backgroundColor;
+                    tr.style.backgroundColor = "#fff59d";
+                    setTimeout(function() { tr.style.backgroundColor = origBg; }, 1400);
+                    return;
+                }
+            }
+        }
+        jumpToWardSummaryDetail(pidStr);
+        return;
+    }
+
+    // 単体患者サマリモード時
+    var sel = document.getElementById("sel-ward-summary-patient-dropdown");
+    if (sel) sel.value = pidStr;
+    var ipt = document.getElementById("ipt-ward-summary-patient-search");
+    if (ipt) ipt.value = pidStr;
+    fetchWardSummaryData(false);
+    scrollWardSummaryToTop();
+}
+
+function stepWardActivePatient(delta) {
+    if (isWardBatchModeActive() && wardBatchState && wardBatchState.currentView === "karte") {
+        var bIds = wardBatchState.displayedBatchKartePatientIds || [];
+        if (bIds.length > 0) {
+            stepBatchKartePatient(delta);
+            return;
+        }
+    }
+    if (isWardBatchModeActive()) {
+        switchWardSummaryMainMode("single");
+    }
+    navigateWardSummaryPatient(delta);
 }
 
 </script>
