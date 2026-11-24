@@ -473,7 +473,9 @@ body {
     body.font-medium h3, body.font-medium h4, body.font-medium .yr-cat-title, body.font-medium .yr-setting-label { font-size: 16px !important; }
 
     /* インラインスタイル(style="font-size:...")を強制上書き */
-    body.font-medium span[style*="font-size"], body.font-medium div[style*="font-size"], body.font-medium td[style*="font-size"] { font-size: 14px !important; }
+    body.font-medium span[style*="font-size"], body.font-medium div[style*="font-size"], body.font-medium td[style*="font-size"],
+    body.font-medium th[style*="font-size"], body.font-medium b[style*="font-size"], body.font-medium a[style*="font-size"],
+    body.font-medium .ws-discharge-item, body.font-medium .ws-discharge-item div, body.font-medium .ws-alert-box, body.font-medium .ws-alert-box div { font-size: 14px !important; }
 
     /* 大サイズ */
     body.font-large, body.font-large table, body.font-large p, body.font-large label,
@@ -487,7 +489,9 @@ body {
     body.font-large h3, body.font-large h4, body.font-large .yr-cat-title, body.font-large .yr-setting-label { font-size: 18px !important; }
 
     /* インラインスタイル(style="font-size:...")を強制上書き */
-    body.font-large span[style*="font-size"], body.font-large div[style*="font-size"], body.font-large td[style*="font-size"] { font-size: 16px !important; }
+    body.font-large span[style*="font-size"], body.font-large div[style*="font-size"], body.font-large td[style*="font-size"],
+    body.font-large th[style*="font-size"], body.font-large b[style*="font-size"], body.font-large a[style*="font-size"],
+    body.font-large .ws-discharge-item, body.font-large .ws-discharge-item div, body.font-large .ws-alert-box, body.font-large .ws-alert-box div { font-size: 16px !important; }
     /* 退院はオレンジのまま、タグは青に設定 */
     .status-discharge { color: #fd7e14; } 
     /* タグのミニバッジ化（コンパクト表示） */
@@ -1071,7 +1075,7 @@ function generateAbbreviation() {}
                 <!-- モード1: 単体患者サマリ -->
                 <div id="ws-mainpane-single">
                 <!-- 操作バー -->
-                <div style="background:#f1f8e9; border:1px solid #c5e1a5; border-radius:4px; padding:10px 14px; margin-bottom:12px;">
+                <div style="background:#f1f8e9; border:1px solid #c5e1a5; border-radius:4px; padding:10px 14px; margin-bottom:10px;">
                     <div style="display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center; gap:8px;">
                         <div style="display:flex; flex-wrap:wrap; align-items:center; gap:6px;">
                             <span style="font-size:13px; font-weight:bold; color:#2e7d32;">👤 患者選択:</span>
@@ -1097,6 +1101,11 @@ function generateAbbreviation() {}
                             待機中
                         </div>
                     </div>
+                </div>
+
+                <!-- 📝 患者情報メモ欄 (患者情報タブの共有メモ・個人メモとリアルタイム同期 / ドラッグ右クリック「メモに追加」対応) -->
+                <div id="ws-single-memo-panel" style="background:#fff; border:1px solid #90caf9; border-left:4px solid #1976d2; border-radius:6px; padding:8px 12px; margin-bottom:12px; box-shadow:0 1px 2px rgba(0,0,0,0.03);">
+                    <div style="color:#888; font-size:12px;">👤 患者を選択すると、ここに患者情報タブの「情報共有・メモ（共有メモ／個人メモ）」が表示され、直接編集やドラッグ＆右クリックでの「メモに追加」が行えます。</div>
                 </div>
 
                 <!-- ⚠️ 注意書きバナー -->
@@ -1187,10 +1196,10 @@ function generateAbbreviation() {}
                     </div>
                 </div>
 
-                <!-- 5. バイタル・観察項目（排便/食止/体重/SpO2/手術日）＆ 入院指示 -->
+                <!-- 5. バイタル・体温表・観察項目（排便/食止/体重/SpO2/手術日）＆ 入院指示 -->
                 <div style="background:#fff; border:1px solid #ffe082; border-radius:6px; margin-bottom:16px; box-shadow:0 1px 3px rgba(0,0,0,0.04); overflow:hidden;">
                     <div style="background:#fff8e1; padding:10px 16px; border-bottom:1px solid #ffe082; display:flex; justify-content:space-between; align-items:center;">
-                        <span style="font-size:13px; font-weight:bold; color:#e65100;">📋 バイタル・観察項目（3日排便なし/下痢/食止/手術日）＆ 入院指示（内服/退院/Dr→Ns/ケア）</span>
+                        <span style="font-size:13px; font-weight:bold; color:#e65100;">🌡️ バイタル・体温表・観察項目（3日排便なし/下痢/食止/手術日）＆ 入院指示</span>
                         <span id="badge-ward-summary-vital" style="font-size:11px; padding:2px 8px; border-radius:10px; font-weight:bold; background:#fff; color:#e65100;">未取得</span>
                     </div>
                     <div id="content-ward-summary-vital" style="padding:12px 14px;">
@@ -8666,6 +8675,7 @@ function switchTab(tabId) {
     if(tabId === 'tab-ward-summary') {
         if (typeof updatePatientDropdowns === 'function') updatePatientDropdowns();
         if (typeof loadWardKartePrefs === 'function') loadWardKartePrefs();
+        if (typeof renderWardSummarySingleMemoPanel === 'function') renderWardSummarySingleMemoPanel();
     }
     if(tabId === 'tab-settings') {
         if (typeof renderWardSettingButtons === "function") renderWardSettingButtons();
@@ -17909,7 +17919,7 @@ function buildWardLabSummaryHtml(labData, pObj, uidPrefix) {
     return parts.join("");
 }
 
-function buildWardVitalSummaryHtml(vitalData, pObj, uidPrefix, includePrnToggle) {
+function buildWardVitalSummaryHtml(vitalData, pObj, uidPrefix, showDefaultTaionGraph) {
     var v = vitalData || {};
     var parts = [];
 
@@ -17950,70 +17960,91 @@ function buildWardVitalSummaryHtml(vitalData, pObj, uidPrefix, includePrnToggle)
         parts.push('<div style="margin-bottom:5px; display:flex; flex-wrap:wrap; gap:4px; align-items:center;">' + obsBadges.join("") + '</div>');
     }
 
-    // 3. 入院指示（内服薬指示・退院指示・Dr→Ns・ケア/申し送り）
-    var instLines = [];
+    // 3. 医師指示（内服薬指示・退院指示のみ常時表示）
+    var primaryInstLines = [];
     if (v.naifukuInsts && v.naifukuInsts.length > 0) {
         for (var ni = 0; ni < v.naifukuInsts.length; ni++) {
             var nit = v.naifukuInsts[ni];
-            instLines.push('<div style="background:#e8f5e9; border-left:3px solid #2e7d32; padding:4px 8px; margin-bottom:4px; font-size:11px; border-radius:2px;">' +
+            primaryInstLines.push('<div style="background:#e8f5e9; border-left:3px solid #2e7d32; padding:4px 8px; margin-bottom:4px; font-size:11px; border-radius:2px;">' +
                 '<span style="font-weight:bold; color:#1b5e20;">💊 医師指示[内服薬] (' + escapeHtml(nit.date.slice(5)) + '):</span> ' + escapeHtml(nit.text) + '</div>');
         }
     }
     if (v.dischargeInsts && v.dischargeInsts.length > 0) {
         for (var di = 0; di < v.dischargeInsts.length; di++) {
             var dit = v.dischargeInsts[di];
-            instLines.push('<div style="background:#f3e5f5; border-left:3px solid #6a1b9a; padding:4px 8px; margin-bottom:4px; font-size:11px; border-radius:2px;">' +
+            primaryInstLines.push('<div style="background:#f3e5f5; border-left:3px solid #6a1b9a; padding:4px 8px; margin-bottom:4px; font-size:11px; border-radius:2px;">' +
                 '<span style="font-weight:bold; color:#4a148c;">🏠 医師指示[退院] (' + escapeHtml(dit.date.slice(5)) + '):</span> ' + escapeHtml(dit.text) + '</div>');
         }
     }
-    if (v.careNotes && v.careNotes.length > 0) {
-        for (var ci = 0; ci < v.careNotes.length; ci++) {
-            var cit = v.careNotes[ci];
-            instLines.push('<div style="background:#fff8e1; border-left:3px solid #f57c00; padding:4px 8px; margin-bottom:4px; font-size:11px; border-radius:2px;">' +
-                '<span style="font-weight:bold; color:#e65100;">🗣️ ' + escapeHtml(cit.item || cit.category) + ' (' + escapeHtml(cit.date.slice(5)) + '):</span> ' + escapeHtml(cit.text) + '</div>');
-        }
-    }
-    if (v.drToNsInsts && v.drToNsInsts.length > 0) {
-        for (var dn = 0; dn < v.drToNsInsts.length; dn++) {
-            var dnit = v.drToNsInsts[dn];
-            instLines.push('<div style="background:#f1f8fe; border-left:3px solid #1976d2; padding:4px 8px; margin-bottom:4px; font-size:11px; border-radius:2px;">' +
-                '<span style="font-weight:bold; color:#0d47a1;">📋 Dr→Ns (' + escapeHtml(dnit.date.slice(5)) + '):</span> ' + escapeHtml(dnit.text) + '</div>');
-        }
-    }
-    if (instLines.length > 0) {
-        parts.push('<div>' + instLines.join("") + '</div>');
+    if (primaryInstLines.length > 0) {
+        parts.push('<div>' + primaryInstLines.join("") + '</div>');
     }
 
-    // 4. 単体画面向け：異常時指示（頓用指示等）＆ 体温表グラフ画像の折りたたみ表示
-    if (includePrnToggle) {
-        var extraBtns = [];
-        if (v.prnInsts && v.prnInsts.length > 0) {
-            var prnId = "ws-vital-prn-" + escapeHtml(String(uidPrefix || "single"));
-            var prnLbl = "異常時指示（発熱・疼痛・便秘・不眠時等 " + v.prnInsts.length + "件）";
-            var prnHtml = '<div style="margin-top:4px;">' +
-                '<button type="button" id="btn-' + prnId + '" onclick="toggleWsInlineBlock(\'' + prnId + '\', \'' + escapeHtml(prnLbl) + '\')" style="background:#f8f9fa; border:1px solid #cfd8dc; color:#546e7a; font-size:10px; font-weight:bold; padding:2px 8px; border-radius:3px; cursor:pointer;">▶ ' + escapeHtml(prnLbl) + '</button>' +
-                '<div id="' + prnId + '" style="display:none; margin-top:4px; padding:6px 8px; background:#fafafa; border:1px dashed #cfd8dc; border-radius:4px;">';
-            for (var pi = 0; pi < v.prnInsts.length; pi++) {
-                var pit = v.prnInsts[pi];
-                prnHtml += '<div style="font-size:11px; margin-bottom:4px; border-bottom:1px dotted #e0e0e0; padding-bottom:3px;">' +
-                    '<b style="color:#37474f;">【' + escapeHtml(pit.item) + '】</b> ' + escapeHtml(pit.text) + '</div>';
+    // 4. 体温表グラフ画像（🌡️ 基本的に展開状態で表示、クリックで折りたたみも可能）
+    if (v.graphImgUrl) {
+        var gId = "ws-vital-graph-" + escapeHtml(String(uidPrefix || "single"));
+        var gLbl = "🌡️ 体温表（体温・脈拍・血圧グラフ）";
+        var isOpenGraph = (showDefaultTaionGraph !== false);
+        var gArrow = isOpenGraph ? "▼ " : "▶ ";
+        var gDisp = isOpenGraph ? "block" : "none";
+        var gHtml = '<div style="margin-top:6px; margin-bottom:6px;">' +
+            '<button type="button" id="btn-' + gId + '" onclick="toggleWsInlineBlock(\'' + gId + '\', \'' + escapeHtml(gLbl) + '\')" style="background:#fff3e0; border:1px solid #ffb74d; color:#e65100; font-size:11px; font-weight:bold; padding:3px 10px; border-radius:4px; cursor:pointer;">' + gArrow + escapeHtml(gLbl) + '</button>' +
+            '<div id="' + gId + '" style="display:' + gDisp + '; margin-top:5px; padding:6px; background:#fff; border:1px solid #cfd8dc; border-radius:4px; overflow-x:auto;">' +
+            '<img src="' + escapeHtml(v.graphImgUrl) + '" style="max-width:100%; border:1px solid #ddd; cursor:pointer;" onclick="window.open(this.src)" title="クリックで別ウィンドウ拡大表示">' +
+            '</div></div>';
+        parts.push(gHtml);
+    }
+
+    // 5. 申し送り・Dr→Ns指示・異常時指示は基本的に折りたたみ状態とする
+    var foldButtons = [];
+    var cCnt = (v.careNotes && v.careNotes.length) ? v.careNotes.length : 0;
+    var dCnt = (v.drToNsInsts && v.drToNsInsts.length) ? v.drToNsInsts.length : 0;
+    if (cCnt > 0 || dCnt > 0) {
+        var cdId = "ws-vital-cd-" + escapeHtml(String(uidPrefix || "single"));
+        var cdParts = [];
+        if (cCnt > 0) cdParts.push("申し送り/ケア " + cCnt + "件");
+        if (dCnt > 0) cdParts.push("Dr→Ns指示 " + dCnt + "件");
+        var cdLbl = "📋 " + cdParts.join("・") + " を表示";
+        var cdInner = "";
+        if (cCnt > 0) {
+            for (var ci = 0; ci < v.careNotes.length; ci++) {
+                var cit = v.careNotes[ci];
+                cdInner += '<div style="background:#fff8e1; border-left:3px solid #f57c00; padding:4px 8px; margin-bottom:4px; font-size:11px; border-radius:2px;">' +
+                    '<span style="font-weight:bold; color:#e65100;">🗣️ ' + escapeHtml(cit.item || cit.category) + ' (' + escapeHtml(cit.date.slice(5)) + '):</span> ' + escapeHtml(cit.text) + '</div>';
             }
-            prnHtml += '</div></div>';
-            extraBtns.push(prnHtml);
         }
-        if (v.graphImgUrl) {
-            var gId = "ws-vital-graph-" + escapeHtml(String(uidPrefix || "single"));
-            var gLbl = "🌡️ 体温・脈拍・血圧グラフ画像（体温表）を表示";
-            var gHtml = '<div style="margin-top:4px;">' +
-                '<button type="button" id="btn-' + gId + '" onclick="toggleWsInlineBlock(\'' + gId + '\', \'' + escapeHtml(gLbl) + '\')" style="background:#fff3e0; border:1px solid #ffb74d; color:#e65100; font-size:10px; font-weight:bold; padding:2px 8px; border-radius:3px; cursor:pointer;">▶ ' + escapeHtml(gLbl) + '</button>' +
-                '<div id="' + gId + '" style="display:none; margin-top:6px; padding:6px; background:#fff; border:1px solid #cfd8dc; border-radius:4px; overflow-x:auto;">' +
-                '<img src="' + escapeHtml(v.graphImgUrl) + '" style="max-width:100%; border:1px solid #ddd;" onclick="window.open(this.src)" title="クリックで別ウィンドウ表示">' +
-                '</div></div>';
-            extraBtns.push(gHtml);
+        if (dCnt > 0) {
+            for (var dn = 0; dn < v.drToNsInsts.length; dn++) {
+                var dnit = v.drToNsInsts[dn];
+                cdInner += '<div style="background:#f1f8fe; border-left:3px solid #1976d2; padding:4px 8px; margin-bottom:4px; font-size:11px; border-radius:2px;">' +
+                    '<span style="font-weight:bold; color:#0d47a1;">📋 Dr→Ns (' + escapeHtml(dnit.date.slice(5)) + '):</span> ' + escapeHtml(dnit.text) + '</div>';
+            }
         }
-        if (extraBtns.length > 0) {
-            parts.push(extraBtns.join(""));
+        foldButtons.push(
+            '<div style="margin-top:4px;">' +
+            '<button type="button" id="btn-' + cdId + '" onclick="toggleWsInlineBlock(\'' + cdId + '\', \'' + escapeHtml(cdLbl) + '\')" style="background:#f1f8fe; border:1px solid #90caf9; color:#0d47a1; font-size:10px; font-weight:bold; padding:2px 8px; border-radius:3px; cursor:pointer;">▶ ' + escapeHtml(cdLbl) + '</button>' +
+            '<div id="' + cdId + '" style="display:none; margin-top:4px; padding:6px 8px; background:#fafafa; border:1px dashed #90caf9; border-radius:4px;">' + cdInner + '</div>' +
+            '</div>'
+        );
+    }
+
+    if (v.prnInsts && v.prnInsts.length > 0) {
+        var prnId = "ws-vital-prn-" + escapeHtml(String(uidPrefix || "single"));
+        var prnLbl = "異常時指示（発熱・疼痛・便秘・不眠時等 " + v.prnInsts.length + "件）";
+        var prnHtml = '<div style="margin-top:4px;">' +
+            '<button type="button" id="btn-' + prnId + '" onclick="toggleWsInlineBlock(\'' + prnId + '\', \'' + escapeHtml(prnLbl) + '\')" style="background:#f8f9fa; border:1px solid #cfd8dc; color:#546e7a; font-size:10px; font-weight:bold; padding:2px 8px; border-radius:3px; cursor:pointer;">▶ ' + escapeHtml(prnLbl) + '</button>' +
+            '<div id="' + prnId + '" style="display:none; margin-top:4px; padding:6px 8px; background:#fafafa; border:1px dashed #cfd8dc; border-radius:4px;">';
+        for (var pi = 0; pi < v.prnInsts.length; pi++) {
+            var pit = v.prnInsts[pi];
+            prnHtml += '<div style="font-size:11px; margin-bottom:4px; border-bottom:1px dotted #e0e0e0; padding-bottom:3px;">' +
+                '<b style="color:#37474f;">【' + escapeHtml(pit.item) + '】</b> ' + escapeHtml(pit.text) + '</div>';
         }
+        prnHtml += '</div></div>';
+        foldButtons.push(prnHtml);
+    }
+
+    if (foldButtons.length > 0) {
+        parts.push(foldButtons.join(""));
     }
 
     if (parts.length === 0) {
@@ -18038,6 +18069,393 @@ function onWardKarteRangeChange(newVal) {
         fetchWardSummaryData(false);
     }
 }
+
+// =========================================================
+// 病棟サマリ用：患者情報メモ欄（共有メモ・個人メモ）の組み込み ＆
+// ドラッグ選択＋右クリック「メモに追加」コンテキストメニュー
+// =========================================================
+function buildWardSummaryPatientMemoHtml(pObj, prefix) {
+    if (!pObj || !pObj.id) return "";
+    // 最新の患者メタデータを反映
+    if (typeof appData !== "undefined" && appData.patientMeta && typeof PatientLogic !== "undefined" && PatientLogic.injectMetaToList) {
+        try { PatientLogic.injectMetaToList([pObj], appData.patientMeta); } catch(e) {}
+    }
+    var pid = String(pObj.id);
+    var pidEsc = escapeHtml(pid);
+    var pNameEsc = escapeHtml(pObj.name || ("ID:" + pid));
+    var roomStr = pObj.room ? ('<span style="background:#eceff1; color:#37474f; padding:1px 6px; border-radius:3px; font-size:11px; font-weight:bold; margin-right:5px;">' + escapeHtml(pObj.room) + '</span>') : "";
+    var sharedVal = escapeHtml(pObj.memo || "");
+    var pMemos = (pObj.personalMemos && typeof pObj.personalMemos === "object") ? pObj.personalMemos : {};
+    var uId = (typeof currentSystemId !== "undefined" && currentSystemId) ? currentSystemId : "";
+    var personalVal = (uId && pMemos[uId]) ? escapeHtml(pMemos[uId]) : "";
+    var editOk = (typeof isEditMode !== "undefined" && isEditMode);
+    var disabledAttr = editOk ? "" : ' disabled="disabled"';
+    var uNameEsc = (typeof currentUserName !== "undefined" && currentUserName) ? escapeHtml(currentUserName) : "自分";
+    var authorInfo = "";
+    if (pObj.memoAuthors && pObj.memoAuthors.length > 0) {
+        authorInfo = '<span style="font-size:10px; color:#666; margin-left:8px;">(更新: ' + escapeHtml(pObj.memoAuthors[0]) + ')</span>';
+    } else if (pObj.memoAuthor) {
+        authorInfo = '<span style="font-size:10px; color:#666; margin-left:8px;">(更新: ' + escapeHtml(pObj.memoAuthor) + ')</span>';
+    }
+    var lockNotice = editOk ? "" : '<span style="font-size:10px; color:#c62828; margin-left:8px;">※ログインするとメモの編集・右クリック追加が可能です</span>';
+
+    var sharedId = "ws-memo-shared-" + escapeHtml(prefix) + "-" + pidEsc;
+    var personalId = "ws-memo-personal-" + escapeHtml(prefix) + "-" + pidEsc;
+
+    var sharedEvents = editOk
+        ? (' onchange="onWardSummaryMemoCommit(\'' + pidEsc + '\', \'shared\', this)" onkeyup="onWardSummaryMemoKeyup(\'' + pidEsc + '\', \'shared\', this, event)"')
+        : "";
+    var personalEvents = editOk
+        ? (' onchange="onWardSummaryMemoCommit(\'' + pidEsc + '\', \'personal\', this)" onkeyup="onWardSummaryMemoKeyup(\'' + pidEsc + '\', \'personal\', this, event)"')
+        : "";
+
+    var html = '<div data-ws-patient-id="' + pidEsc + '">' +
+        '<div style="display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center; gap:6px; margin-bottom:6px;">' +
+            '<div>' +
+                '<span style="font-size:12px; font-weight:bold; color:#0d47a1;">📝 患者情報メモ: </span>' +
+                roomStr + '<b style="font-size:12px; color:#222;">' + pNameEsc + '</b> <span style="font-size:11px; color:#666;">(ID:' + pidEsc + ')</span>' +
+                authorInfo + lockNotice +
+            '</div>' +
+            '<span style="font-size:10px; color:#1565c0; background:#e3f2fd; padding:2px 8px; border-radius:10px;">💡 収集した文章をドラッグ選択して<b>右クリック →「メモに追加」</b>で追記できます</span>' +
+        '</div>' +
+        '<div style="display:flex; flex-wrap:wrap; gap:8px;">' +
+            '<div style="flex:1 1 280px; min-width:0;">' +
+                '<div style="font-size:11px; font-weight:bold; color:#37474f; margin-bottom:2px;">📢 共有メモ (患者情報タブと連動):</div>' +
+                '<textarea id="' + sharedId + '" class="ws-sync-memo-shared" data-pid="' + pidEsc + '" rows="2"' + disabledAttr + sharedEvents +
+                ' placeholder="【共有】申し送りやメモ... (#タグ入力可)" style="width:100%; min-height:42px; font-size:12px; line-height:1.4; padding:4px 6px; border:1px solid #90caf9; border-radius:4px; background:#fff; box-sizing:border-box; resize:vertical;">' + sharedVal + '</textarea>' +
+            '</div>' +
+            '<div style="flex:1 1 280px; min-width:0;">' +
+                '<div style="font-size:11px; font-weight:bold; color:#0277bd; margin-bottom:2px;">🔒 個人メモ (' + uNameEsc + ' 専用):</div>' +
+                '<textarea id="' + personalId + '" class="ws-sync-memo-personal" data-pid="' + pidEsc + '" rows="2"' + disabledAttr + personalEvents +
+                ' placeholder="【個人】自分用メモ... (#タグ入力可)" style="width:100%; min-height:42px; font-size:12px; line-height:1.4; padding:4px 6px; border:1px dashed #4fc3f7; border-radius:4px; background:#f0faff; box-sizing:border-box; resize:vertical;">' + personalVal + '</textarea>' +
+            '</div>' +
+        '</div>' +
+    '</div>';
+    return html;
+}
+
+function renderWardSummarySingleMemoPanel(pObj) {
+    var panel = document.getElementById("ws-single-memo-panel");
+    if (!panel) return;
+    var targetP = pObj || (wardSummaryState && wardSummaryState.patient) || null;
+    if (!targetP || !targetP.id) {
+        panel.innerHTML = '<div style="color:#888; font-size:12px;">👤 患者を選択すると、ここに患者情報タブの「情報共有・メモ（共有メモ／個人メモ）」が表示され、直接編集やドラッグ＆右クリックでの「メモに追加」が行えます。</div>';
+        return;
+    }
+    var realP = (typeof findPatientById === "function") ? (findPatientById(targetP.id) || targetP) : targetP;
+    panel.setAttribute("data-ws-patient-id", String(realP.id));
+    panel.innerHTML = buildWardSummaryPatientMemoHtml(realP, "single");
+}
+
+function syncAllWardSummaryMemoInputs(patientId, memoType, newVal, skipEl) {
+    var normTarget = String(patientId || "").replace(/^0+/, "") || "0";
+    var cls = (memoType === "personal") ? "ws-sync-memo-personal" : "ws-sync-memo-shared";
+    var list = document.querySelectorAll ? document.querySelectorAll("textarea." + cls) : document.getElementsByTagName("textarea");
+    for (var i = 0; i < list.length; i++) {
+        var ta = list[i];
+        if (ta === skipEl) continue;
+        if (!document.querySelectorAll && (!ta.className || ta.className.indexOf(cls) === -1)) continue;
+        var pidAttr = ta.getAttribute("data-pid") || "";
+        var normPid = String(pidAttr).replace(/^0+/, "") || "0";
+        if (normPid === normTarget) {
+            ta.value = newVal;
+        }
+    }
+}
+
+function onWardSummaryMemoKeyup(patientId, memoType, el, ev) {
+    if (!el) return;
+    if (typeof showTagSuggest === "function") {
+        try { showTagSuggest(el, ev); } catch(e) {}
+    }
+    if (memoType === "personal") {
+        if (typeof updatePersonalMemoDebounced === "function") {
+            updatePersonalMemoDebounced(patientId, el.value, null);
+        }
+    } else {
+        if (typeof updateMemoDebounced === "function") {
+            updateMemoDebounced(patientId, el.value, null);
+        }
+    }
+    syncAllWardSummaryMemoInputs(patientId, memoType, el.value, el);
+}
+
+function onWardSummaryMemoCommit(patientId, memoType, el) {
+    if (!el) return;
+    var val = el.value;
+    syncAllWardSummaryMemoInputs(patientId, memoType, val, el);
+    if (memoType === "personal") {
+        if (typeof finalizePersonalMemo === "function") {
+            finalizePersonalMemo(patientId, el);
+        }
+        if (typeof renderPatients === "function") {
+            try { renderPatients(); } catch(e) {}
+        }
+    } else {
+        if (typeof finalizeMemo === "function") {
+            finalizeMemo(patientId, el);
+        }
+    }
+}
+
+function appendTextToWardPatientMemo(patientId, memoType, textToAppend) {
+    if (typeof isEditMode !== "undefined" && !isEditMode) {
+        yrShowAlert("メモに追加するには先に画面右上からログインしてください。", "error");
+        return;
+    }
+    var cleanAdd = trimSummaryStr(String(textToAppend || ""));
+    if (!cleanAdd) {
+        yrShowAlert("追加するテキストが選択されていません。", "error");
+        return;
+    }
+    if (!patientId) {
+        yrShowAlert("追加先の患者が特定できませんでした。単体患者サマリで患者を選択するか、対象患者の枠内で選択してください。", "error");
+        return;
+    }
+    var p = (typeof findPatientById === "function") ? findPatientById(patientId) : null;
+    if (!p) {
+        if (wardSummaryState && wardSummaryState.patient && String(wardSummaryState.patient.id) === String(patientId)) {
+            p = wardSummaryState.patient;
+        }
+    }
+    if (!p) {
+        yrShowAlert("対象の患者データ（ID:" + patientId + "）がボード上に見つかりませんでした。", "error");
+        return;
+    }
+    if (typeof appData !== "undefined" && appData.patientMeta && typeof PatientLogic !== "undefined" && PatientLogic.injectMetaToList) {
+        try { PatientLogic.injectMetaToList([p], appData.patientMeta); } catch(e) {}
+    }
+
+    var pName = p.name || ("ID:" + p.id);
+    if (memoType === "personal") {
+        if (!p.personalMemos) p.personalMemos = {};
+        var uId = (typeof currentSystemId !== "undefined" && currentSystemId) ? currentSystemId : "";
+        var curP = (uId && p.personalMemos[uId]) ? String(p.personalMemos[uId]) : "";
+        // 現在入力されている内容が消えないよう末尾に改行して追記
+        var nextP = curP ? (curP.replace(/[\r\n]+$/, "") + "\n" + cleanAdd) : cleanAdd;
+        if (uId) p.personalMemos[uId] = nextP;
+        if (typeof finalizePersonalMemo === "function") {
+            finalizePersonalMemo(p.id, { value: nextP });
+        }
+        syncAllWardSummaryMemoInputs(p.id, "personal", nextP, null);
+        if (typeof renderPatients === "function") {
+            try { renderPatients(); } catch(e) {}
+        }
+        yrShowAlert("🔒 <b>" + escapeHtml(pName) + "</b> さんの<b>個人メモ</b>に追記しました！", "info");
+    } else {
+        var curS = p.memo ? String(p.memo) : "";
+        // 現在入力されている内容が消えないよう末尾に改行して追記
+        var nextS = curS ? (curS.replace(/[\r\n]+$/, "") + "\n" + cleanAdd) : cleanAdd;
+        p.memo = nextS;
+        if (typeof finalizeMemo === "function") {
+            finalizeMemo(p.id, { value: nextS });
+        }
+        syncAllWardSummaryMemoInputs(p.id, "shared", nextS, null);
+        yrShowAlert("📢 <b>" + escapeHtml(pName) + "</b> さんの<b>共有メモ</b>に追記しました！", "info");
+    }
+}
+
+var _wsContextMenuState = {
+    selectedText: "",
+    patientId: "",
+    patientName: ""
+};
+
+function getWardSelectedText() {
+    var txt = "";
+    try {
+        var activeEl = document.activeElement;
+        if (activeEl && (activeEl.tagName === "TEXTAREA" || (activeEl.tagName === "INPUT" && activeEl.type === "text"))) {
+            if (typeof activeEl.selectionStart === "number" && typeof activeEl.selectionEnd === "number") {
+                txt = activeEl.value.substring(activeEl.selectionStart, activeEl.selectionEnd);
+            }
+        }
+        if (!txt && window.getSelection) {
+            txt = String(window.getSelection().toString() || "");
+        }
+        if (!txt && document.selection && document.selection.createRange) {
+            var rng = document.selection.createRange();
+            if (rng && rng.text) txt = rng.text;
+        }
+    } catch(e) {}
+    return trimSummaryStr(txt);
+}
+
+function resolveWardContextPatient(targetEl) {
+    var el = targetEl;
+    while (el && el !== document.body && el !== document.documentElement) {
+        if (el.getAttribute) {
+            var pid = el.getAttribute("data-ws-patient-id") || el.getAttribute("data-pid");
+            if (pid) {
+                var pObj = (typeof findPatientById === "function") ? findPatientById(pid) : null;
+                return {
+                    id: String(pid),
+                    name: (pObj && pObj.name) ? pObj.name : ("ID:" + pid)
+                };
+            }
+        }
+        el = el.parentNode;
+    }
+    // フォールバック1: 一括カルテ閲覧画面が表示中なら選択中のカルテ患者
+    var batchPane = document.getElementById("ws-mainpane-batch");
+    if (batchPane && batchPane.style.display !== "none") {
+        if (wardBatchState && wardBatchState.currentView === "karte" && wardBatchState.selectedBatchKartePatientId) {
+            var bkPid = String(wardBatchState.selectedBatchKartePatientId);
+            var bkP = (typeof findPatientById === "function") ? findPatientById(bkPid) : null;
+            return {
+                id: bkPid,
+                name: (bkP && bkP.name) ? bkP.name : ("ID:" + bkPid)
+            };
+        }
+    }
+    // フォールバック2: 単体患者サマリで選択中の患者
+    if (wardSummaryState && wardSummaryState.patient && wardSummaryState.patient.id) {
+        return {
+            id: String(wardSummaryState.patient.id),
+            name: wardSummaryState.patient.name || ("ID:" + wardSummaryState.patient.id)
+        };
+    }
+    return null;
+}
+
+function hideWardSummaryContextMenu() {
+    var menu = document.getElementById("ws-custom-context-menu");
+    if (menu) menu.style.display = "none";
+}
+
+function onWardContextMenuAction(actionType) {
+    var txt = _wsContextMenuState.selectedText;
+    var pid = _wsContextMenuState.patientId;
+    hideWardSummaryContextMenu();
+    if (!txt) return;
+    if (actionType === "copy") {
+        try {
+            if (window.clipboardData && window.clipboardData.setData) {
+                window.clipboardData.setData("Text", txt);
+                yrShowAlert("📋 選択テキストをコピーしました。", "info");
+            }
+        } catch(e) {}
+        return;
+    }
+    if (actionType === "shared" || actionType === "personal") {
+        appendTextToWardPatientMemo(pid, actionType, txt);
+    }
+}
+
+function initWardSummaryContextMenu() {
+    if (window._wsContextMenuInitialized) return;
+    window._wsContextMenuInitialized = true;
+
+    function handleContextMenu(e) {
+        var ev = e || window.event;
+        var target = ev.target || ev.srcElement;
+        if (!target) return;
+
+        // メモ入力用のtextareaやinput自体の上で右クリックした場合はブラウザ標準の右クリック（貼り付け等）を優先
+        var tag = target.tagName ? target.tagName.toUpperCase() : "";
+        if ((tag === "TEXTAREA" && target.id !== "txt-ws-batch-summary") || tag === "INPUT" || tag === "SELECT") {
+            hideWardSummaryContextMenu();
+            return;
+        }
+
+        // 病棟サマリタブ内でのみ有効化
+        var wsTab = document.getElementById("tab-ward-summary");
+        if (!wsTab || !hasClass(wsTab, "active")) {
+            hideWardSummaryContextMenu();
+            return;
+        }
+        var inWs = false;
+        var cur = target;
+        while (cur && cur !== document.body) {
+            if (cur === wsTab) { inWs = true; break; }
+            cur = cur.parentNode;
+        }
+        if (!inWs) {
+            hideWardSummaryContextMenu();
+            return;
+        }
+
+        var selTxt = getWardSelectedText();
+        if (!selTxt) {
+            hideWardSummaryContextMenu();
+            return;
+        }
+
+        var patInfo = resolveWardContextPatient(target);
+        _wsContextMenuState.selectedText = selTxt;
+        _wsContextMenuState.patientId = patInfo ? patInfo.id : "";
+        _wsContextMenuState.patientName = patInfo ? patInfo.name : "";
+
+        var menu = document.getElementById("ws-custom-context-menu");
+        if (!menu) {
+            menu = document.createElement("div");
+            menu.id = "ws-custom-context-menu";
+            menu.style.cssText = "position:absolute; z-index:20000; background:#fff; border:1px solid #1976d2; border-radius:6px; box-shadow:0 4px 14px rgba(0,0,0,0.22); padding:5px 0; min-width:230px; max-width:340px; display:none; font-size:12px;";
+            document.body.appendChild(menu);
+        }
+
+        var previewStr = selTxt.length > 36 ? (selTxt.substring(0, 36) + "...") : selTxt;
+        var html = '<div style="padding:4px 12px 6px 12px; border-bottom:1px solid #e0e0e0; font-size:11px; color:#555; background:#f5f9ff;">' +
+            '<div style="font-weight:bold; color:#0d47a1;">📝 選択テキスト:</div>' +
+            '<div style="color:#333; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">「' + escapeHtml(previewStr) + '」</div>' +
+            '</div>';
+
+        if (patInfo && patInfo.id) {
+            html += '<div onmousedown="onWardContextMenuAction(\'shared\'); return false;" onmouseover="this.style.background=\'#e3f2fd\'" onmouseout="this.style.background=\'#fff\'" style="padding:7px 14px; cursor:pointer; font-weight:bold; color:#0d47a1; border-bottom:1px dotted #eee;">' +
+                '📢 メモに追加（<b>' + escapeHtml(patInfo.name) + '</b> の共有メモ）' +
+                '</div>' +
+                '<div onmousedown="onWardContextMenuAction(\'personal\'); return false;" onmouseover="this.style.background=\'#e1f5fe\'" onmouseout="this.style.background=\'#fff\'" style="padding:7px 14px; cursor:pointer; font-weight:bold; color:#0277bd; border-bottom:1px solid #e0e0e0;">' +
+                '🔒 個人メモに追加（<b>' + escapeHtml(patInfo.name) + '</b>）' +
+                '</div>';
+        } else {
+            html += '<div style="padding:6px 12px; color:#999; font-size:11px; border-bottom:1px solid #e0e0e0;">※患者行または患者カード内で選択するとメモに追加できます</div>';
+        }
+
+        html += '<div onmousedown="onWardContextMenuAction(\'copy\'); return false;" onmouseover="this.style.background=\'#f5f5f5\'" onmouseout="this.style.background=\'#fff\'" style="padding:6px 14px; cursor:pointer; color:#333;">' +
+            '📋 選択テキストをコピー' +
+            '</div>';
+
+        menu.innerHTML = html;
+        menu.style.display = "block";
+
+        var scrollX = window.pageXOffset || (document.documentElement ? document.documentElement.scrollLeft : 0) || (document.body ? document.body.scrollLeft : 0) || 0;
+        var scrollY = window.pageYOffset || (document.documentElement ? document.documentElement.scrollTop : 0) || (document.body ? document.body.scrollTop : 0) || 0;
+        var left = (ev.clientX || 0) + scrollX + 4;
+        var top = (ev.clientY || 0) + scrollY + 4;
+        var winW = (document.documentElement && document.documentElement.clientWidth) ? document.documentElement.clientWidth : (document.body.clientWidth || 1000);
+        if ((ev.clientX || 0) + 280 > winW) {
+            left = Math.max(10, (ev.clientX || 0) + scrollX - 260);
+        }
+        menu.style.left = left + "px";
+        menu.style.top = top + "px";
+
+        if (ev.preventDefault) ev.preventDefault();
+        ev.returnValue = false;
+        return false;
+    }
+
+    function handleGlobalMouseDown(e) {
+        var ev = e || window.event;
+        var target = ev.target || ev.srcElement;
+        var menu = document.getElementById("ws-custom-context-menu");
+        if (!menu || menu.style.display === "none") return;
+        var cur = target;
+        while (cur && cur !== document.body) {
+            if (cur === menu) return;
+            cur = cur.parentNode;
+        }
+        hideWardSummaryContextMenu();
+    }
+
+    if (document.addEventListener) {
+        document.addEventListener("contextmenu", handleContextMenu, false);
+        document.addEventListener("mousedown", handleGlobalMouseDown, false);
+    } else if (document.attachEvent) {
+        document.attachEvent("oncontextmenu", handleContextMenu);
+        document.attachEvent("onmousedown", handleGlobalMouseDown);
+    }
+}
+initWardSummaryContextMenu();
 
 function stopWardBatchKarteAllFetch() {
     wardSummaryCache.karteAllStopRequested = true;
@@ -18075,6 +18493,9 @@ function startWardBatchKarteAllFetch() {
         if (ipt) ipt.value = String(list[0].id || "");
         var sel = document.getElementById("sel-ward-summary-patient-dropdown");
         if (sel) sel.value = String(list[0].id || "");
+    }
+    if (wardSummaryState.patient) {
+        renderWardSummarySingleMemoPanel(wardSummaryState.patient);
     }
 
     // 現在のメインモードに応じて自動的にカルテ閲覧画面へ切り替える
@@ -18204,6 +18625,7 @@ function fetchWardSummaryData(forceRefresh) {
         pObj = { id: rawId, name: "ID:" + rawId, disease: "", daysInHosp: "" };
     }
     wardSummaryState.patient = pObj;
+    renderWardSummarySingleMemoPanel(pObj);
 
     var today = new Date();
     var todayStr = ("000" + today.getFullYear()).slice(-4) + "/" + ("0" + (today.getMonth() + 1)).slice(-2) + "/" + ("0" + today.getDate()).slice(-2);
@@ -20067,8 +20489,16 @@ function toggleAllBatchDetails(openBool) {
 }
 
 function buildBatchInlineDetailHtml(row) {
-    var html = '<div style="background:#f9fbfd; border:1px solid #b0bec5; border-radius:4px; padding:10px 12px; margin:4px 0;">';
     var pIdKey = row.patient ? String(row.patient.id || "") : "row";
+    var html = '<div data-ws-patient-id="' + escapeHtml(pIdKey) + '" style="background:#f9fbfd; border:1px solid #b0bec5; border-radius:4px; padding:10px 12px; margin:4px 0;">';
+
+    // -1. 患者情報メモ欄（共有メモ・個人メモ：患者情報タブと連動）
+    if (row.patient && row.patient.id) {
+        var realPat = (typeof findPatientById === "function") ? (findPatientById(row.patient.id) || row.patient) : row.patient;
+        html += '<div style="background:#fff; border:1px solid #90caf9; border-left:4px solid #1976d2; border-radius:4px; padding:7px 10px; margin-bottom:8px;">' +
+            buildWardSummaryPatientMemoHtml(realPat, "batch_inline") +
+            '</div>';
+    }
 
     // 0. 採血異常値・外注 ＆ バイタル・観察項目・入院指示（取得されている場合）
     if (row.labData || (row.patient && row.patient.bloodDate && row.patient.bloodDate !== "-" && row.patient.bloodDate !== "なし")) {
@@ -20341,7 +20771,7 @@ function renderWardBatchTable() {
         }
 
         var rowBg = row.hasAction ? ' style="background:#fffcfb;"' : '';
-        html += '<tr' + rowBg + '>' +
+        html += '<tr data-ws-patient-id="' + pIdEsc + '"' + rowBg + '>' +
             '<td style="padding:7px 10px; border:1px solid #e0e0e0;"><b>' + roomStr + '</b><span style="color:#0d47a1; font-weight:bold;">' + escapeHtml(p.name || p.id) + '</span><br><span style="font-size:10px; color:#666;">ID:' + pIdEsc + (p.daysInHosp ? ' / ' + p.daysInHosp + '日目' : '') + '</span></td>' +
             '<td style="padding:7px 10px; border:1px solid #e0e0e0; text-align:center;">' + teikiIssueHtml + '</td>' +
             '<td style="padding:7px 10px; border:1px solid #e0e0e0; text-align:center;">' + rxHtml + '</td>' +
@@ -20353,7 +20783,7 @@ function renderWardBatchTable() {
                 '<button type="button" class="yr-btn" style="background:#546e7a; color:#fff; font-size:11px; padding:3px 7px;" onclick="jumpToWardSummaryDetail(\'' + pIdEsc + '\')" title="1週間カルテ・文書画像を開く">カルテ</button>' +
             '</td>' +
             '</tr>' +
-            '<tr id="ws-batch-detail-' + pIdEsc + '" style="display:none;">' +
+            '<tr id="ws-batch-detail-' + pIdEsc + '" data-ws-patient-id="' + pIdEsc + '" style="display:none;">' +
             '<td colspan="7" style="padding:6px 12px; border:1px solid #cfd8dc; background:#f5f7fa;">' +
                 buildBatchInlineDetailHtml(row) +
             '</td></tr>';
@@ -20476,7 +20906,7 @@ function renderWardBatchDischargeOnlyTable() {
                 '</div>';
         }
 
-        html += '<tr style="border-bottom:2px solid #cfd8dc;">' +
+        html += '<tr data-ws-patient-id="' + pIdEsc + '" style="border-bottom:2px solid #cfd8dc;">' +
             '<td style="padding:10px; border:1px solid #e0e0e0; vertical-align:top; background:#faf5fc;"><b>' + roomStr + '</b><span style="color:#0d47a1; font-weight:bold;">' + escapeHtml(p.name || p.id) + '</span><br><span style="font-size:10px; color:#666;">ID:' + pIdEsc + (p.daysInHosp ? ' / ' + p.daysInHosp + '日目' : '') + '</span><br><span style="font-size:10px; color:#6a1b9a; font-weight:bold;">(' + row.dischargeMatches.length + '件)</span></td>' +
             '<td colspan="2" style="padding:10px; border:1px solid #e0e0e0; vertical-align:top;">' + itemsHtml + '</td>' +
             '<td style="padding:10px; border:1px solid #e0e0e0; text-align:center; vertical-align:middle;"><button type="button" class="yr-btn" style="background:#546e7a; color:#fff; font-size:11px; padding:4px 8px;" onclick="jumpToWardSummaryDetail(\'' + pIdEsc + '\')">カルテ</button></td>' +
@@ -20532,12 +20962,6 @@ function buildWardBatchSummaryText() {
                 }
                 if (vd.naifukuInsts && vd.naifukuInsts.length > 0) {
                     for (var vni = 0; vni < vd.naifukuInsts.length; vni++) vParts.push("[内服指示]" + vd.naifukuInsts[vni].text);
-                }
-                if (vd.careNotes && vd.careNotes.length > 0) {
-                    for (var vci = 0; vci < vd.careNotes.length; vci++) vParts.push("[申し送り]" + vd.careNotes[vci].text);
-                }
-                if (vd.drToNsInsts && vd.drToNsInsts.length > 0) {
-                    for (var vdn = 0; vdn < vd.drToNsInsts.length; vdn++) vParts.push("[Dr→Ns]" + vd.drToNsInsts[vdn].text);
                 }
             }
             if (r.patient && r.patient.surgeryDate && r.patient.surgeryDate !== "なし" && r.patient.surgeryDate !== "-") {
@@ -20724,7 +21148,7 @@ function renderWardBatchRichSummary() {
                     '<div style="font-size:12px; color:#4a148c; font-weight:bold;">' + escapeHtml(dm.sentence) + '</div>' +
                     '</div>';
             }
-            discBody += '<tr style="border-bottom:1px solid #f0e6f5;">' +
+            discBody += '<tr data-ws-patient-id="' + dpIdEsc + '" style="border-bottom:1px solid #f0e6f5;">' +
                 '<td style="width:20%; padding:7px 8px; vertical-align:top; background:#faf5fc; border:1px solid #eee;">' + buildPatientCell(dp) + '</td>' +
                 '<td style="width:72%; padding:7px 10px; vertical-align:top; border:1px solid #eee;">' + dmHtml + '</td>' +
                 '<td style="width:8%; padding:7px 6px; text-align:center; vertical-align:middle; border:1px solid #eee;">' + buildKarteBtn(dp) + '</td>' +
@@ -20745,7 +21169,7 @@ function renderWardBatchRichSummary() {
                 var lr = labItems[li];
                 var lpObj = lr.patient;
                 var lpIdKey = String(lpObj.id || li);
-                labBody += '<tr style="border-bottom:1px solid #ffcdd2;">' +
+                labBody += '<tr data-ws-patient-id="' + escapeHtml(lpIdKey) + '" style="border-bottom:1px solid #ffcdd2;">' +
                     '<td style="width:20%; padding:7px 8px; vertical-align:top; background:#fffafa; border:1px solid #eee;">' + buildPatientCell(lpObj) + '</td>' +
                     '<td style="width:72%; padding:7px 10px; vertical-align:top; border:1px solid #eee;">' + buildWardLabSummaryHtml(lr.labData, lpObj, "rich_" + lpIdKey) + '</td>' +
                     '<td style="width:8%; padding:7px 6px; text-align:center; vertical-align:middle; border:1px solid #eee;">' + buildKarteBtn(lpObj) + '</td>' +
@@ -20755,7 +21179,7 @@ function renderWardBatchRichSummary() {
         }
         html += buildSectionCard("🩸 採血異常値（直近1週間：パニック値P・主要項目）＆ 外注検査", labItems.length, "#ffebee", "#ef9a9a", "#fff", "#b71c1c", labBody);
 
-        // 3. バイタル・観察項目（直近3日間排便なし / 下痢 / 食止め / 手術）＆ 入院指示（内服薬 / Dr→Ns / ケア）
+        // 3. バイタル・観察項目（直近3日間排便なし / 下痢 / 食止め / 手術）＆ 体温表・入院指示
         var vitalBody = "";
         if (vitalItems.length === 0) {
             vitalBody = '<div style="color:#888; font-size:12px; padding:4px 2px;">排便異常（3日間排便なし/下痢）・食止め・入院指示に該当する患者はいません（または未取得）</div>';
@@ -20765,15 +21189,15 @@ function renderWardBatchRichSummary() {
                 var vr = vitalItems[vi];
                 var vpObj = vr.patient;
                 var vpIdKey = String(vpObj.id || vi);
-                vitalBody += '<tr style="border-bottom:1px solid #ffe0b2;">' +
+                vitalBody += '<tr data-ws-patient-id="' + escapeHtml(vpIdKey) + '" style="border-bottom:1px solid #ffe0b2;">' +
                     '<td style="width:20%; padding:7px 8px; vertical-align:top; background:#fffdf9; border:1px solid #eee;">' + buildPatientCell(vpObj) + '</td>' +
-                    '<td style="width:72%; padding:7px 10px; vertical-align:top; border:1px solid #eee;">' + buildWardVitalSummaryHtml(vr.vitalData, vpObj, "rich_" + vpIdKey, false) + '</td>' +
+                    '<td style="width:72%; padding:7px 10px; vertical-align:top; border:1px solid #eee;">' + buildWardVitalSummaryHtml(vr.vitalData, vpObj, "rich_" + vpIdKey, true) + '</td>' +
                     '<td style="width:8%; padding:7px 6px; text-align:center; vertical-align:middle; border:1px solid #eee;">' + buildKarteBtn(vpObj) + '</td>' +
                     '</tr>';
             }
             vitalBody += '</table>';
         }
-        html += buildSectionCard("📋 バイタル・観察項目（3日排便なし/下痢/食止/手術）＆ 入院指示（内服/Dr→Ns/ケア）", vitalItems.length, "#fff8e1", "#ffe082", "#fff", "#e65100", vitalBody);
+        html += buildSectionCard("📋 バイタル・体温表・観察項目（3日排便なし/下痢/食止/手術）＆ 入院指示", vitalItems.length, "#fff8e1", "#ffe082", "#fff", "#e65100", vitalBody);
         // 2. 今週定期未発行
         var mtBody = "";
         if (missingTeikiItems.length === 0) {
@@ -20783,7 +21207,7 @@ function renderWardBatchRichSummary() {
             for (var mi = 0; mi < missingTeikiItems.length; mi++) {
                 var mr = missingTeikiItems[mi];
                 var mp = mr.patient;
-                mtBody += '<tr>' +
+                mtBody += '<tr data-ws-patient-id="' + escapeHtml(String(mp.id || "")) + '">' +
                     '<td style="width:20%; padding:7px 8px; vertical-align:middle; background:#fffafa; border:1px solid #eee;">' + buildPatientCell(mp) + '</td>' +
                     '<td style="width:72%; padding:7px 10px; vertical-align:middle; border:1px solid #eee;"><span class="ws-badge ws-badge-stopped">🔴 先週定期あり → 今週未発行</span></td>' +
                     '<td style="width:8%; padding:7px 6px; text-align:center; vertical-align:middle; border:1px solid #eee;">' + buildKarteBtn(mp) + '</td>' +
@@ -20852,7 +21276,7 @@ function renderWardBatchRichSummary() {
                     subTbl += '</tbody></table></div></div>';
                 }
 
-                rxBody += '<tr style="border-bottom:2px solid #ffe0b2;">' +
+                rxBody += '<tr data-ws-patient-id="' + escapeHtml(String(rp.id || "")) + '" style="border-bottom:2px solid #ffe0b2;">' +
                     '<td style="width:20%; padding:7px 8px; vertical-align:top; background:#fffdf9; border:1px solid #eee;">' + buildPatientCell(rp) + '</td>' +
                     '<td style="width:72%; padding:7px 8px; vertical-align:top; border:1px solid #eee;">' + subTbl + '</td>' +
                     '<td style="width:8%; padding:7px 6px; text-align:center; vertical-align:middle; border:1px solid #eee;">' + buildKarteBtn(rp) + '</td>' +
@@ -20932,7 +21356,7 @@ function renderWardBatchRichSummary() {
                     alSubTbl += '</tbody></table></div></div>';
                 }
 
-                alBody += '<tr style="border-bottom:2px solid #f8bbd0;">' +
+                alBody += '<tr data-ws-patient-id="' + escapeHtml(String(ap.id || "")) + '" style="border-bottom:2px solid #f8bbd0;">' +
                     '<td style="width:20%; padding:7px 8px; vertical-align:top; background:#fff9fb; border:1px solid #eee;">' + buildPatientCell(ap) + '</td>' +
                     '<td style="width:72%; padding:7px 8px; vertical-align:top; border:1px solid #eee;">' + alSubTbl + '</td>' +
                     '<td style="width:8%; padding:7px 6px; text-align:center; vertical-align:middle; border:1px solid #eee;">' + buildKarteBtn(ap) + '</td>' +
@@ -21169,7 +21593,7 @@ function renderWardBatchDrugSearchResult() {
                     '</div>';
             }
 
-            html += '<tr>' +
+            html += '<tr data-ws-patient-id="' + pIdEsc + '">' +
                 '<td style="padding:7px 10px; border:1px solid #e0e0e0; vertical-align:top; background:#fafcff;">' + roomStr + '<b style="color:#0d47a1;">' + escapeHtml(p.name || p.id) + '</b><br><span style="font-size:10px; color:#666;">ID:' + pIdEsc + daysStr + '</span></td>' +
                 '<td style="padding:7px 10px; border:1px solid #e0e0e0; vertical-align:top;">' + drugCol + '</td>' +
                 '<td style="padding:7px 10px; border:1px solid #e0e0e0; vertical-align:top;">' + detailCol + '</td>' +
@@ -21434,7 +21858,12 @@ function renderWardBatchKarteView() {
         }
     }
 
-    var cardHtml = '<div style="background:#fff; border:2px solid #1976d2; border-radius:6px; box-shadow:0 1px 3px rgba(0,0,0,0.06);">' +
+    var realBkPat = (typeof findPatientById === "function") ? (findPatientById(apIdStr) || apt) : apt;
+    var bkMemoHtml = '<div style="background:#fff; border-bottom:1px solid #bbdefb; padding:8px 14px;">' +
+        buildWardSummaryPatientMemoHtml(realBkPat, "batch_karte") +
+        '</div>';
+
+    var cardHtml = '<div data-ws-patient-id="' + apIdEsc + '" style="background:#fff; border:2px solid #1976d2; border-radius:6px; box-shadow:0 1px 3px rgba(0,0,0,0.06);">' +
         '<div style="background:#e3f2fd; padding:10px 14px; border-bottom:1px solid #90caf9; border-radius:4px 4px 0 0; display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center; gap:8px;">' +
         '<div>' +
         roomBadge +
@@ -21448,6 +21877,7 @@ function renderWardBatchKarteView() {
         '<button type="button" class="yr-btn" style="background:#546e7a; color:#fff; font-size:11px; padding:3px 9px;" onclick="jumpToWardSummaryDetail(\'' + apIdEsc + '\')">👤 単体画面で処方も見る</button>' +
         '<button type="button" class="yr-btn" style="background:#1976d2; color:#fff; font-size:11px; padding:3px 9px;" onclick="openWardKarteRecord(\'' + apIdEsc + '\', \'\')">📄 カルテ本画面</button>' +
         '</div></div>' +
+        bkMemoHtml +
         '<div style="padding:12px 14px; background:#fafcff;">' +
         recHtml +
         '</div></div>';
