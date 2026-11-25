@@ -475,6 +475,10 @@ body {
     /* インラインスタイル(style="font-size:...")を強制上書き */
     body.font-medium span[style*="font-size"], body.font-medium div[style*="font-size"], body.font-medium td[style*="font-size"],
     body.font-medium th[style*="font-size"], body.font-medium b[style*="font-size"], body.font-medium a[style*="font-size"],
+    body.font-medium button[style*="font-size"], body.font-medium label[style*="font-size"],
+    body.font-medium select[style*="font-size"], body.font-medium input[style*="font-size"],
+    body.font-medium textarea[style*="font-size"], body.font-medium table[style*="font-size"],
+    body.font-medium .ws-badge, body.font-medium .ws-adj-btn, body.font-medium .ws-adj-input, body.font-medium .ws-adj-badge,
     body.font-medium .ws-discharge-item, body.font-medium .ws-discharge-item div, body.font-medium .ws-alert-box, body.font-medium .ws-alert-box div { font-size: 14px !important; }
 
     /* 大サイズ */
@@ -490,7 +494,11 @@ body {
 
     /* インラインスタイル(style="font-size:...")を強制上書き */
     body.font-large span[style*="font-size"], body.font-large div[style*="font-size"], body.font-large td[style*="font-size"],
-    body.font-large th[style*="font-size"], body.font-large b[style*="font-size"], body.font-large a[style*="font-size"],
+    body.font-large th[style*="font-large"], body.font-large th[style*="font-size"], body.font-large b[style*="font-size"], body.font-large a[style*="font-size"],
+    body.font-large button[style*="font-size"], body.font-large label[style*="font-size"],
+    body.font-large select[style*="font-size"], body.font-large input[style*="font-size"],
+    body.font-large textarea[style*="font-size"], body.font-large table[style*="font-size"],
+    body.font-large .ws-badge, body.font-large .ws-adj-btn, body.font-large .ws-adj-input, body.font-large .ws-adj-badge,
     body.font-large .ws-discharge-item, body.font-large .ws-discharge-item div, body.font-large .ws-alert-box, body.font-large .ws-alert-box div { font-size: 16px !important; }
     /* 退院はオレンジのまま、タグは青に設定 */
     .status-discharge { color: #fd7e14; } 
@@ -1577,12 +1585,9 @@ function generateAbbreviation() {}
                         </div>
                     </div>
 
-                    <!-- 画面右下固定フローティングバー（前後患者切替 ＆ ▲ トップへ戻る） -->
-                    <div id="ws-floating-bottom-bar" style="position:fixed; right:16px; bottom:28px; z-index:9590; display:flex; align-items:center; gap:5px; background:rgba(255,255,255,0.96); border:1px solid #90caf9; border-radius:22px; padding:5px 10px; box-shadow:0 3px 12px rgba(0,0,0,0.2);">
-                        <button type="button" onclick="stepWardActivePatient(-1)" style="background:#e3f2fd; border:1px solid #90caf9; color:#0d47a1; font-size:11px; font-weight:bold; padding:4px 9px; border-radius:14px; cursor:pointer;" title="前の患者へ切り替え">◀ 前</button>
-                        <button type="button" onclick="toggleWardSidePatientDrawer()" style="background:#1565c0; border:1px solid #0d47a1; color:#fff; font-size:11px; font-weight:bold; padding:4px 10px; border-radius:14px; cursor:pointer;" title="画面横の患者一覧を開閉">👤 <span id="ws-floating-cur-patient-lbl">患者一覧</span></button>
-                        <button type="button" onclick="stepWardActivePatient(1)" style="background:#e3f2fd; border:1px solid #90caf9; color:#0d47a1; font-size:11px; font-weight:bold; padding:4px 9px; border-radius:14px; cursor:pointer;" title="次の患者へ切り替え">次 ▶</button>
-                        <button type="button" onclick="scrollWardSummaryToTop()" style="background:#2e7d32; border:1px solid #1b5e20; color:#fff; font-size:11px; font-weight:bold; padding:4px 12px; border-radius:14px; cursor:pointer; margin-left:2px;" title="画面の一番上へ戻ります">▲ トップへ戻る</button>
+                    <!-- 画面右下固定フローティングボタン（▲ トップへ戻る） -->
+                    <div id="ws-floating-bottom-bar" style="position:fixed; right:16px; bottom:28px; z-index:9590;">
+                        <button type="button" onclick="scrollWardSummaryToTop()" style="background:#2e7d32; border:1px solid #1b5e20; color:#fff; font-size:12px; font-weight:bold; padding:7px 14px; border-radius:20px; cursor:pointer; box-shadow:0 3px 10px rgba(0,0,0,0.22);" title="画面の一番上へ戻ります">▲ トップへ戻る</button>
                     </div>
                 </div>
     </div>
@@ -18481,9 +18486,9 @@ function initWardSummaryContextMenu() {
         if (!menu) {
             menu = document.createElement("div");
             menu.id = "ws-custom-context-menu";
-            menu.style.cssText = "position:absolute; z-index:20000; background:#fff; border:1px solid #1976d2; border-radius:6px; box-shadow:0 4px 14px rgba(0,0,0,0.22); padding:5px 0; min-width:230px; max-width:340px; display:none; font-size:12px;";
             document.body.appendChild(menu);
         }
+        menu.style.cssText = "position:fixed; z-index:20000; background:#fff; border:1px solid #1976d2; border-radius:6px; box-shadow:0 4px 14px rgba(0,0,0,0.22); padding:5px 0; min-width:230px; max-width:340px; display:none; font-size:12px;";
 
         var previewStr = selTxt.length > 36 ? (selTxt.substring(0, 36) + "...") : selTxt;
         var html = '<div style="padding:4px 12px 6px 12px; border-bottom:1px solid #e0e0e0; font-size:11px; color:#555; background:#f5f9ff;">' +
@@ -18507,15 +18512,30 @@ function initWardSummaryContextMenu() {
             '</div>';
 
         menu.innerHTML = html;
+        menu.style.left = "0px";
+        menu.style.top = "0px";
         menu.style.display = "block";
 
-        var scrollX = window.pageXOffset || (document.documentElement ? document.documentElement.scrollLeft : 0) || (document.body ? document.body.scrollLeft : 0) || 0;
-        var scrollY = window.pageYOffset || (document.documentElement ? document.documentElement.scrollTop : 0) || (document.body ? document.body.scrollTop : 0) || 0;
-        var left = (ev.clientX || 0) + scrollX + 4;
-        var top = (ev.clientY || 0) + scrollY + 4;
         var winW = (document.documentElement && document.documentElement.clientWidth) ? document.documentElement.clientWidth : (document.body.clientWidth || 1000);
-        if ((ev.clientX || 0) + 280 > winW) {
-            left = Math.max(10, (ev.clientX || 0) + scrollX - 260);
+        var winH = (document.documentElement && document.documentElement.clientHeight) ? document.documentElement.clientHeight : (document.body.clientHeight || 700);
+        var menuW = menu.offsetWidth || 270;
+        var menuH = menu.offsetHeight || 150;
+        var cx = ev.clientX || 0;
+        var cy = ev.clientY || 0;
+        var left = cx + 4;
+        var top = cy + 4;
+
+        // 画面右端からはみ出す場合はカーソルの左側へ配置
+        if (left + menuW + 10 > winW) {
+            left = Math.max(8, cx - menuW - 4);
+        }
+        // 画面下端（最下部フッター含む）からはみ出す場合はカーソルの上側へ配置
+        var bottomMargin = 28;
+        if (top + menuH + bottomMargin > winH) {
+            top = cy - menuH - 4;
+            if (top < 8) {
+                top = Math.max(8, winH - menuH - bottomMargin);
+            }
         }
         menu.style.left = left + "px";
         menu.style.top = top + "px";
@@ -18541,9 +18561,11 @@ function initWardSummaryContextMenu() {
     if (document.addEventListener) {
         document.addEventListener("contextmenu", handleContextMenu, false);
         document.addEventListener("mousedown", handleGlobalMouseDown, false);
+        window.addEventListener("scroll", hideWardSummaryContextMenu, false);
     } else if (document.attachEvent) {
         document.attachEvent("oncontextmenu", handleContextMenu);
         document.attachEvent("onmousedown", handleGlobalMouseDown);
+        window.attachEvent("onscroll", hideWardSummaryContextMenu);
     }
 }
 initWardSummaryContextMenu();
@@ -22012,7 +22034,8 @@ function renderWardBatchKarteView() {
 // 画面横折りたたみ式「👤 患者一覧」サイドドロワー ＆ 「▲ トップへ戻る」ナビゲーション
 // =========================================================
 var wardSideDrawerState = {
-    isOpen: false
+    isOpen: false,
+    lastSelectedPatientId: ""
 };
 
 function scrollWardSummaryToTop() {
@@ -22036,6 +22059,9 @@ function getWardActivePatientId() {
     if (isWardBatchModeActive()) {
         if (wardBatchState && wardBatchState.currentView === "karte" && wardBatchState.selectedBatchKartePatientId) {
             return String(wardBatchState.selectedBatchKartePatientId);
+        }
+        if (wardSideDrawerState.lastSelectedPatientId) {
+            return String(wardSideDrawerState.lastSelectedPatientId);
         }
         if (wardSummaryState && wardSummaryState.patient && wardSummaryState.patient.id) {
             return String(wardSummaryState.patient.id);
@@ -22241,51 +22267,179 @@ function renderWardSidePatientDrawerList() {
     listContainer.innerHTML = html;
 }
 
+function scrollToWardElementSmooth(el) {
+    if (!el) return;
+    try {
+        // もし親に折りたたまれた .ws-rich-section-body があれば自動で開く
+        var p = el.parentNode;
+        while (p && p !== document.body) {
+            if (p.className && p.className.indexOf("ws-rich-section-body") !== -1 && p.style.display === "none") {
+                p.style.display = "block";
+                var secId = p.id ? p.id.replace("ws-sec-body-", "") : "";
+                var arrowEl = secId ? document.getElementById("ws-sec-arrow-" + secId) : null;
+                if (arrowEl) arrowEl.innerText = "▼";
+            }
+            p = p.parentNode;
+        }
+        var rect = el.getBoundingClientRect ? el.getBoundingClientRect() : null;
+        if (rect) {
+            var scrollY = window.pageYOffset || (document.documentElement ? document.documentElement.scrollTop : 0) || (document.body ? document.body.scrollTop : 0) || 0;
+            var topWrap = document.querySelector ? document.querySelector(".fixed-top-wrap") : null;
+            var headerOffset = (topWrap && topWrap.offsetHeight) ? (topWrap.offsetHeight + 18) : 110;
+            var targetY = Math.max(0, Math.round(rect.top + scrollY - headerOffset));
+            if (window.scrollTo) window.scrollTo(0, targetY);
+            if (document.documentElement) document.documentElement.scrollTop = targetY;
+            if (document.body) document.body.scrollTop = targetY;
+        } else if (el.scrollIntoView) {
+            el.scrollIntoView(true);
+        }
+        var origBg = el.style.backgroundColor;
+        el.style.backgroundColor = "#fff59d";
+        setTimeout(function() {
+            try { el.style.backgroundColor = origBg; } catch(e) {}
+        }, 1500);
+    } catch(e) {}
+}
+
+function findPatientRowInPane(paneEl, pidStr) {
+    if (!paneEl || !pidStr) return null;
+    var normTarget = String(pidStr).replace(/^0+/, "");
+    var trs = paneEl.getElementsByTagName("tr");
+    for (var i = 0; i < trs.length; i++) {
+        var tr = trs[i];
+        if (tr.id && tr.id.indexOf("ws-batch-detail-") === 0) continue;
+        var rowPid = tr.getAttribute("data-ws-patient-id") || "";
+        if (!rowPid) continue;
+        if (rowPid === pidStr || (normTarget && rowPid.replace(/^0+/, "") === normTarget)) {
+            return tr;
+        }
+    }
+    return null;
+}
+
 function selectWardSideDrawerPatient(pId) {
     if (!pId) return;
     var pidStr = String(pId);
+    var normTarget = pidStr.replace(/^0+/, "");
+    wardSideDrawerState.lastSelectedPatientId = pidStr;
+
     var chkAuto = document.getElementById("chk-ws-side-auto-close");
     if (chkAuto && chkAuto.checked) {
         toggleWardSidePatientDrawer(false);
     }
 
     if (isWardBatchModeActive()) {
-        if (wardBatchState && wardBatchState.currentView === "karte") {
-            // 一括カルテ閲覧中は該当患者のカルテに切り替え（もし0件非表示設定で隠れていても見られるように選択）
+        var curView = (wardBatchState && wardBatchState.currentView) ? wardBatchState.currentView : "table";
+
+        // 1. 「📚 一括カルテ閲覧」表示中の場合
+        if (curView === "karte") {
             var cacheMap = (typeof wardSummaryCache !== "undefined" && wardSummaryCache.karte) ? wardSummaryCache.karte : {};
-            if (cacheMap[pidStr]) {
+            var matchedCachePid = cacheMap[pidStr] ? pidStr : "";
+            if (!matchedCachePid && normTarget) {
+                for (var ck in cacheMap) {
+                    if (cacheMap.hasOwnProperty(ck) && String(ck).replace(/^0+/, "") === normTarget) {
+                        matchedCachePid = ck;
+                        break;
+                    }
+                }
+            }
+            if (matchedCachePid) {
                 var hideChk = document.getElementById("chk-ws-bkarte-hide-empty");
-                if (hideChk && hideChk.checked && (!cacheMap[pidStr].karteRecords || cacheMap[pidStr].karteRecords.length === 0)) {
+                if (hideChk && hideChk.checked) {
                     hideChk.checked = false;
                 }
-                selectBatchKartePatient(pidStr);
+                selectBatchKartePatient(matchedCachePid);
                 return;
-            } else {
-                // まだ一括カルテ未取得の場合は単体カルテ画面で即取得して表示
-                jumpToWardSummaryDetail(pidStr);
+            }
+            // 一括カルテがまだ取得されていない患者の場合は単体カルテ画面へ切り替えて即取得
+            jumpToWardSummaryDetail(pidStr);
+            return;
+        }
+
+        // 2. 薬剤一括検索結果パネルが表示中で該当患者の行があればそこへスクロール
+        var drugSearchBox = document.getElementById("ws-batch-drug-search-result");
+        if (drugSearchBox && drugSearchBox.style.display !== "none") {
+            var dsRow = findPatientRowInPane(drugSearchBox, pidStr);
+            if (dsRow) {
+                renderWardSidePatientDrawerList();
+                scrollToWardElementSmooth(dsRow);
                 return;
             }
         }
-        // 一括テーブル・退院ワード一覧・サマリ表示中にクリックされた場合：該当患者の行があればそこへスクロール、なければ単体詳細へ
-        var activeBatchPane = document.getElementById("ws-batch-view-" + (wardBatchState.currentView || "table"));
-        if (activeBatchPane) {
-            var trs = activeBatchPane.getElementsByTagName("tr");
-            for (var i = 0; i < trs.length; i++) {
-                var tr = trs[i];
-                if (tr.getAttribute("data-ws-patient-id") === pidStr && tr.id.indexOf("ws-batch-detail-") === -1) {
-                    if (tr.scrollIntoView) tr.scrollIntoView(true);
-                    var origBg = tr.style.backgroundColor;
-                    tr.style.backgroundColor = "#fff59d";
-                    setTimeout(function() { tr.style.backgroundColor = origBg; }, 1400);
+
+        // 3. 現在の一括ビュー（全体一覧テーブル / 退院ワード一覧のみ / 病棟サマリ表示）内に該当患者行があるか検索
+        var activeBatchPane = document.getElementById("ws-batch-view-" + curView);
+        var foundTr = findPatientRowInPane(activeBatchPane, pidStr);
+        if (foundTr) {
+            renderWardSidePatientDrawerList();
+            scrollToWardElementSmooth(foundTr);
+            return;
+        }
+
+        // 4. 「📋 全体一覧テーブル」でKPIフィルタ（要対応・退院ワード等）により隠れている場合は「全患者」に戻して再検索
+        if (curView === "table" && wardBatchState && wardBatchState.filter && wardBatchState.filter !== "all") {
+            filterWardBatchList("all");
+            activeBatchPane = document.getElementById("ws-batch-view-table");
+            foundTr = findPatientRowInPane(activeBatchPane, pidStr);
+            if (foundTr) {
+                renderWardSidePatientDrawerList();
+                scrollToWardElementSmooth(foundTr);
+                return;
+            }
+        }
+
+        // 5. 「🏠 退院ワード一覧のみ」や「📄 病棟サマリ表示」で該当患者が一覧に載っていない場合（退院ワード0件や変更なし患者など）
+        //    → 一括チェック結果（全体一覧テーブル）にその患者がいれば「📋 全体一覧テーブル」へ切り替えて該当行へジャンプする
+        if ((curView === "discharge" || curView === "text") && wardBatchState && wardBatchState.results && wardBatchState.results.length > 0) {
+            var inBatchRes = false;
+            var pNameForMsg = "ID:" + pidStr;
+            for (var bi = 0; bi < wardBatchState.results.length; bi++) {
+                var bp = wardBatchState.results[bi].patient;
+                if (bp && (String(bp.id) === pidStr || (normTarget && String(bp.id).replace(/^0+/, "") === normTarget))) {
+                    inBatchRes = true;
+                    if (bp.name) pNameForMsg = bp.name;
+                    break;
+                }
+            }
+            if (inBatchRes) {
+                var viewLabel = (curView === "discharge") ? "退院ワード一覧" : "病棟サマリ対象項目";
+                switchWardBatchView("table");
+                if (wardBatchState.filter && wardBatchState.filter !== "all") {
+                    filterWardBatchList("all");
+                }
+                var tblPane = document.getElementById("ws-batch-view-table");
+                var tblTr = findPatientRowInPane(tblPane, pidStr);
+                if (tblTr) {
+                    renderWardSidePatientDrawerList();
+                    scrollToWardElementSmooth(tblTr);
+                    yrShowAlert("💡 <b>" + escapeHtml(pNameForMsg) + "</b> さんは" + viewLabel + "に該当がないため、「📋 全体一覧テーブル」の該当行へ移動しました。", "info");
                     return;
                 }
             }
         }
-        jumpToWardSummaryDetail(pidStr);
+
+        // 6. 一括チェック未実行時、または一括キャッシュにのみカルテがある場合
+        var kCacheMap = (typeof wardSummaryCache !== "undefined" && wardSummaryCache.karte) ? wardSummaryCache.karte : {};
+        if (kCacheMap[pidStr]) {
+            switchWardBatchView("karte");
+            var hideChk2 = document.getElementById("chk-ws-bkarte-hide-empty");
+            if (hideChk2 && hideChk2.checked) hideChk2.checked = false;
+            selectBatchKartePatient(pidStr);
+            return;
+        }
+
+        // 7. まだ一括データが何もない状態で選択された場合は、単体患者サマリ（現在のサブタブ維持）へ切り替えて取得・表示
+        switchWardSummaryMainMode("single");
+        var sel0 = document.getElementById("sel-ward-summary-patient-dropdown");
+        if (sel0) sel0.value = pidStr;
+        var ipt0 = document.getElementById("ipt-ward-summary-patient-search");
+        if (ipt0) ipt0.value = pidStr;
+        fetchWardSummaryData(false);
+        scrollWardSummaryToTop();
         return;
     }
 
-    // 単体患者サマリモード時
+    // 単体患者サマリモード時（現在開いているサブタブ「💊 処方変更・持参薬サマリ」または「📋 カルテ・文書画像」をそのまま維持して患者切替）
     var sel = document.getElementById("sel-ward-summary-patient-dropdown");
     if (sel) sel.value = pidStr;
     var ipt = document.getElementById("ipt-ward-summary-patient-search");
@@ -22302,10 +22456,31 @@ function stepWardActivePatient(delta) {
             return;
         }
     }
-    if (isWardBatchModeActive()) {
-        switchWardSummaryMainMode("single");
+    var patients = getSortedWardPatientsForSideDrawer();
+    if (patients.length === 0) {
+        yrShowAlert("患者一覧が読み込まれていません。", "info");
+        return;
     }
-    navigateWardSummaryPatient(delta);
+    var curId = getWardActivePatientId();
+    var normCur = String(curId || "").replace(/^0+/, "");
+    var idx = -1;
+    for (var i = 0; i < patients.length; i++) {
+        var pid = String(patients[i].id || "");
+        if (pid === curId || (normCur && pid.replace(/^0+/, "") === normCur)) {
+            idx = i;
+            break;
+        }
+    }
+    var nextIdx = (idx === -1) ? (delta > 0 ? 0 : patients.length - 1) : (idx + delta);
+    if (nextIdx < 0) {
+        yrShowAlert("先頭の患者です。", "info");
+        return;
+    }
+    if (nextIdx >= patients.length) {
+        yrShowAlert("最後の患者です。", "info");
+        return;
+    }
+    selectWardSideDrawerPatient(String(patients[nextIdx].id));
 }
 
 </script>
