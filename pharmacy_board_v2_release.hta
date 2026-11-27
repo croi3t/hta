@@ -1392,6 +1392,8 @@ function generateAbbreviation() {}
                         </div>
                         <div style="display:flex; flex-wrap:wrap; align-items:center; gap:10px; margin-top:6px; padding-top:5px; border-top:1px dashed #e3f2fd; font-size:11px; color:#333;">
                             <span style="font-weight:bold; color:#546e7a;">検索対象:</span>
+                            <button type="button" onclick="setAllWardBatchSearchTargets(true)" style="font-size:10px; padding:1px 6px; background:#e3f2fd; border:1px solid #90caf9; color:#0d47a1; border-radius:3px; cursor:pointer; font-weight:bold;">すべて選択</button>
+                            <button type="button" onclick="setAllWardBatchSearchTargets(false)" style="font-size:10px; padding:1px 6px; background:#f5f5f5; border:1px solid #cfd8dc; color:#546e7a; border-radius:3px; cursor:pointer;">すべて解除</button>
                             <label style="cursor:pointer; margin:0;"><input type="checkbox" id="chk-ws-bsearch-rx" checked onchange="onWardBatchDrugSearchChange()"> 💊 処方・持参薬</label>
                             <label style="cursor:pointer; margin:0; color:#555;" title="OFFにすると今週処方・持参薬のみを検索対象にします"><input type="checkbox" id="chk-ws-batch-drug-include-prev" checked onchange="onWardBatchDrugSearchChange()"> (先週処方も含む)</label>
                             <label style="cursor:pointer; margin:0;"><input type="checkbox" id="chk-ws-bsearch-disc" checked onchange="onWardBatchDrugSearchChange()"> 🏠 退院ワード</label>
@@ -2536,6 +2538,7 @@ var DataManager = (function() {
                 if (p.bloodDetail !== undefined) { meta.bloodDetail = p.bloodDetail; hasMeta = true; }
                 if (p.chkPrescription !== undefined) { meta.chkPrescription = p.chkPrescription; hasMeta = true; }
                 if (p.personalMemos !== undefined) { meta.personalMemos = p.personalMemos; hasMeta = true; }
+                if (p.jisanAcks !== undefined) { meta.jisanAcks = p.jisanAcks; hasMeta = true; }
                 
                 if (p.surgeryDate !== undefined) { meta.surgeryDate = p.surgeryDate; hasMeta = true; }
                 if (p.surgeryDisease !== undefined) { meta.surgeryDisease = p.surgeryDisease; hasMeta = true; }
@@ -2800,6 +2803,14 @@ var DataManager = (function() {
                         break;
                     case "UPDATE_PERSONAL_MEMO":
                         updateMetaDict(data.patientId, "personalMemos", data.userId, data.value);
+                        needsInject = true;
+                        break;
+                    case "UPDATE_JISAN_ACK":
+                        updateMetaDict(data.patientId, "jisanAcks", data.itemKey, {
+                            acked: !!data.acked,
+                            by: data.author || uName || "",
+                            ts: txTs || new Date().getTime()
+                        });
                         needsInject = true;
                         break;
                     case "ADD_TODO":
@@ -3282,6 +3293,20 @@ function mergePatientList(baseList, diskList, myList) {
                     d.personalMemos[pmk] = mMemos[pmk];
                 }
             }
+            if (m.jisanAcks && typeof m.jisanAcks === "object") {
+                if (!d.jisanAcks || typeof d.jisanAcks !== "object") d.jisanAcks = {};
+                var bAcks = b.jisanAcks || {};
+                for (var jak in m.jisanAcks) {
+                    if (!m.jisanAcks.hasOwnProperty(jak)) continue;
+                    var mvA = m.jisanAcks[jak];
+                    var dvA = d.jisanAcks[jak];
+                    var mTsA = (mvA && typeof mvA === "object" && mvA.ts) ? mvA.ts : 0;
+                    var dTsA = (dvA && typeof dvA === "object" && dvA.ts) ? dvA.ts : 0;
+                    if (JSON.stringify(mvA) !== JSON.stringify(bAcks[jak]) && (!dvA || mTsA >= dTsA)) {
+                        d.jisanAcks[jak] = mvA;
+                    }
+                }
+            }
         }
     }
     // 自分の削除分を適用
@@ -3350,6 +3375,18 @@ function perform3WayMerge(baseData, diskData, myData) {
                             if (key === "personalMemos" && typeof mObj[key] === "object") {
                                 if (!dObj.personalMemos) dObj.personalMemos = {};
                                 for (var pk in mObj[key]) dObj.personalMemos[pk] = mObj[key][pk];
+                            } else if (key === "jisanAcks" && typeof mObj[key] === "object" && mObj[key] !== null) {
+                                if (!dObj.jisanAcks || typeof dObj.jisanAcks !== "object") dObj.jisanAcks = {};
+                                for (var jk in mObj[key]) {
+                                    if (!mObj[key].hasOwnProperty(jk)) continue;
+                                    var mv = mObj[key][jk];
+                                    var dv = dObj.jisanAcks[jk];
+                                    var mTs = (mv && typeof mv === "object" && mv.ts) ? mv.ts : 0;
+                                    var dTs = (dv && typeof dv === "object" && dv.ts) ? dv.ts : 0;
+                                    if (!dv || mTs >= dTs) {
+                                        dObj.jisanAcks[jk] = mv;
+                                    }
+                                }
                             } else {
                                 dObj[key] = mObj[key];
                             }
@@ -8016,6 +8053,7 @@ var PatientLogic = {
                 if (m.bloodDetail) p.bloodDetail = m.bloodDetail;
                 if (m.chkPrescription !== undefined) p.chkPrescription = m.chkPrescription;
                   if (m.personalMemos) p.personalMemos = m.personalMemos;
+                  if (m.jisanAcks) p.jisanAcks = m.jisanAcks;
                   if (m.lastUpdateTime) p.lastUpdateTime = m.lastUpdateTime;
                         if (m.lastUpdateAuthor) p.lastUpdateAuthor = m.lastUpdateAuthor;
                   
@@ -8282,6 +8320,7 @@ var PatientLogic = {
                 if (m.bloodDetail) p.bloodDetail = m.bloodDetail;
                 if (m.chkPrescription !== undefined) p.chkPrescription = m.chkPrescription;
                   if (m.personalMemos) p.personalMemos = m.personalMemos;
+                  if (m.jisanAcks) p.jisanAcks = m.jisanAcks;
                   if (m.lastUpdateTime) p.lastUpdateTime = m.lastUpdateTime;
                         if (m.lastUpdateAuthor) p.lastUpdateAuthor = m.lastUpdateAuthor;
                   
@@ -10048,6 +10087,9 @@ window.onload = function() {
             pendingSync = false;
             loadData(false);
             updateSyncUI();
+            if (typeof syncWardBatchJisanAcksFromAppData === "function") {
+                syncWardBatchJisanAcksFromAppData();
+            }
         }
     }, 2000);
 // ---------- 定期更新タイマー (15分ごとにカルテから患者一覧を自動取得) ----------
@@ -18073,7 +18115,7 @@ function buildWardLabSummaryHtml(labData, pObj, uidPrefix) {
                     chgBadge = ' <span style="font-weight:bold; color:' + chgInfo.color + ';">' + chgInfo.arrow + ' (' + chgInfo.delta + ')</span>';
                 }
                 var pDt = it.prevDate ? (' <span style="font-size:10px; color:#777;">[' + escapeHtml(it.prevDate.slice(5)) + ']</span>') : "";
-                prevHtml = escapeHtml(it.prevVal) + ' →' + chgBadge + pDt;
+                prevHtml = escapeHtml(it.prevVal) + chgBadge + pDt;
             }
             var refHtml = it.ref ? escapeHtml(it.ref) : '<span style="color:#aaa;">-</span>';
             var dtShort = it.date ? escapeHtml(it.date.slice(5)) : "-";
@@ -20554,49 +20596,48 @@ function findInhospSwitchForJisan(jName, jStart, jEnd, shohoOrders) {
     return bestMatch;
 }
 
-var WARD_JISAN_ACK_STORAGE_KEY = "ward_jisan_ack_map_v1";
-
-function loadWardJisanAckMap() {
-    try {
-        var raw = localStorage.getItem(WARD_JISAN_ACK_STORAGE_KEY);
-        if (raw) {
-            var parsed = JSON.parse(raw);
-            if (parsed && typeof parsed === "object") return parsed;
-        }
-    } catch (e) {}
-    return {};
-}
-
-function saveWardJisanAckMap(map) {
-    try {
-        localStorage.setItem(WARD_JISAN_ACK_STORAGE_KEY, JSON.stringify(map || {}));
-    } catch (e) {}
+function getWardJisanItemKey(jName, jStart) {
+    var namePart = String(jName || "").replace(/[^a-zA-Z0-9\u3040-\u30ff\u4e00-\u9faf]/g, "_");
+    var datePart = String(jStart || "").replace(/[^0-9]/g, "");
+    return namePart + "__" + datePart;
 }
 
 function getWardJisanAckKey(pId, jName, jStart) {
     var pidPart = String(pId || "").replace(/^0+/, "") || "0";
-    var namePart = String(jName || "").replace(/[^a-zA-Z0-9\u3040-\u30ff\u4e00-\u9faf]/g, "_");
-    var datePart = String(jStart || "").replace(/[^0-9]/g, "");
-    return pidPart + "__" + namePart + "__" + datePart;
+    return pidPart + "|" + getWardJisanItemKey(jName, jStart);
+}
+
+function getWardJisanAckEntryByParts(nId, itemKey) {
+    if (!nId || !itemKey) return null;
+    try {
+        if (typeof appData !== "undefined" && appData && appData.patientMeta && appData.patientMeta[nId] && appData.patientMeta[nId].jisanAcks) {
+            var v = appData.patientMeta[nId].jisanAcks[itemKey];
+            if (v !== undefined) return v;
+        }
+        if (typeof findPatientById === "function") {
+            var p = findPatientById(nId);
+            if (p && p.jisanAcks && p.jisanAcks[itemKey] !== undefined) {
+                return p.jisanAcks[itemKey];
+            }
+        }
+    } catch (e) {}
+    return null;
+}
+
+function getWardJisanAckEntry(pId, jName, jStart) {
+    var nId = String(pId || "").replace(/^0+/, "") || "0";
+    var itemKey = getWardJisanItemKey(jName, jStart);
+    return getWardJisanAckEntryByParts(nId, itemKey);
 }
 
 function isWardJisanAcked(pId, jName, jStart) {
-    var map = loadWardJisanAckMap();
-    return !!map[getWardJisanAckKey(pId, jName, jStart)];
+    var ent = getWardJisanAckEntry(pId, jName, jStart);
+    if (!ent) return false;
+    return (typeof ent === "object") ? !!ent.acked : !!ent;
 }
 
-function toggleWardJisanAckByKey(ackKey) {
-    if (!ackKey) return;
-    var map = loadWardJisanAckMap();
-    if (map[ackKey]) {
-        delete map[ackKey];
-    } else {
-        map[ackKey] = new Date().getTime();
-    }
-    saveWardJisanAckMap(map);
-
-    // メモリ上の病棟一括チェック結果の jisanList / jisanAlerts / hasAction を即時再計算
-    if (typeof wardBatchState !== "undefined" && wardBatchState.results) {
+function syncWardBatchJisanAcksFromAppData() {
+    if (typeof wardBatchState !== "undefined" && wardBatchState.results && wardBatchState.results.length > 0) {
         for (var i = 0; i < wardBatchState.results.length; i++) {
             var r = wardBatchState.results[i];
             if (!r || !r.jisanList) continue;
@@ -20604,9 +20645,11 @@ function toggleWardJisanAckByKey(ackKey) {
             var newAlerts = [];
             for (var j = 0; j < r.jisanList.length; j++) {
                 var ji = r.jisanList[j];
-                var k = ji.ackKey || getWardJisanAckKey(pid, ji.name, ji.startDate);
-                ji.ackKey = k;
-                ji.acked = !!map[k];
+                ji.ackKey = getWardJisanAckKey(pid, ji.name, ji.startDate);
+                var ent = getWardJisanAckEntry(pid, ji.name, ji.startDate);
+                ji.acked = !!(ent && ((typeof ent === "object") ? ent.acked : ent));
+                ji.ackBy = (ent && typeof ent === "object" && ent.by) ? ent.by : "";
+                ji.ackTs = (ent && typeof ent === "object" && ent.ts) ? ent.ts : 0;
                 if (!ji.isGaiyo && ji.remDays <= 3 && !ji.switchedToInhosp && !ji.acked) {
                     newAlerts.push(ji);
                 }
@@ -20630,10 +20673,54 @@ function toggleWardJisanAckByKey(ackKey) {
             if (txtEl && typeof buildWardBatchSummaryText === "function") txtEl.value = buildWardBatchSummaryText();
         }
     }
-    // 単体患者サマリが開いている場合も即時反映
     if (typeof wardSummaryState !== "undefined" && wardSummaryState.patient && typeof renderWardSummaryPanels === "function") {
         renderWardSummaryPanels();
     }
+}
+
+function toggleWardJisanAckByKey(ackKey) {
+    if (!ackKey) return;
+    var sepIdx = String(ackKey).indexOf("|");
+    if (sepIdx === -1) return;
+    var nId = String(ackKey).slice(0, sepIdx);
+    var itemKey = String(ackKey).slice(sepIdx + 1);
+    if (!nId || !itemKey) return;
+
+    var curEnt = getWardJisanAckEntryByParts(nId, itemKey);
+    var curAcked = !!(curEnt && ((typeof curEnt === "object") ? curEnt.acked : curEnt));
+    var nextAcked = !curAcked;
+    var authorName = (typeof window !== "undefined" && window.currentUserName) ? window.currentUserName : "";
+    var nowTs = new Date().getTime();
+
+    // Board の既存トランザクションファイル方式（tx/tx_...json → patients.json 3-Wayマージ）で全共用PCへ同期保存
+    var txOk = false;
+    try {
+        if (typeof DataManager !== "undefined" && typeof DataManager.appendTransaction === "function") {
+            txOk = DataManager.appendTransaction("UPDATE_JISAN_ACK", {
+                patientId: nId,
+                itemKey: itemKey,
+                acked: nextAcked,
+                author: authorName
+            });
+        }
+    } catch (e) { txOk = false; }
+
+    // 共有フォルダ未接続（開発/オフライン等）のフォールバック：ローカル appData.patientMeta へ直接反映
+    if (!txOk && typeof appData !== "undefined" && appData) {
+        if (!appData.patientMeta) appData.patientMeta = {};
+        if (!appData.patientMeta[nId]) appData.patientMeta[nId] = {};
+        if (!appData.patientMeta[nId].jisanAcks) appData.patientMeta[nId].jisanAcks = {};
+        appData.patientMeta[nId].jisanAcks[itemKey] = {
+            acked: nextAcked,
+            by: authorName,
+            ts: nowTs
+        };
+        if (typeof window !== "undefined" && window.PatientLogic && window.PatientLogic.injectMeta) {
+            try { window.PatientLogic.injectMeta(appData); } catch (e2) {}
+        }
+    }
+
+    syncWardBatchJisanAcksFromAppData();
 }
 
 function buildWardJisanStatusCellHtml(pId, ji, remOverride) {
@@ -20651,14 +20738,25 @@ function buildWardJisanStatusCellHtml(pId, ji, remOverride) {
         return '<span title="' + swTip + '" style="display:inline-block; background:#e0f2f1; color:#00695c; border:1px solid #80cbc4; font-weight:bold; padding:1px 6px; border-radius:4px; font-size:10px;">🔄 院内切替済' + swDateShort + '</span>';
     }
     if (ji.acked) {
-        return '<span style="display:inline-block; background:#e8f5e9; color:#2e7d32; border:1px solid #a5d6a7; font-weight:bold; padding:1px 6px; border-radius:4px; font-size:10px;">✔ 対応済</span> ' +
+        var ackTip = "確認済・対応済";
+        var ent = getWardJisanAckEntry(pId, ji.name, ji.startDate);
+        if (ent && typeof ent === "object") {
+            var who = ent.by ? (" " + ent.by) : "";
+            var when = "";
+            if (ent.ts) {
+                var dt = new Date(ent.ts);
+                when = " (" + ("0" + (dt.getMonth() + 1)).slice(-2) + "/" + ("0" + dt.getDate()).slice(-2) + " " + ("0" + dt.getHours()).slice(-2) + ":" + ("0" + dt.getMinutes()).slice(-2) + ")";
+            }
+            ackTip = "対応済:" + who + when;
+        }
+        return '<span title="' + escapeHtml(ackTip) + '" style="display:inline-block; background:#e8f5e9; color:#2e7d32; border:1px solid #a5d6a7; font-weight:bold; padding:1px 6px; border-radius:4px; font-size:10px;">✔ 対応済</span> ' +
             '<button type="button" onclick="toggleWardJisanAckByKey(\'' + escKey + '\')" title="確認済を解除して元の表示に戻します" style="font-size:10px; padding:1px 5px; background:#fff; border:1px solid #ccc; color:#666; border-radius:3px; cursor:pointer;">戻す</button>';
     }
     if (remVal <= 3) {
         var rCls = (remVal < 0) ? "ws-rem-danger" : "ws-rem-warning";
         var rTxt = (remVal < 0) ? ("終了済(" + Math.abs(remVal) + "日超過)") : ("残り " + remVal + " 日");
         return '<span class="' + rCls + '">' + rTxt + '</span> ' +
-            '<button type="button" onclick="toggleWardJisanAckByKey(\'' + escKey + '\')" title="確認済・対応済にしてアラートから消します" style="margin-left:3px; font-size:10px; padding:1px 6px; background:#fff; border:1px solid #4caf50; color:#2e7d32; border-radius:3px; cursor:pointer; font-weight:bold;">✔ 確認済</button>';
+            '<button type="button" onclick="toggleWardJisanAckByKey(\'' + escKey + '\')" title="確認済・対応済にしてアラートから消します（全PC共有）" style="margin-left:3px; font-size:10px; padding:1px 6px; background:#fff; border:1px solid #4caf50; color:#2e7d32; border-radius:3px; cursor:pointer; font-weight:bold;">✔ 確認済</button>';
     }
     return '<span class="ws-rem-safe">残り ' + remVal + ' 日</span>';
 }
@@ -22223,6 +22321,22 @@ function clearWardBatchDrugSearch() {
     var ipt = document.getElementById("ipt-ws-batch-drug-search");
     if (ipt) ipt.value = "";
     renderWardBatchDrugSearchResult();
+}
+
+function setAllWardBatchSearchTargets(checkedBool) {
+    var ids = [
+        "chk-ws-bsearch-rx",
+        "chk-ws-batch-drug-include-prev",
+        "chk-ws-bsearch-disc",
+        "chk-ws-bsearch-lab",
+        "chk-ws-bsearch-vital",
+        "chk-ws-bsearch-karte"
+    ];
+    for (var i = 0; i < ids.length; i++) {
+        var el = document.getElementById(ids[i]);
+        if (el) el.checked = !!checkedBool;
+    }
+    onWardBatchDrugSearchChange();
 }
 
 function parseWardBatchSearchOrGroups(rawQuery) {
