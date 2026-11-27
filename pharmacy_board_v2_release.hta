@@ -17989,18 +17989,43 @@ function parseWardVitalHtml(bodyHtml, todayStr) {
     return res;
 }
 
+function calcWardLabChangeInfo(valStr, prevValStr) {
+    if (!valStr || !prevValStr) return null;
+    var sCurr = String(valStr).replace(/,/g, "").replace(/^\s+|\s+$/g, "");
+    var sPrev = String(prevValStr).replace(/,/g, "").replace(/^\s+|\s+$/g, "");
+    // 不等号付き（< 0.05 等）や非数値は誤比較を避ける
+    if (!/^[+-]?\d+(?:\.\d+)?$/.test(sCurr) || !/^[+-]?\d+(?:\.\d+)?$/.test(sPrev)) return null;
+    var nCurr = parseFloat(sCurr);
+    var nPrev = parseFloat(sPrev);
+    if (isNaN(nCurr) || isNaN(nPrev)) return null;
+    var diff = nCurr - nPrev;
+    var decC = (sCurr.indexOf(".") !== -1) ? (sCurr.length - sCurr.indexOf(".") - 1) : 0;
+    var decP = (sPrev.indexOf(".") !== -1) ? (sPrev.length - sPrev.indexOf(".") - 1) : 0;
+    var dec = Math.min(2, Math.max(decC, decP));
+    var absStr = Math.abs(diff).toFixed(dec);
+    if (Math.abs(diff) < 1e-9) {
+        return { arrow: "→", delta: "±0", color: "#757575" };
+    } else if (diff > 0) {
+        return { arrow: "↑", delta: "+" + absStr, color: "#d84315" };
+    } else {
+        return { arrow: "↓", delta: "-" + absStr, color: "#1565c0" };
+    }
+}
+
 function formatWardLabItemBadge(it) {
     var isP = (it.flag === "P");
     var isH = (it.flag === "H");
     var bg = isP ? "#d32f2f" : (isH ? "#ffebee" : "#e0f7fa");
     var col = isP ? "#fff" : (isH ? "#c62828" : "#006064");
     var bdr = isP ? "#b71c1c" : (isH ? "#ef9a9a" : "#80deea");
-    var arrow = isP ? "🚨" : (isH ? "↑" : "↓");
+    var chg = calcWardLabChangeInfo(it.val, it.prevVal);
+    var chgArrow = chg ? chg.arrow : "";
     var prevStr = (it.prevVal && it.prevVal !== it.val) ? (escapeHtml(it.prevVal) + "→") : "";
+    var flgDisp = isP ? "🚨P" : escapeHtml(it.flag);
     var dtShort = it.date ? it.date.slice(5) : "";
     var titleTip = escapeHtml((it.rawName || it.name) + " (" + (it.date || "") + ") 基準値: " + (it.ref || "-") + " " + (it.unit || ""));
     return '<span title="' + titleTip + '" style="display:inline-block; background:' + bg + '; color:' + col + '; border:1px solid ' + bdr + '; padding:2px 7px; border-radius:4px; font-size:11px; font-weight:bold; margin:2px 3px 2px 0;">' +
-        escapeHtml(it.name) + ' ' + prevStr + escapeHtml(it.val) + ' <span style="font-size:10px;">' + arrow + '(' + escapeHtml(it.flag) + ')</span>' +
+        escapeHtml(it.name) + ' ' + prevStr + escapeHtml(it.val) + (chgArrow ? ' ' + chgArrow : '') + ' <span style="font-size:10px;">(' + flgDisp + ')</span>' +
         (dtShort ? ' <span style="font-size:9px; font-weight:normal; opacity:0.85;">[' + escapeHtml(dtShort) + ']</span>' : '') +
         '</span>';
 }
@@ -18013,10 +18038,10 @@ function buildWardLabSummaryHtml(labData, pObj, uidPrefix) {
     function renderLabRowsTable(items, headBg, headCol, bdrCol) {
         var tbl = '<table style="width:100%; border-collapse:collapse; font-size:11px; background:#fff; margin-bottom:6px;">' +
             '<thead><tr style="background:' + headBg + '; color:' + headCol + ';">' +
-            '<th style="width:24%; padding:4px 6px; text-align:left; border:1px solid ' + bdrCol + ';">検査項目</th>' +
-            '<th style="width:10%; padding:4px 4px; text-align:center; border:1px solid ' + bdrCol + ';">判定</th>' +
-            '<th style="width:22%; padding:4px 6px; text-align:right; border:1px solid ' + bdrCol + ';">最新値</th>' +
-            '<th style="width:22%; padding:4px 6px; text-align:left; border:1px solid ' + bdrCol + ';">前回値</th>' +
+            '<th style="width:23%; padding:4px 6px; text-align:left; border:1px solid ' + bdrCol + ';">検査項目</th>' +
+            '<th style="width:8%; padding:4px 4px; text-align:center; border:1px solid ' + bdrCol + ';">判定</th>' +
+            '<th style="width:21%; padding:4px 6px; text-align:right; border:1px solid ' + bdrCol + ';">最新値</th>' +
+            '<th style="width:26%; padding:4px 6px; text-align:left; border:1px solid ' + bdrCol + ';">前回比・推移</th>' +
             '<th style="width:13%; padding:4px 6px; text-align:center; border:1px solid ' + bdrCol + ';">基準値</th>' +
             '<th style="width:9%; padding:4px 4px; text-align:center; border:1px solid ' + bdrCol + ';">検査日</th>' +
             '</tr></thead><tbody>';
@@ -18032,18 +18057,23 @@ function buildWardLabSummaryHtml(labData, pObj, uidPrefix) {
                 valColor = "#b71c1c";
             } else if (flg === "H") {
                 rowBg = "#fff9f9";
-                flagHtml = '<span style="display:inline-block; background:#ffcdd2; color:#b71c1c; border:1px solid #ef9a9a; font-weight:bold; font-size:10px; padding:0px 5px; border-radius:3px;">▲ H</span>';
+                flagHtml = '<span style="display:inline-block; background:#ffcdd2; color:#b71c1c; border:1px solid #ef9a9a; font-weight:bold; font-size:10px; padding:0px 6px; border-radius:3px;">H</span>';
                 valColor = "#c62828";
             } else if (flg === "L") {
                 rowBg = "#f5fbff";
-                flagHtml = '<span style="display:inline-block; background:#e1f5fe; color:#01579b; border:1px solid #81d4fa; font-weight:bold; font-size:10px; padding:0px 5px; border-radius:3px;">▼ L</span>';
+                flagHtml = '<span style="display:inline-block; background:#e1f5fe; color:#01579b; border:1px solid #81d4fa; font-weight:bold; font-size:10px; padding:0px 6px; border-radius:3px;">L</span>';
                 valColor = "#0277bd";
             }
             var unitHtml = it.unit ? (' <span style="font-size:10px; font-weight:normal; color:#666;">' + escapeHtml(it.unit) + '</span>') : "";
             var prevHtml = '<span style="color:#aaa;">-</span>';
             if (it.prevVal) {
-                var pDt = it.prevDate ? (' <span style="font-size:10px; color:#777;">(' + escapeHtml(it.prevDate.slice(5)) + ')</span>') : "";
-                prevHtml = escapeHtml(it.prevVal) + pDt;
+                var chgInfo = calcWardLabChangeInfo(it.val, it.prevVal);
+                var chgBadge = "";
+                if (chgInfo) {
+                    chgBadge = ' <span style="font-weight:bold; color:' + chgInfo.color + ';">' + chgInfo.arrow + ' (' + chgInfo.delta + ')</span>';
+                }
+                var pDt = it.prevDate ? (' <span style="font-size:10px; color:#777;">[' + escapeHtml(it.prevDate.slice(5)) + ']</span>') : "";
+                prevHtml = escapeHtml(it.prevVal) + ' →' + chgBadge + pDt;
             }
             var refHtml = it.ref ? escapeHtml(it.ref) : '<span style="color:#aaa;">-</span>';
             var dtShort = it.date ? escapeHtml(it.date.slice(5)) : "-";
@@ -19764,6 +19794,10 @@ function renderWardSummaryPanels(todayStr) {
                     var elapsedDays = Math.max(0, Math.round((todayDateObj - startDateObj) / (1000 * 60 * 60 * 24)));
                     var endDateObj = new Date(jEnd.replace(/-/g, "/"));
                     var diffDays = Math.round((endDateObj - todayDateObj) / (1000 * 60 * 60 * 24));
+                    var swInfoS = !isGaiyoJ ? findInhospSwitchForJisan(jName, jStart, jEnd, shoho) : null;
+                    var pIdSingle = wardSummaryState.patient ? (wardSummaryState.patient.id || "p") : "curr";
+                    var ackKeyS = getWardJisanAckKey(pIdSingle, jName, jStart);
+                    var ackedS = isWardJisanAcked(pIdSingle, jName, jStart);
                     jisanList.push({
                         name: jName,
                         inst: jRp.usageText,
@@ -19772,7 +19806,12 @@ function renderWardSummaryPanels(todayStr) {
                         endDate: jEnd,
                         isGaiyo: isGaiyoJ,
                         elapsedDays: elapsedDays,
-                        remDays: diffDays
+                        remDays: diffDays,
+                        switchedToInhosp: !!swInfoS,
+                        switchedDrugName: swInfoS ? swInfoS.drugName : "",
+                        switchedStartDate: swInfoS ? swInfoS.startDate : "",
+                        ackKey: ackKeyS,
+                        acked: ackedS
                     });
                 }
             }
@@ -19811,33 +19850,27 @@ function renderWardSummaryPanels(todayStr) {
                         '<td style="padding:8px 10px; border:1px solid #e0e0e0; text-align:center; vertical-align:middle;">' + gBadge + '</td>' +
                         '</tr>';
                 } else {
-                    var remBadge = "";
-                    if (currentRem < 0) {
-                        remBadge = '<span class="ws-rem-danger">⚠️ 終了済 (' + Math.abs(currentRem) + '日超過)</span>';
-                    } else if (currentRem <= 3) {
-                        remBadge = '<span class="ws-rem-warning">⚠️ 残り ' + currentRem + ' 日</span>';
-                    } else {
-                        remBadge = '<span class="ws-rem-safe">残り ' + currentRem + ' 日</span>';
-                    }
-
+                    var remBadge = buildWardJisanStatusCellHtml(pId, ji, currentRem);
                     var adjBadge = (offset !== 0) ? '<span class="ws-adj-badge">手動: ' + (offset > 0 ? '+' : '') + offset + '日</span>' : '';
                     var escapedAdjKey = escapeHtml(adjKey);
 
-                    var controlHtml = 
+                    var controlHtml = (ji.switchedToInhosp || ji.acked) ? "" : (
                         '<div class="ws-adj-control">' +
                         '<button type="button" class="ws-adj-btn" title="-1日" onclick="adjustWardSummaryJisan(\'' + escapedAdjKey + '\', -1)">-1</button>' +
                         '<input type="number" class="ws-adj-input" value="' + currentRem + '" onchange="onWardSummaryJisanDirectChange(\'' + escapedAdjKey + '\', this.value, ' + ji.remDays + ')">' +
                         '<button type="button" class="ws-adj-btn" title="+1日" onclick="adjustWardSummaryJisan(\'' + escapedAdjKey + '\', 1)">+1</button>' +
                         adjBadge +
-                        '</div>';
+                        '</div>'
+                    );
 
-                    htmlJisan += '<tr style="border-bottom:1px solid #e0e0e0;">' +
+                    var trStyleSingle = (ji.switchedToInhosp || ji.acked) ? ' style="border-bottom:1px solid #e0e0e0; background:#f8fbf8; color:#555;"' : ' style="border-bottom:1px solid #e0e0e0;"';
+                    htmlJisan += '<tr' + trStyleSingle + '>' +
                         '<td style="padding:8px 10px; border:1px solid #e0e0e0; vertical-align:middle;"><b>' + escapeHtml(ji.name) + '</b></td>' +
                         '<td style="padding:8px 10px; border:1px solid #e0e0e0; vertical-align:middle;">' + escapeHtml(ji.inst) + '</td>' +
                         '<td style="padding:8px 10px; border:1px solid #e0e0e0; text-align:center; vertical-align:middle;">' + ji.days + '日分</td>' +
                         '<td style="padding:8px 10px; border:1px solid #e0e0e0; text-align:center; vertical-align:middle;">' + ji.startDate + '</td>' +
                         '<td style="padding:8px 10px; border:1px solid #e0e0e0; text-align:center; font-weight:bold; vertical-align:middle;">' + ji.endDate + '</td>' +
-                        '<td style="padding:8px 10px; border:1px solid #e0e0e0; text-align:center; vertical-align:middle;">' + remBadge + '<br>' + controlHtml + '</td>' +
+                        '<td style="padding:8px 10px; border:1px solid #e0e0e0; text-align:center; vertical-align:middle;">' + remBadge + (controlHtml ? '<br>' + controlHtml : '') + '</td>' +
                         '</tr>';
                 }
             }
@@ -20443,6 +20476,193 @@ function startWardBatchFetch(fetchMode) {
     processNext();
 }
 
+function extractJisanCoreDrugName(name) {
+    if (!name) return "";
+    var s = String(name);
+    // 先頭の【持参】や記号を除去
+    s = s.replace(/^[\s\u3000]*[【\[（(][^】\]）)]*[】\]）)][\s\u3000]*/g, "");
+    // メーカー名（「トーワ」「日医工」(ファイザー)等）を除去
+    s = s.replace(/[「『（(][^」』）)]*[」』）)]/g, "");
+    // ひらがな→カタカナ、全角英数→半角
+    s = s.replace(/[\u3041-\u3096]/g, function(ch) {
+        return String.fromCharCode(ch.charCodeAt(0) + 0x60);
+    }).replace(/[Ａ-Ｚａ-ｚ０-９]/g, function(ch) {
+        return String.fromCharCode(ch.charCodeAt(0) - 0xFEE0);
+    });
+    // 剤形・規格・数値以降を除去してベース成分/製品名を取り出す
+    s = s.replace(/(?:口腔内崩壊錠|徐放錠|腸溶錠|糖衣錠|OD錠|ＯＤ錠|D錠|CR錠|SR錠|XR錠|LA錠|L錠|錠|カプセル|ハードカプセル|ソフトカプセル|散|細粒|顆粒|ドライシロップ|シロップ|内用液|液|点眼液|点眼|軟膏|クリーム|ローション|ゲル|テープ|パップ|貼付剤|吸入|粉末|注|静注|皮下注|筋注|坐剤|座薬|うがい液|ゼリー).*$/i, "");
+    s = s.replace(/[0-9０-９\.]+(?:mg|μg|ug|mcg|g|ml|mL|L|%|％|単位|IU|万単位).*$/i, "");
+    s = s.replace(/[\s\u3000\-－ー・\/／]/g, "").toLowerCase();
+    return s;
+}
+
+function findInhospSwitchForJisan(jName, jStart, jEnd, shohoOrders) {
+    if (!jName || !shohoOrders || shohoOrders.length === 0) return null;
+    var jParts = String(jName).split(/[,、]/);
+    var jCores = [];
+    for (var jp = 0; jp < jParts.length; jp++) {
+        var jc = extractJisanCoreDrugName(jParts[jp]);
+        if (jc && jc.length >= 2) jCores.push(jc);
+    }
+    if (jCores.length === 0) return null;
+
+    // 持参薬の終了予定日の3日前以降（または持参薬開始日より後）に開始された院内処方を対象とする
+    var minSwitchDate = jEnd ? addSummaryDaysStr(jEnd, -3) : (jStart || "");
+    if (jStart && minSwitchDate < jStart) minSwitchDate = jStart;
+
+    var bestMatch = null;
+    for (var i = 0; i < shohoOrders.length; i++) {
+        var ord = shohoOrders[i];
+        if (!ord || ord.category !== "inhosp_rx" || !ord.rps) continue;
+        var ordDate = ord.orderDate || "";
+        for (var r = 0; r < ord.rps.length; r++) {
+            var rp = ord.rps[r];
+            var sDate = rp.startDate || ordDate;
+            if (!sDate) continue;
+            // 持参薬より前の古い院内処方は除外（開始日が minSwitchDate 以降、または持参薬開始日より後かつ終了日が jEnd より後）
+            var eDate = rp.endDate || (rp.duration ? addSummaryDaysStr(sDate, rp.duration - 1) : sDate);
+            var isAfterSwitchWindow = (sDate >= minSwitchDate) || (jStart && sDate > jStart && jEnd && eDate > jEnd);
+            if (!isAfterSwitchWindow) continue;
+
+            var drugs = rp.drugs || [];
+            for (var d = 0; d < drugs.length; d++) {
+                var dName = drugs[d];
+                var dCore = extractJisanCoreDrugName(dName);
+                if (!dCore || dCore.length < 2) continue;
+                var matched = false;
+                for (var c = 0; c < jCores.length; c++) {
+                    var jc2 = jCores[c];
+                    if (jc2 === dCore) {
+                        matched = true;
+                        break;
+                    }
+                    if (jc2.length >= 4 && dCore.length >= 4) {
+                        if (jc2.indexOf(dCore) === 0 || dCore.indexOf(jc2) === 0) {
+                            matched = true;
+                            break;
+                        }
+                    }
+                }
+                if (matched) {
+                    if (!bestMatch || sDate > bestMatch.startDate) {
+                        bestMatch = { drugName: dName, startDate: sDate, endDate: eDate };
+                    }
+                }
+            }
+        }
+    }
+    return bestMatch;
+}
+
+var WARD_JISAN_ACK_STORAGE_KEY = "ward_jisan_ack_map_v1";
+
+function loadWardJisanAckMap() {
+    try {
+        var raw = localStorage.getItem(WARD_JISAN_ACK_STORAGE_KEY);
+        if (raw) {
+            var parsed = JSON.parse(raw);
+            if (parsed && typeof parsed === "object") return parsed;
+        }
+    } catch (e) {}
+    return {};
+}
+
+function saveWardJisanAckMap(map) {
+    try {
+        localStorage.setItem(WARD_JISAN_ACK_STORAGE_KEY, JSON.stringify(map || {}));
+    } catch (e) {}
+}
+
+function getWardJisanAckKey(pId, jName, jStart) {
+    var pidPart = String(pId || "").replace(/^0+/, "") || "0";
+    var namePart = String(jName || "").replace(/[^a-zA-Z0-9\u3040-\u30ff\u4e00-\u9faf]/g, "_");
+    var datePart = String(jStart || "").replace(/[^0-9]/g, "");
+    return pidPart + "__" + namePart + "__" + datePart;
+}
+
+function isWardJisanAcked(pId, jName, jStart) {
+    var map = loadWardJisanAckMap();
+    return !!map[getWardJisanAckKey(pId, jName, jStart)];
+}
+
+function toggleWardJisanAckByKey(ackKey) {
+    if (!ackKey) return;
+    var map = loadWardJisanAckMap();
+    if (map[ackKey]) {
+        delete map[ackKey];
+    } else {
+        map[ackKey] = new Date().getTime();
+    }
+    saveWardJisanAckMap(map);
+
+    // メモリ上の病棟一括チェック結果の jisanList / jisanAlerts / hasAction を即時再計算
+    if (typeof wardBatchState !== "undefined" && wardBatchState.results) {
+        for (var i = 0; i < wardBatchState.results.length; i++) {
+            var r = wardBatchState.results[i];
+            if (!r || !r.jisanList) continue;
+            var pid = r.patient ? String(r.patient.id || "") : "";
+            var newAlerts = [];
+            for (var j = 0; j < r.jisanList.length; j++) {
+                var ji = r.jisanList[j];
+                var k = ji.ackKey || getWardJisanAckKey(pid, ji.name, ji.startDate);
+                ji.ackKey = k;
+                ji.acked = !!map[k];
+                if (!ji.isGaiyo && ji.remDays <= 3 && !ji.switchedToInhosp && !ji.acked) {
+                    newAlerts.push(ji);
+                }
+            }
+            r.jisanAlerts = newAlerts;
+            r.hasAction = (
+                (r.compareChanges && r.compareChanges.length > 0) ||
+                r.teikiIssuanceStatus === "missing" ||
+                r.jisanAlerts.length > 0 ||
+                (r.teikiAlerts && r.teikiAlerts.length > 0) ||
+                (r.dischargeMatches && r.dischargeMatches.length > 0) ||
+                !!r.hasLabAlert ||
+                !!r.hasVitalAlert
+            );
+        }
+        if (typeof renderWardBatchTable === "function") renderWardBatchTable();
+        if (wardBatchState.currentView === "rx" && typeof renderWardBatchRxOnlyTable === "function") renderWardBatchRxOnlyTable();
+        if (wardBatchState.currentView === "text") {
+            if (typeof renderWardBatchRichSummary === "function") renderWardBatchRichSummary();
+            var txtEl = document.getElementById("txt-ws-batch-summary");
+            if (txtEl && typeof buildWardBatchSummaryText === "function") txtEl.value = buildWardBatchSummaryText();
+        }
+    }
+    // 単体患者サマリが開いている場合も即時反映
+    if (typeof wardSummaryState !== "undefined" && wardSummaryState.patient && typeof renderWardSummaryPanels === "function") {
+        renderWardSummaryPanels();
+    }
+}
+
+function buildWardJisanStatusCellHtml(pId, ji, remOverride) {
+    if (!ji) return "";
+    if (ji.isGaiyo) {
+        return '<span style="background:#e3f2fd; color:#0d47a1; font-weight:bold; padding:1px 6px; border-radius:4px; font-size:10px;">継続 ' + ji.elapsedDays + '日目</span>';
+    }
+    var remVal = (typeof remOverride === "number") ? remOverride : ji.remDays;
+    var ackKey = ji.ackKey || getWardJisanAckKey(pId, ji.name, ji.startDate);
+    var escKey = escapeHtml(ackKey);
+
+    if (ji.switchedToInhosp) {
+        var swTip = escapeHtml("院内処方へ切替検知: " + (ji.switchedDrugName || "") + (ji.switchedStartDate ? " (" + ji.switchedStartDate + "〜)" : ""));
+        var swDateShort = ji.switchedStartDate ? (" (" + escapeHtml(ji.switchedStartDate.slice(5)) + "〜)") : "";
+        return '<span title="' + swTip + '" style="display:inline-block; background:#e0f2f1; color:#00695c; border:1px solid #80cbc4; font-weight:bold; padding:1px 6px; border-radius:4px; font-size:10px;">🔄 院内切替済' + swDateShort + '</span>';
+    }
+    if (ji.acked) {
+        return '<span style="display:inline-block; background:#e8f5e9; color:#2e7d32; border:1px solid #a5d6a7; font-weight:bold; padding:1px 6px; border-radius:4px; font-size:10px;">✔ 対応済</span> ' +
+            '<button type="button" onclick="toggleWardJisanAckByKey(\'' + escKey + '\')" title="確認済を解除して元の表示に戻します" style="font-size:10px; padding:1px 5px; background:#fff; border:1px solid #ccc; color:#666; border-radius:3px; cursor:pointer;">戻す</button>';
+    }
+    if (remVal <= 3) {
+        var rCls = (remVal < 0) ? "ws-rem-danger" : "ws-rem-warning";
+        var rTxt = (remVal < 0) ? ("終了済(" + Math.abs(remVal) + "日超過)") : ("残り " + remVal + " 日");
+        return '<span class="' + rCls + '">' + rTxt + '</span> ' +
+            '<button type="button" onclick="toggleWardJisanAckByKey(\'' + escKey + '\')" title="確認済・対応済にしてアラートから消します" style="margin-left:3px; font-size:10px; padding:1px 6px; background:#fff; border:1px solid #4caf50; color:#2e7d32; border-radius:3px; cursor:pointer; font-weight:bold;">✔ 確認済</button>';
+    }
+    return '<span class="ws-rem-safe">残り ' + remVal + ' 日</span>';
+}
+
 function analyzeSinglePatientForBatch(pObj, shoho, chusha, karteRecs, todayStr, todayDateObj, thisMon, thisSun, lastMon, lastSun, labData, vitalData) {
     // 1. 処方比較 & 今週の定期処方発行チェック
     var prevMap = {};
@@ -20606,9 +20826,26 @@ function analyzeSinglePatientForBatch(pObj, shoho, chusha, karteRecs, todayStr, 
                     var elapsed = Math.max(0, Math.round((todayDateObj - startObj) / (1000 * 60 * 60 * 24)));
                     var endObj = new Date(jEnd.replace(/-/g, "/"));
                     var rem = Math.round((endObj - todayDateObj) / (1000 * 60 * 60 * 24));
-                    var jObj = { name: jName, inst: jRp.usageText, days: jDays, startDate: jStart, endDate: jEnd, isGaiyo: isGaiyoJ, elapsedDays: elapsed, remDays: rem };
+                    var swInfo = !isGaiyoJ ? findInhospSwitchForJisan(jName, jStart, jEnd, shoho) : null;
+                    var ackKeyJ = getWardJisanAckKey(pObj ? pObj.id : "", jName, jStart);
+                    var ackedJ = isWardJisanAcked(pObj ? pObj.id : "", jName, jStart);
+                    var jObj = {
+                        name: jName,
+                        inst: jRp.usageText,
+                        days: jDays,
+                        startDate: jStart,
+                        endDate: jEnd,
+                        isGaiyo: isGaiyoJ,
+                        elapsedDays: elapsed,
+                        remDays: rem,
+                        switchedToInhosp: !!swInfo,
+                        switchedDrugName: swInfo ? swInfo.drugName : "",
+                        switchedStartDate: swInfo ? swInfo.startDate : "",
+                        ackKey: ackKeyJ,
+                        acked: ackedJ
+                    };
                     jisanList.push(jObj);
-                    if (!isGaiyoJ && rem <= 3) jisanAlerts.push(jObj);
+                    if (!isGaiyoJ && rem <= 3 && !jObj.switchedToInhosp && !jObj.acked) jisanAlerts.push(jObj);
                 }
             }
         }
@@ -20826,13 +21063,12 @@ function buildBatchInlineDetailHtml(row) {
                     '<td style="padding:4px 8px; border:1px solid #e0e0e0; text-align:center;"><span style="background:#e3f2fd; color:#0d47a1; font-weight:bold; padding:1px 6px; border-radius:4px;">継続 ' + ji.elapsedDays + '日目</span></td>' +
                     '</tr>';
             } else {
-                var remCls = ji.remDays < 0 ? "ws-rem-danger" : (ji.remDays <= 3 ? "ws-rem-warning" : "ws-rem-safe");
-                var remTxt = ji.remDays < 0 ? ("終了済(" + Math.abs(ji.remDays) + "日超過)") : ("残り " + ji.remDays + " 日");
-                html += '<tr>' +
+                var jRowBgInl = (ji.switchedToInhosp || ji.acked) ? ' style="background:#f8fbf8; color:#555;"' : '';
+                html += '<tr' + jRowBgInl + '>' +
                     '<td style="padding:4px 8px; border:1px solid #e0e0e0;"><b>' + escapeHtml(ji.name) + '</b></td>' +
                     '<td style="padding:4px 8px; border:1px solid #e0e0e0;">' + escapeHtml(ji.inst) + '</td>' +
                     '<td style="padding:4px 8px; border:1px solid #e0e0e0; text-align:center;">' + ji.startDate + ' 〜 ' + ji.endDate + '</td>' +
-                    '<td style="padding:4px 8px; border:1px solid #e0e0e0; text-align:center;"><span class="' + remCls + '">' + remTxt + '</span></td>' +
+                    '<td style="padding:4px 8px; border:1px solid #e0e0e0; text-align:center;">' + buildWardJisanStatusCellHtml(pIdKey, ji) + '</td>' +
                     '</tr>';
             }
         }
@@ -20981,7 +21217,10 @@ function renderWardBatchTable() {
             for (var ja = 0; ja < row.jisanAlerts.length; ja++) {
                 var jit = row.jisanAlerts[ja];
                 var jMsg = jit.remDays < 0 ? ("超過" + Math.abs(jit.remDays) + "日") : ("残" + jit.remDays + "日");
-                alertHtml += '<div style="font-size:11px; color:#c62828; font-weight:bold;">💊 ' + escapeHtml(jit.name) + ' (' + jMsg + ')</div>';
+                var jAckK = escapeHtml(jit.ackKey || getWardJisanAckKey(p.id, jit.name, jit.startDate));
+                alertHtml += '<div style="font-size:11px; color:#c62828; font-weight:bold; margin-bottom:2px;">💊 ' + escapeHtml(jit.name) + ' (' + jMsg + ') ' +
+                    '<button type="button" onclick="toggleWardJisanAckByKey(\'' + jAckK + '\')" title="確認済・対応済にしてアラートから消します" style="font-size:10px; padding:0px 5px; background:#fff; border:1px solid #4caf50; color:#2e7d32; border-radius:3px; cursor:pointer; font-weight:bold;">✔</button>' +
+                    '</div>';
             }
         }
         if (row.teikiAlerts.length > 0) {
@@ -21266,10 +21505,10 @@ function renderWardBatchRxOnlyTable() {
             html += '<div style="font-size:12px; font-weight:bold; color:#ad1457; margin:8px 0 4px 0;">💊 持参薬一覧（医師再開指示分: ' + row.jisanList.length + '剤）</div>';
             html += '<table style="width:100%; table-layout:fixed; border-collapse:collapse; font-size:12px; background:#fff; word-wrap:break-word;">' +
                 '<thead><tr style="background:#fff5f8; color:#ad1457;">' +
-                '<th style="width:36%; padding:5px 8px; text-align:left; border:1px solid #f8bbd0;">薬品名</th>' +
-                '<th style="width:30%; padding:5px 8px; text-align:left; border:1px solid #f8bbd0;">用法・指示</th>' +
-                '<th style="width:20%; padding:5px 8px; text-align:center; border:1px solid #f8bbd0;">開始〜終了予定</th>' +
-                '<th style="width:14%; padding:5px 8px; text-align:center; border:1px solid #f8bbd0;">残日数</th>' +
+                '<th style="width:34%; padding:5px 8px; text-align:left; border:1px solid #f8bbd0;">薬品名</th>' +
+                '<th style="width:28%; padding:5px 8px; text-align:left; border:1px solid #f8bbd0;">用法・指示</th>' +
+                '<th style="width:18%; padding:5px 8px; text-align:center; border:1px solid #f8bbd0;">開始〜終了予定</th>' +
+                '<th style="width:20%; padding:5px 8px; text-align:center; border:1px solid #f8bbd0;">残日数・状況</th>' +
                 '</tr></thead><tbody>';
             for (var jl = 0; jl < row.jisanList.length; jl++) {
                 var ji = row.jisanList[jl];
@@ -21278,17 +21517,15 @@ function renderWardBatchRxOnlyTable() {
                         '<td style="padding:5px 8px; border:1px solid #e0e0e0;"><b>' + escapeHtml(ji.name) + '</b></td>' +
                         '<td style="padding:5px 8px; border:1px solid #e0e0e0; color:#555; font-size:11px;">' + escapeHtml(ji.inst || "") + '</td>' +
                         '<td style="padding:5px 8px; border:1px solid #e0e0e0; text-align:center; font-size:11px;">' + escapeHtml(ji.startDate || "") + ' 〜 (外用)</td>' +
-                        '<td style="padding:5px 8px; border:1px solid #e0e0e0; text-align:center;"><span style="background:#e3f2fd; color:#0d47a1; font-weight:bold; padding:1px 6px; border-radius:4px; font-size:11px;">継続 ' + ji.elapsedDays + '日目</span></td>' +
+                        '<td style="padding:5px 8px; border:1px solid #e0e0e0; text-align:center;">' + buildWardJisanStatusCellHtml(p.id, ji) + '</td>' +
                         '</tr>';
                 } else {
-                    var jRemCls = ji.remDays < 0 ? "ws-rem-danger" : (ji.remDays <= 3 ? "ws-rem-warning" : "ws-rem-safe");
-                    var jRemTxt = ji.remDays < 0 ? ("終了済(" + Math.abs(ji.remDays) + "日超過)") : ("残り " + ji.remDays + " 日");
-                    var jRowBg = (ji.remDays <= 3) ? ' style="background:#fff9fa;"' : '';
+                    var jRowBg = (ji.switchedToInhosp || ji.acked) ? ' style="background:#f8fbf8; color:#555;"' : ((ji.remDays <= 3) ? ' style="background:#fff9fa;"' : '');
                     html += '<tr' + jRowBg + '>' +
                         '<td style="padding:5px 8px; border:1px solid #e0e0e0;"><b>' + escapeHtml(ji.name) + '</b></td>' +
                         '<td style="padding:5px 8px; border:1px solid #e0e0e0; color:#555; font-size:11px;">' + escapeHtml(ji.inst || "") + '</td>' +
                         '<td style="padding:5px 8px; border:1px solid #e0e0e0; text-align:center; font-size:11px;">' + escapeHtml(ji.startDate || "") + ' 〜 ' + escapeHtml(ji.endDate || "") + '</td>' +
-                        '<td style="padding:5px 8px; border:1px solid #e0e0e0; text-align:center;"><span class="' + jRemCls + '">' + jRemTxt + '</span></td>' +
+                        '<td style="padding:5px 8px; border:1px solid #e0e0e0; text-align:center;">' + buildWardJisanStatusCellHtml(p.id, ji) + '</td>' +
                         '</tr>';
                 }
             }
@@ -21898,18 +22135,16 @@ function renderWardBatchRichSummary() {
                                 '<td style="padding:4px 6px; border:1px solid #eee; text-align:center;"><span style="background:#e3f2fd; color:#0d47a1; font-weight:bold; padding:1px 6px; border-radius:4px; font-size:10px;">継続 ' + jItem.elapsedDays + '日目</span></td>' +
                                 '</tr>';
                         } else {
-                            var isJAlert = (jItem.remDays <= 3);
-                            var jCls = (jItem.remDays <= 0) ? "ws-rem-danger" : (isJAlert ? "ws-rem-warning" : "ws-rem-safe");
-                            var jTxt = (jItem.remDays < 0) ? ("終了済(" + Math.abs(jItem.remDays) + "日超過)") : ("残 " + jItem.remDays + " 日");
+                            var isJAlert = (!jItem.switchedToInhosp && !jItem.acked && jItem.remDays <= 3);
                             var jSpan = (jItem.startDate ? escapeHtml(jItem.startDate) : "") + " 〜 " + (jItem.endDate ? escapeHtml(jItem.endDate) : "");
-                            var jBg = isJAlert ? "#fff9fb" : "#fafafa";
+                            var jBg = (jItem.switchedToInhosp || jItem.acked) ? "#f8fbf8" : (isJAlert ? "#fff9fb" : "#fafafa");
                             var jBadgeBg = isJAlert ? "#fce4ec" : "#e8f5e9";
                             var jBadgeCol = isJAlert ? "#ad1457" : "#2e7d32";
                             cellParts += '<tr style="background:' + jBg + ';">' +
                                 '<td style="padding:4px 6px; border:1px solid #eee; text-align:center;"><span style="background:' + jBadgeBg + '; color:' + jBadgeCol + '; font-size:10px; font-weight:bold; padding:1px 5px; border-radius:3px;">💊 持参</span></td>' +
                                 '<td style="padding:4px 6px; border:1px solid #eee;"><b>' + escapeHtml(jItem.name) + '</b></td>' +
                                 '<td style="padding:4px 6px; border:1px solid #eee; font-size:10px; color:#555;">' + escapeHtml(jItem.inst || "") + '<br>' + jSpan + '</td>' +
-                                '<td style="padding:4px 6px; border:1px solid #eee; text-align:center;"><span class="' + jCls + '">' + jTxt + '</span></td>' +
+                                '<td style="padding:4px 6px; border:1px solid #eee; text-align:center;">' + buildWardJisanStatusCellHtml(rp.id, jItem) + '</td>' +
                                 '</tr>';
                         }
                     }
